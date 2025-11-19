@@ -139,10 +139,14 @@ class DatabaseManager:
         Example:
             db.update("sources", 1, {"active": False})
         """
-        # Convert boolean values and add updated_at if column exists
+        # Convert boolean values
         data = self._prepare_data(data)
+
+        # Add updated_at only if column exists in table and not already in data
         if "updated_at" not in data:
-            data["updated_at"] = datetime.now().isoformat()
+            table_columns = [col["name"] for col in self.get_table_info(table)]
+            if "updated_at" in table_columns:
+                data["updated_at"] = datetime.now().isoformat()
 
         set_clause = ", ".join([f"{k} = ?" for k in data.keys()])
         query = f"UPDATE {table} SET {set_clause} WHERE id = ?"
