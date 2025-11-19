@@ -55,7 +55,7 @@ class SubstackCollector(BaseCollector):
             try:
                 articles = self._collect_feed(substack_url)
                 collected_articles.extend(articles)
-                logger.info(f"✅ Collected {len(articles)} articles from {substack_url}")
+                logger.info(f"Collected {len(articles)} articles from {substack_url}")
 
             except Exception as e:
                 logger.error(f"Error collecting from {substack_url}: {e}")

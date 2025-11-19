@@ -28,10 +28,10 @@ class YouTubeCollector(BaseCollector):
 
     # Channel IDs for monitored channels
     CHANNELS = {
-        "peter_diamandis": "UCp0qKaC_jxRJ_5pI0IFJnZA",  # Placeholder - needs actual ID
-        "jordi_visser": "UCxxxxxxxxxxxxxxxxxx",  # Placeholder
-        "forward_guidance": "UCxxxxxxxxxxxxxxxxxx",  # Placeholder
-        "42macro": "UCxxxxxxxxxxxxxxxxxx"  # Placeholder
+        "peter_diamandis": "UCCpNQKYvrnWQNjZprabMJlw",
+        "jordi_visser": "UCSLOw8JrFTBb3qF-p4v0v_w",
+        "forward_guidance": "UCEOv-8wHvYC6mzsY2Gm5WcQ",
+        "42macro": "UCu0L0QCubkYD3Cd9jSdxTNQ"
     }
 
     def __init__(self, api_key: str, channels: Optional[Dict[str, str]] = None):
@@ -65,7 +65,7 @@ class YouTubeCollector(BaseCollector):
             try:
                 videos = self._collect_channel_videos(channel_id, channel_name)
                 collected_videos.extend(videos)
-                logger.info(f"✅ Collected {len(videos)} videos from {channel_name}")
+                logger.info(f"Collected {len(videos)} videos from {channel_name}")
 
             except HttpError as e:
                 logger.error(f"YouTube API error for {channel_name}: {e}")

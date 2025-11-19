@@ -107,11 +107,11 @@ class Macro42Collector(BaseCollector):
             )
 
             if response.status_code == 200:
-                logger.info("✅ Login successful")
+                logger.info("Login successful")
                 self.logged_in = True
                 return True
             else:
-                logger.error(f"❌ Login failed: {response.status_code} - {response.text}")
+                logger.error(f"Login failed: {response.status_code} - {response.text}")
                 return False
 
         except Exception as e:
