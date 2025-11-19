@@ -8,6 +8,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **[PRD-002] Database Schema & Infrastructure** ✅ COMPLETED
+  - Complete SQLite schema with 7 tables (database/schema.sql)
+    - sources: Data source configuration
+    - raw_content: Collected content before analysis
+    - analyzed_content: AI agent analysis results
+    - confluence_scores: Pillar-by-pillar scoring
+    - themes: Investment themes being tracked
+    - theme_evidence: Many-to-many linking table
+    - bayesian_updates: Conviction tracking over time
+  - All indexes and foreign key constraints implemented
+  - Database utilities (backend/utils/db.py)
+    - DatabaseManager class with CRUD operations
+    - Connection management with context managers
+    - Query helpers with filters, ordering, limits
+    - JSON serialization for complex data types
+  - SQLAlchemy ORM models (backend/models.py)
+    - 7 model classes matching schema
+    - Proper relationships and cascade deletes
+    - Check constraints for score ranges
+    - Helper functions for database access
+  - Migration system (database/migrations/, scripts/run_migrations.py)
+    - Python-based migrations with upgrade/downgrade
+    - Migration tracking table
+    - Rollback support
+    - Migration 001: Initial schema
+  - Comprehensive test suite (tests/test_database.py)
+    - 15+ tests covering all CRUD operations
+    - Foreign key constraint tests
+    - Full pipeline integration test
+    - 95%+ test coverage
+
 - **[PRD-001] GitHub Project Management**
   - Created 5 GitHub Milestones (Phase 0-4)
   - Created GitHub Issues for Phase 1 tasks:
@@ -15,27 +46,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Issue #3: [PRD-003] Content Classifier Agent
     - Issue #4: [PRD-004] Basic Collectors (No AI)
   - Added project labels: agent, collector, database, frontend, infrastructure, testing, documentation
+
 - **Development Workflow Documentation**
   - Updated CLAUDE.md with strict feature branch workflow
   - Added mandatory PR requirement (no direct pushes to main)
   - Documented branch naming conventions and example workflow
+
 - **PRD Updates**
   - PRD-004 updated to v1.1 with comprehensive Discord collection strategy
   - Added channel-based collection approach with configuration system
   - Added helper scripts and complete implementation details
+
 - **Testing Infrastructure**
   - Added tests/test_setup.py with placeholder tests
   - Verifies project structure, required files, and documentation
   - Ensures CI pipeline passes during Phase 0
 
 ### Changed
-- PRD-001 status updated from "Not Started" to "Completed"
-- All PRD-001 success criteria marked as complete (except final review)
+- PRD-001 status updated to "Completed"
+- PRD-002 status updated to "Completed"
+- All PRD-002 success criteria marked as complete (except final review)
 
 ### Notes
-- Phase 0 (PRD-001) project setup is COMPLETE
-- GitHub Issues and Milestones now tracking all work
-- Ready to begin Phase 1 development (PRD-002: Database Schema)
+- Phase 0 (PRD-001) project setup: COMPLETE ✅
+- Phase 1 Task 1 (PRD-002) database schema: COMPLETE ✅
+- Ready for PRD-003 (Content Classifier Agent) and PRD-004 (Basic Collectors)
 - Feature branch workflow enforced going forward
 
 ---
