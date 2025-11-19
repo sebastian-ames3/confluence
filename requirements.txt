@@ -28,6 +28,9 @@ google-api-python-client==2.116.0
 # RSS
 feedparser==6.0.11
 
+# Twitter Scraping
+ntscraper==0.3.0
+
 # Utilities
 python-dotenv==1.0.0
 schedule==1.2.0

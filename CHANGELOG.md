@@ -8,6 +8,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **[PRD-004] Basic Collectors (No AI)** ✅ COMPLETED
+  - **42 Macro Collector** (collectors/macro42.py)
+    - Email/password authentication
+    - PDF collection from research page
+    - Video URL extraction
+    - Session management with validity checks
+    - KISS model signals included in weekly research PDFs
+  - **YouTube Collector** (collectors/youtube_api.py)
+    - YouTube Data API v3 integration
+    - Collects from 4 channels: Peter Diamandis, Jordi Visser, Forward Guidance, 42 Macro
+    - Video metadata, thumbnails, duration, view counts
+    - Transcript availability checking
+    - Supports custom channel configuration
+  - **Substack RSS Collector** (collectors/substack_rss.py)
+    - RSS feed parsing for Visser Labs
+    - HTML to clean text conversion
+    - Article metadata extraction (title, author, published date)
+    - Word count and image detection
+    - Configurable lookback for recent articles
+  - **Twitter Scraper** (collectors/twitter_scraper.py)
+    - Monitors @KTTECHPRIVATE and @MelMattison1
+    - Multiple scraping approaches: ntscraper library, session-based, API fallback
+    - Tweet text, media URLs, engagement metrics
+    - Comprehensive documentation on Twitter scraping challenges
+  - **Collector Orchestration** (scripts/run_collectors.py)
+    - Unified script to run all collectors
+    - Database integration with duplicate detection
+    - Command-line options for selective collection
+    - Comprehensive logging and error handling
+    - Results summary with per-source breakdown
+  - **Dependencies Added**
+    - ntscraper==0.3.0 for Twitter collection
+    - All other dependencies already present
+
+- **[PRD-003] Content Classifier Agent** ✅ COMPLETED
+  - BaseAgent class with Claude API integration (agents/base_agent.py)
+  - ContentClassifierAgent with priority rules and routing (agents/content_classifier.py)
+  - High priority patterns for Discord videos, 42macro Leadoff, trade setups
+  - Rule-based fallback when Claude API unavailable
+  - 23 comprehensive unit tests (tests/test_agents/test_content_classifier.py)
+  - Integration test skipping when no API key configured
+  - pytest.ini with custom marker registration
+
 - **[PRD-002] Database Schema & Infrastructure** ✅ COMPLETED
   - Complete SQLite schema with 7 tables (database/schema.sql)
     - sources: Data source configuration
