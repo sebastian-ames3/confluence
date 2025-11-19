@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS raw_content (
     content_text TEXT,                      -- For text content
     file_path TEXT,                         -- For files (PDFs, videos, images)
     url TEXT,                               -- Original URL if applicable
-    metadata TEXT,                          -- JSON: Author, timestamp, channel, etc.
+    json_metadata TEXT,                     -- JSON: Author, timestamp, channel, etc.
     collected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     processed BOOLEAN DEFAULT 0,            -- Has this been analyzed yet?
     FOREIGN KEY (source_id) REFERENCES sources(id) ON DELETE CASCADE
@@ -133,7 +133,7 @@ CREATE TABLE IF NOT EXISTS themes (
     prior_probability REAL,
     evidence_count INTEGER DEFAULT 0,
 
-    metadata TEXT,                          -- JSON: Supporting sources, related tickers, etc.
+    json_metadata TEXT,                     -- JSON: Supporting sources, related tickers, etc.
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

@@ -402,7 +402,7 @@ def test_full_content_pipeline(test_db):
         "source_id": source_id,
         "content_type": "pdf",
         "file_path": "/test.pdf",
-        "metadata": json.dumps({"author": "Test Author"}),
+        "json_metadata": json.dumps({"author": "Test Author"}),
         "processed": False
     })
 

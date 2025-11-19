@@ -55,7 +55,7 @@ class RawContent(Base):
     content_text = Column(Text)
     file_path = Column(String)
     url = Column(String)
-    metadata = Column(Text)  # JSON metadata
+    json_metadata = Column(Text)  # JSON metadata
     collected_at = Column(DateTime, default=datetime.utcnow)
     processed = Column(Boolean, default=False)
 
@@ -160,7 +160,7 @@ class Theme(Base):
     prior_probability = Column(Float)
     evidence_count = Column(Integer, default=0)
 
-    metadata = Column(Text)  # JSON
+    json_metadata = Column(Text)  # JSON
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
