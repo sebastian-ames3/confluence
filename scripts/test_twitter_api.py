@@ -52,15 +52,22 @@ async def main():
         print(f"\nERROR initializing collector: {e}")
         sys.exit(1)
 
-    # Collect tweets
+    # Collect tweets/threads
     print("\n" + "-"*60)
-    print("Collecting tweets...")
+    print("Collecting tweets/threads...")
+    print("Requesting: 5 items (threads count as 1)")
     print("-"*60)
 
     try:
-        tweets = await collector.collect()
+        result = await collector.collect(num_items=5, download_media=True)
 
-        print(f"\nSUCCESS! Collected {len(tweets)} tweets\n")
+        tweets = result["content"]
+        quota_used = result["quota_used"]
+        media_downloaded = result["media_downloaded"]
+
+        print(f"\nSUCCESS! Collected {len(tweets)} items\n")
+        print(f"API calls made: {quota_used}")
+        print(f"Media downloaded: {media_downloaded['images']} images, {media_downloaded['videos']} videos\n")
 
         if len(tweets) == 0:
             print("No tweets collected.")
@@ -69,31 +76,44 @@ async def main():
             print("  - Accounts are private")
             print("  - API rate limit reached")
         else:
-            # Show first 3 tweets as examples
-            for i, tweet in enumerate(tweets[:3]):
-                print(f"\nTweet {i+1}:")
-                print(f"  Username: @{tweet['metadata']['username']}")
-                print(f"  Created: {tweet['metadata']['created_at']}")
-                print(f"  Likes: {tweet['metadata']['like_count']}")
-                print(f"  Retweets: {tweet['metadata']['retweet_count']}")
-                print(f"  Text: {tweet['content_text'][:150]}...")
-                if tweet['metadata']['has_urls']:
-                    print(f"  URLs: {', '.join(tweet['metadata']['urls'])}")
+            # Show first 3 items as examples
+            for i, item in enumerate(tweets[:3]):
+                is_thread = item['metadata'].get('is_thread', False)
+                thread_len = item['metadata'].get('thread_length', 1)
+
+                print(f"\nItem {i+1} {'[THREAD]' if is_thread else '[TWEET]'}:")
+                print(f"  Username: @{item['metadata']['username']}")
+                print(f"  Type: {item['content_type']}")
+                if is_thread:
+                    print(f"  Thread length: {thread_len} tweets")
+                print(f"  Created: {item['metadata']['created_at']}")
+                print(f"  Likes: {item['metadata']['public_metrics']['like_count']}")
+                print(f"  Retweets: {item['metadata']['public_metrics']['retweet_count']}")
+                print(f"  Media: {item['metadata']['media_count']} files")
+                if item['metadata']['media_count'] > 0:
+                    media_types = [m['type'] for m in item['metadata']['media']]
+                    print(f"  Media types: {', '.join(media_types)}")
+                if item['metadata'].get('quoted_tweet'):
+                    print(f"  Quote tweet: {item['metadata']['quoted_tweet']['url']}")
+                print(f"  Text preview: {item['content_text'][:150]}...")
 
             if len(tweets) > 3:
                 print(f"\n... and {len(tweets) - 3} more tweets")
 
             print("\n" + "="*60)
-            print("Summary by account:")
+            print("Summary:")
             print("="*60)
 
-            account_counts = {}
-            for tweet in tweets:
-                username = tweet['metadata']['username']
-                account_counts[username] = account_counts.get(username, 0) + 1
+            # Count threads vs tweets
+            thread_count = sum(1 for t in tweets if t['metadata'].get('is_thread', False))
+            tweet_count = len(tweets) - thread_count
 
-            for username, count in account_counts.items():
-                print(f"  @{username}: {count} tweets")
+            print(f"  Threads: {thread_count}")
+            print(f"  Single tweets: {tweet_count}")
+            print(f"  Total items: {len(tweets)}")
+            print(f"\n  API quota used: {quota_used}")
+            print(f"  Images downloaded: {media_downloaded['images']}")
+            print(f"  Videos downloaded: {media_downloaded['videos']}")
 
     except Exception as e:
         print(f"\nERROR: {e}")
