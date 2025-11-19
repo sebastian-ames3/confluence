@@ -104,12 +104,21 @@ class KTTechnicalCollector(BaseCollector):
             soup = BeautifulSoup(login_page.content, 'html.parser')
 
             # Build login payload
+            # Note: KT Technical uses 'log' and 'pwd' instead of 'email' and 'password'
             login_data = {
-                'email': self.email,
-                'password': self.password
+                'log': self.email,
+                'pwd': self.password
             }
 
-            # Look for CSRF token
+            # Add all hidden fields (includes mepr_process_login_form, etc.)
+            hidden_fields = soup.find_all('input', {'type': 'hidden'})
+            for field in hidden_fields:
+                name = field.get('name')
+                value = field.get('value')
+                if name:
+                    login_data[name] = value
+
+            # Look for CSRF token (in addition to hidden fields)
             csrf_token = soup.find('input', {'name': re.compile(r'csrf|token', re.I)})
             if csrf_token and csrf_token.get('value'):
                 login_data[csrf_token['name']] = csrf_token['value']

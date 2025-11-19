@@ -46,3 +46,7 @@ htmlcov/
 # Railway
 .railway/
 .claude/
+
+# Debug files
+debug/
+nul

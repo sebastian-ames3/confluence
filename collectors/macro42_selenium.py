@@ -170,7 +170,10 @@ class Macro42Collector(BaseCollector):
 
     def _collect_pdfs(self) -> List[Dict[str, Any]]:
         """
-        Collect PDF research reports.
+        Collect PDF research reports from React SPA.
+
+        42 Macro uses a React app that renders content dynamically.
+        PDFs are presented as cards, not direct links.
 
         Returns:
             List of PDF content items
@@ -182,44 +185,82 @@ class Macro42Collector(BaseCollector):
             research_url = f"{self.BASE_URL}/research"
             self.driver.get(research_url)
 
-            # Wait for page to load
-            wait = WebDriverWait(self.driver, 10)
-            wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+            # Wait for React app to render content
+            wait = WebDriverWait(self.driver, 15)
 
-            # Find PDF links
-            # This is a generic approach - may need customization based on actual HTML
-            pdf_links = self.driver.find_elements(By.XPATH, "//a[contains(@href, '.pdf')]")
+            # Wait for research cards to appear
+            # Cards have class "cursor-pointer bg-card"
+            try:
+                wait.until(EC.presence_of_element_located(
+                    (By.CSS_SELECTOR, ".cursor-pointer.bg-card")
+                ))
+            except:
+                logger.warning("Research cards not found - page may not have loaded")
+                return pdfs
 
-            # Also look for S3 signed URLs
-            s3_links = self.driver.find_elements(By.XPATH, "//a[contains(@href, 's3.amazonaws.com')]")
+            # Give extra time for all cards to render
+            import time
+            time.sleep(2)
 
-            all_links = pdf_links + s3_links
+            # Find all research card elements
+            cards = self.driver.find_elements(By.CSS_SELECTOR, ".cursor-pointer.bg-card.p-2.rounded-xl")
 
-            logger.info(f"Found {len(all_links)} PDF links")
+            logger.info(f"Found {len(cards)} research cards")
 
-            for link in all_links[:10]:  # Limit to most recent 10
+            for card in cards[:15]:  # Limit to most recent 15
                 try:
-                    href = link.get_attribute('href')
-                    title = link.text or link.get_attribute('title') or "42 Macro Research"
+                    # Extract report type (e.g., "Leadoff Morning Note", "Around the Horn")
+                    type_elem = card.find_element(By.CSS_SELECTOR, ".capitalize")
+                    report_type = type_elem.text.strip()
 
-                    # Download PDF
-                    pdf_path = self._download_pdf(href, title)
+                    # Extract date (e.g., "Tuesday, November 18, 2025")
+                    date_elem = card.find_element(By.CSS_SELECTOR, ".text-select.font-bold")
+                    date_text = date_elem.text.strip()
 
-                    if pdf_path:
-                        pdfs.append({
-                            "content_type": "pdf",
-                            "file_path": str(pdf_path),
-                            "url": href,
-                            "content_text": title,
-                            "collected_at": datetime.utcnow().isoformat(),
-                            "metadata": {
-                                "title": title,
-                                "source_url": research_url
-                            }
-                        })
+                    # Check if locked (has lock icon)
+                    is_locked = False
+                    try:
+                        card.find_element(By.CSS_SELECTOR, "svg.text-white.absolute")
+                        is_locked = True
+                    except:
+                        pass
+
+                    # Skip locked content for now
+                    if is_locked:
+                        logger.info(f"Skipping locked content: {report_type} - {date_text}")
+                        continue
+
+                    # Try to find download button and extract href
+                    # Download buttons are in divs with download icon
+                    pdf_url = None
+                    try:
+                        # Look for clickable elements that might have PDF links
+                        download_btn = card.find_element(By.CSS_SELECTOR, ".ml-auto.mr-6")
+                        # Try to click and intercept download (advanced technique)
+                        # For now, we'll just record metadata
+                    except:
+                        pass
+
+                    # Create content item with metadata
+                    title = f"{report_type} - {date_text}"
+
+                    pdfs.append({
+                        "content_type": "pdf",
+                        "url": research_url,  # Use research page URL since no direct PDF link
+                        "content_text": title,
+                        "collected_at": datetime.utcnow().isoformat(),
+                        "metadata": {
+                            "title": title,
+                            "report_type": report_type,
+                            "date": date_text,
+                            "is_locked": is_locked,
+                            "source_url": research_url,
+                            "note": "PDF download requires clicking card - not yet implemented"
+                        }
+                    })
 
                 except Exception as e:
-                    logger.warning(f"Error processing PDF link: {e}")
+                    logger.warning(f"Error processing research card: {e}")
                     continue
 
         except Exception as e:
