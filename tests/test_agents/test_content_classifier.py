@@ -5,6 +5,7 @@ Tests classification logic, priority rules, and routing decisions.
 """
 
 import pytest
+import os
 import json
 from unittest.mock import Mock, patch
 from agents.content_classifier import ContentClassifierAgent
@@ -441,11 +442,15 @@ class TestContentClassifierAgent:
 # ============================================================================
 
 @pytest.mark.integration
+@pytest.mark.skipif(
+    not os.getenv("CLAUDE_API_KEY"),
+    reason="Integration tests require CLAUDE_API_KEY environment variable"
+)
 class TestContentClassifierIntegration:
     """
     Integration tests with real Claude API.
 
-    Run with: pytest --run-integration
+    Run with: pytest -m integration
     Requires CLAUDE_API_KEY environment variable.
     """
 
