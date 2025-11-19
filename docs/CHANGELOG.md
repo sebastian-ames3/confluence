@@ -8,6 +8,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **[PRD-004] Discord Collector** - Local data collection from Discord
+  - BaseCollector abstract class for all data collectors
+  - DiscordSelfCollector using discord.py-self (user token, not bot)
+  - Channel-based collection from Options Insight server
+  - Collects: text messages, PDFs, images, video links (Zoom/Webex)
+  - Automatic file downloads with size limits
+  - Video link extraction (Zoom, Webex, YouTube)
+  - Message filtering (length, patterns, bot detection)
+  - Flexible data saving (local database OR Railway API upload)
+  - Helper script to discover Discord channel IDs
+  - Main collection script for scheduled execution
+  - Comprehensive setup documentation (DISCORD_SETUP.md)
+  - Configuration template with 5 monitored channels
+- API routes for data collection:
+  - POST /collect/discord - Receive Discord data from local script
+  - POST /collect/trigger/{source} - Manually trigger collection
+  - GET /collect/status - Get collection status for all sources
+  - GET /collect/stats/{source} - Detailed statistics per source
 - **[PRD-003] Content Classifier Agent** - First AI sub-agent implementation
   - BaseAgent class with Claude API integration
   - ContentClassifierAgent with priority rules and routing logic
@@ -26,14 +44,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Updated backend/routes/analyze.py with full implementation
+- Updated backend/routes/collect.py with Discord ingestion and collection management
+- Enhanced collectors with BaseCollector pattern
 - Enhanced agents/__init__.py exports
 
 ### Testing
 - 23 unit tests implemented for ContentClassifierAgent
 - All tests passing
 - Coverage includes: priority rules, routing logic, API integration, edge cases
+- Manual testing required for Discord collector (requires real Discord token)
 
 ### Notes
+- **Discord Collection**: Runs locally on user's laptop, not on Railway (Discord ToS compliance)
+- Scheduled via Windows Task Scheduler (6am, 6pm daily)
+- Discord videos from Imran marked as HIGH priority (contain alpha)
 - Classification accuracy depends on Claude API quality
 - Processing time estimates: Video (190s), PDF (40s), Text (10s)
 - Classifier achieves <2s response time target (excluding specialized agent processing)
