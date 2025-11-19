@@ -37,7 +37,7 @@ def upgrade(db):
     with db.get_connection() as conn:
         conn.executescript(schema_sql)
 
-    print("✅ Migration 001 applied successfully")
+    print("SUCCESS: Migration 001 applied successfully")
     print("   - Created 7 tables")
     print("   - Created all indexes")
     print("   - Foreign key constraints enabled")
@@ -73,4 +73,4 @@ def downgrade(db):
         # Re-enable foreign keys
         conn.execute("PRAGMA foreign_keys = ON")
 
-    print("✅ Migration 001 reverted successfully")
+    print("SUCCESS: Migration 001 reverted successfully")

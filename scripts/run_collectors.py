@@ -9,6 +9,7 @@ import sys
 import os
 import argparse
 import asyncio
+import json
 import logging
 from pathlib import Path
 from datetime import datetime
@@ -21,7 +22,7 @@ sys.path.insert(0, str(project_root))
 from collectors.macro42 import Macro42Collector
 from collectors.youtube_api import YouTubeCollector
 from collectors.substack_rss import SubstackCollector
-from collectors.twitter_scraper import TwitterCollector
+from collectors.twitter_api import TwitterCollector
 from backend.models import SessionLocal, RawContent, Source
 from backend.utils.db import get_or_create_source
 
@@ -129,8 +130,8 @@ class CollectorOrchestrator:
             collector = SubstackCollector()
 
         elif source_name == 'twitter':
-            auth_token = os.getenv('TWITTER_AUTH_TOKEN')
-            collector = TwitterCollector(auth_token=auth_token)
+            bearer_token = os.getenv('TWITTER_BEARER_TOKEN')
+            collector = TwitterCollector(bearer_token=bearer_token)
 
         else:
             logger.error(f"Unknown source: {source_name}")
@@ -139,7 +140,7 @@ class CollectorOrchestrator:
         # Collect content
         try:
             content_items = await collector.collect()
-            logger.info(f"✅ Collected {len(content_items)} items from {source_name}")
+            logger.info(f"SUCCESS: Collected {len(content_items)} items from {source_name}")
         except Exception as e:
             error_msg = f"Collection failed for {source_name}: {e}"
             logger.error(error_msg)
@@ -151,7 +152,7 @@ class CollectorOrchestrator:
             saved_count = self._save_to_database(source_name, content_items)
             self.results['by_source'][source_name] = saved_count
             self.results['total_collected'] += saved_count
-            logger.info(f"💾 Saved {saved_count} items to database")
+            logger.info(f"Saved {saved_count} items to database")
         else:
             logger.info(f"No new items to save from {source_name}")
             self.results['by_source'][source_name] = 0
@@ -192,13 +193,14 @@ class CollectorOrchestrator:
                             continue
 
                     # Create new raw content entry
+                    metadata = item.get('metadata', {})
                     raw_content = RawContent(
                         source_id=source.id,
                         content_type=item.get('content_type', 'unknown'),
                         url=item.get('url'),
                         file_path=item.get('file_path'),
                         content_text=item.get('content_text'),
-                        json_metadata=item.get('metadata', {}),
+                        json_metadata=json.dumps(metadata) if metadata else None,
                         collected_at=datetime.utcnow()
                     )
 
@@ -233,7 +235,7 @@ class CollectorOrchestrator:
             for error in self.results['errors']:
                 logger.error(f"  - {error}")
         else:
-            logger.info("\n✅ No errors!")
+            logger.info("\nNo errors!")
 
         logger.info("=" * 60)
 
