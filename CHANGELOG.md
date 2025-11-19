@@ -8,30 +8,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Complete monorepo directory structure
-- Python package structure with __init__.py files
-- Configuration files: .gitignore, .env.example, railway.json
-- Database initialization scripts (init_database.py, run_migrations.py, seed_data.py)
-- Backend API foundation with FastAPI
-  - backend/app.py with health check endpoints
-  - backend/models.py with SQLAlchemy setup
-  - Route placeholders (collect.py, analyze.py, confluence.py)
-  - Utility placeholders (db.py, auth.py, claude_api.py)
-  - Scheduler template (scheduler.py)
-- Placeholder agent files (all 6 agents)
-- Placeholder collector files (all 5 collectors + Discord local script)
-- GitHub Actions CI/CD pipeline (.github/workflows/tests.yml)
-- requirements.txt with all dependencies
-- Example credentials template (config/example.credentials.json)
+- **[PRD-001] GitHub Project Management**
+  - Created 5 GitHub Milestones (Phase 0-4)
+  - Created GitHub Issues for Phase 1 tasks:
+    - Issue #2: [PRD-002] Database Schema & Infrastructure
+    - Issue #3: [PRD-003] Content Classifier Agent
+    - Issue #4: [PRD-004] Basic Collectors (No AI)
+  - Added project labels: agent, collector, database, frontend, infrastructure, testing, documentation
+- **Development Workflow Documentation**
+  - Updated CLAUDE.md with strict feature branch workflow
+  - Added mandatory PR requirement (no direct pushes to main)
+  - Documented branch naming conventions and example workflow
+- **PRD Updates**
+  - PRD-004 updated to v1.1 with comprehensive Discord collection strategy
+  - Added channel-based collection approach with configuration system
+  - Added helper scripts and complete implementation details
 
 ### Changed
-- Moved project from planning to active development phase
-- CHANGELOG.md moved from docs/ to root directory
+- PRD-001 status updated from "Not Started" to "Completed"
+- All PRD-001 success criteria marked as complete (except final review)
 
 ### Notes
 - Phase 0 (PRD-001) project setup is COMPLETE
-- All Quick Start commands in README.md now reference existing files
-- Ready to begin Phase 1 (Database Schema & Foundation)
+- GitHub Issues and Milestones now tracking all work
+- Ready to begin Phase 1 development (PRD-002: Database Schema)
+- Feature branch workflow enforced going forward
 
 ---
 
