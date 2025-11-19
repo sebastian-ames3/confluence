@@ -68,11 +68,12 @@ python scripts/get_discord_channel_ids.py
 ```
 
 This will show all servers and channels. Look for **"Options Insight Official"** and copy the channel IDs for:
-- `stocks-chat`
-- `crypto-weekly`
 - `macro-daily`
 - `spx-fixed-strike-vol`
-- `vix-monitor`
+- `macro-weekly`
+- `crypto-weekly`
+- `delta-trades`
+- `stock-trades`
 
 ### 4. Configure Channels
 

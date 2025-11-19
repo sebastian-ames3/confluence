@@ -3,39 +3,46 @@
   "server_id": "YOUR_SERVER_ID_HERE",
   "channels_to_monitor": [
     {
-      "name": "stocks-chat",
-      "channel_id": "CHANNEL_ID_HERE",
-      "priority": "high",
-      "collect_types": ["text", "images", "pdfs", "video_links"],
-      "description": "Pre-market analysis, daily stock commentary"
-    },
-    {
-      "name": "crypto-weekly",
-      "channel_id": "CHANNEL_ID_HERE",
-      "priority": "high",
-      "collect_types": ["text", "pdfs", "video_links"],
-      "description": "Weekly crypto volatility updates"
-    },
-    {
       "name": "macro-daily",
       "channel_id": "CHANNEL_ID_HERE",
       "priority": "high",
-      "collect_types": ["text", "pdfs", "video_links"],
-      "description": "Daily macro market analysis"
+      "collect_types": ["text", "images", "pdfs", "video_links"],
+      "description": "Daily macro market analysis from Imran"
     },
     {
       "name": "spx-fixed-strike-vol",
       "channel_id": "CHANNEL_ID_HERE",
       "priority": "high",
-      "collect_types": ["text", "images", "video_links"],
+      "collect_types": ["text", "images", "pdfs", "video_links"],
       "description": "SPX volatility surface analysis"
     },
     {
-      "name": "vix-monitor",
+      "name": "macro-weekly",
       "channel_id": "CHANNEL_ID_HERE",
-      "priority": "medium",
-      "collect_types": ["text", "images"],
-      "description": "VIX term structure and positioning"
+      "priority": "high",
+      "collect_types": ["text", "images", "pdfs", "video_links"],
+      "description": "Weekly macro analysis and updates"
+    },
+    {
+      "name": "crypto-weekly",
+      "channel_id": "CHANNEL_ID_HERE",
+      "priority": "high",
+      "collect_types": ["text", "images", "pdfs", "video_links"],
+      "description": "Weekly crypto volatility updates"
+    },
+    {
+      "name": "delta-trades",
+      "channel_id": "CHANNEL_ID_HERE",
+      "priority": "high",
+      "collect_types": ["text", "images", "pdfs", "video_links"],
+      "description": "Delta-based trade ideas and analysis"
+    },
+    {
+      "name": "stock-trades",
+      "channel_id": "CHANNEL_ID_HERE",
+      "priority": "high",
+      "collect_types": ["text", "images", "pdfs", "video_links"],
+      "description": "Stock trade ideas and analysis"
     }
   ],
   "collection_settings": {
