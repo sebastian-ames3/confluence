@@ -36,6 +36,11 @@ ntscraper==0.3.0
 selenium==4.36.0
 webdriver-manager==4.0.2
 
+# Video/Audio Processing (for Transcript Harvester)
+# Note: Requires ffmpeg installed as system dependency
+yt-dlp==2024.8.6
+pydub==0.25.1
+
 # Utilities
 python-dotenv==1.0.0
 schedule==1.2.0
