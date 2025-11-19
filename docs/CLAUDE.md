@@ -173,11 +173,69 @@ confluence/                    # Monorepo
 ```
 
 ### Development Workflow
-1. **Feature branches**: Each PRD task = new branch
-2. **Frequent commits**: Reference issue numbers (#1, #2, etc.)
-3. **Pull Requests**: Require passing tests before merge to main
-4. **CHANGELOG updates**: Every meaningful commit updates CHANGELOG.md
-5. **GitHub Issues**: Each PRD task tracked as Issue, grouped by Milestones
+
+**⚠️ CRITICAL RULE: NEVER PUSH DIRECTLY TO MAIN BRANCH ⚠️**
+
+**ALWAYS use feature branches. ALWAYS create pull requests. ONLY merge to main after tests pass.**
+
+#### Mandatory Workflow Steps
+
+1. **Feature Branches (REQUIRED)**
+   - **ALWAYS** create a new feature branch for ANY changes
+   - Branch naming: `feature/description` or `fix/description` or `update/description`
+   - Examples: `feature/discord-collector`, `fix/authentication-bug`, `update/prd-004`
+   - **NEVER, EVER commit directly to main branch**
+   - **NEVER use `git push` when on main branch**
+
+2. **Commits on Feature Branch**
+   - Make frequent, logical commits on your feature branch
+   - Reference issue numbers in commits (#1, #2, etc.)
+   - Update CHANGELOG.md with meaningful changes
+
+3. **Push Feature Branch to GitHub**
+   - Push your feature branch: `git push -u origin <branch-name>`
+   - Feature branches can be pushed freely
+
+4. **Pull Requests (REQUIRED for all merges to main)**
+   - Create a Pull Request from your feature branch to main
+   - PR description should explain changes clearly
+   - Wait for tests to pass (CI/CD pipeline)
+   - **DO NOT merge until all tests pass**
+   - Only merge via GitHub PR interface, never with direct push
+
+5. **After Merge**
+   - Switch back to main: `git checkout main`
+   - Pull latest changes: `git pull`
+   - Delete local feature branch: `git branch -d <branch-name>`
+
+#### Example Workflow
+
+```bash
+# Step 1: Create feature branch
+git checkout -b feature/add-discord-collector
+
+# Step 2: Make changes, commit frequently
+git add .
+git commit -m "Add Discord collector implementation"
+
+# Step 3: Push feature branch
+git push -u origin feature/add-discord-collector
+
+# Step 4: Create PR on GitHub (via web interface or gh CLI)
+gh pr create --title "Add Discord Collector" --body "Implements PRD-004..."
+
+# Step 5: Wait for tests to pass, then merge PR on GitHub
+
+# Step 6: After PR is merged on GitHub
+git checkout main
+git pull
+git branch -d feature/add-discord-collector
+```
+
+#### GitHub Issues
+- Each PRD task tracked as Issue
+- Issues grouped by Milestones
+- Reference issues in commits and PRs
 
 ---
 
