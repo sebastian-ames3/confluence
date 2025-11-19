@@ -8,6 +8,37 @@ A personal investment research aggregation and analysis system that collects mac
 
 ---
 
+## 🎯 Current Project Status (as of 2025-11-19)
+
+### Phase Completion
+- ✅ **Phase 0**: Project Setup (Complete)
+- ✅ **Phase 1**: Foundation (Complete)
+  - Database schema ✅
+  - Content Classifier Agent ✅
+  - All 6 collectors production-ready ✅
+- 🟡 **Phase 2**: Intelligence Layer (In Progress)
+  - Transcript Harvester Agent ✅
+  - PDF Analyzer Agent ⏳ (Next to build)
+  - Image Intelligence Agent ⏳ (Skeleton only)
+- ⏳ **Phase 3**: Confluence Engine (Not started)
+- ⏳ **Phase 4**: Dashboard & Deployment (Not started)
+
+### What's Working Now
+- **All 6 data collectors** collecting content from Discord, YouTube, Substack, Twitter, 42 Macro, KT Technical
+- **Content Classifier Agent** routing content to appropriate analyzers
+- **Transcript Harvester Agent** processing video transcripts
+- **Database** storing all collected content with full metadata
+
+### Next Immediate Tasks
+1. **Build PDF Analyzer Agent** - Extract insights from 42macro and Discord PDFs
+2. **Build Image Intelligence Agent** - Interpret charts from Discord and KT Technical
+3. **Build Confluence Scorer Agent** - Score content against 7-pillar framework
+4. **Build Cross-Reference Agent** - Find confluence patterns across sources
+
+See CHANGELOG.md for detailed completion status.
+
+---
+
 ## User Profile
 
 **Name**: Sebastian Ames
@@ -89,37 +120,41 @@ Sebastian subscribes to multiple premium research services ($1000s/month) but st
 - **Test Results**: 20 articles collected successfully
 - **Frequency**: Weekly publications
 
-### 4. Twitter (KT Technical + Mel Mattison) - 🔄 IN PROGRESS
-- **Accounts**:
-  - @KTTECHPRIVATE (KT Technical trade setups)
-  - @MelMattison1 (Market analysis)
-- **Collection Method**: Twitter API Free Tier (1,500 tweets/month limit)
-- **Content Types**: Trade setups, technical levels, entry/exit signals
-- **Status**: Framework complete, switching from ntscraper to official API
-- **Next Step**: Implement tweepy with TWITTER_BEARER_TOKEN
+### 4. Twitter (@MelMattison1) - ✅ PRODUCTION READY
+- **Account**: @MelMattison1 (Market analysis, macro trader, economic history)
+- **Collection Method**: Official Twitter API v2 with `tweepy`
+- **Content Types**: Trade setups, technical levels, macro commentary
+- **Authentication**: Bearer Token (stored in `.env` as `TWITTER_BEARER_TOKEN`)
+- **Status**: ✅ Thread-aware collection with media download
+- **Test Results**: Thread reconstruction working, media downloaded
+- **Frequency**: Daily monitoring
+- **Note**: @KTTECHPRIVATE removed (content available via KT Technical website)
 
-### 5. 42 Macro - 🔄 IN PROGRESS
+### 5. 42 Macro - ✅ PRODUCTION READY
 - **URL**: https://app.42macro.com
-- **Authentication**: Email/password (CloudFront protected)
+- **Authentication**: Email/password (stored in `.env`)
 - **Content Types**:
-  - PDFs: "Leadoff Morning Note", "Around The Horn", "Macro Scouting Report"
-  - Videos: "Macro Minute" daily videos with transcripts
+  - PDFs: "Around The Horn", "Macro Scouting Report"
+  - Videos: "Macro Minute" daily videos (for future transcript harvesting)
   - KISS Model Portfolio signals (in weekly PDFs)
-- **Collection Method**: Selenium (headless Chrome to bypass CloudFront WAF)
-- **Status**: Framework complete, needs Selenium implementation
+- **Collection Method**: Selenium + headless Chrome
+- **Status**: ✅ Automatic PDF downloading working
+- **Test Results**: Successfully downloaded 4 PDFs (Around The Horn, Macro Scouting Report)
 - **Frequency**: Daily (morning notes), Weekly (reports)
-- **Next Step**: Implement Selenium-based login and scraping
+- **Note**: "Leadoff Morning Note" requires premium tier subscription (locked)
 
-### 6. KT Technical Analysis Website - 🔄 TO BUILD
+### 6. KT Technical Analysis Website - ✅ PRODUCTION READY
 - **URL**: https://kttechnicalanalysis.com/blog-feed/
-- **Authentication**: Email/password (credentials in .env)
+- **Authentication**: Email/password (stored in `.env` as `KT_EMAIL`, `KT_PASSWORD`)
 - **Content Types**:
-  - Weekly blog post with price chart images
-  - Synopsis of stock/asset price action
-  - Technical analysis and trade ideas
-- **Collection Method**: Session-based authentication (requests library)
+  - Weekly blog posts with price chart images (CRITICAL)
+  - Synopsis of stock/asset price action with Elliott Wave analysis
+  - Technical levels, support/resistance zones
+- **Collection Method**: Session-based authentication + individual post fetching
+- **Status**: ✅ Full content + price chart images downloading
+- **Test Results**: 10 blog posts collected, 3-4 chart images per post
 - **Frequency**: Weekly (Sundays)
-- **Next Step**: Build collector (simple blog scraping)
+- **Note**: Price charts are CRITICAL - technical analysis meaningless without them
 
 ---
 
@@ -276,28 +311,43 @@ git branch -d feature/add-discord-collector
 
 **Philosophy**: Each "agent" is a Python module with a specialized Claude API call. No complex frameworks - clean, testable, transparent.
 
+### Agent Implementation Status
+
+| Agent | Status | File Size | Implementation |
+|-------|--------|-----------|----------------|
+| Content Classifier | ✅ Complete | 334 lines | Fully functional |
+| Transcript Harvester | ✅ Complete | 363 lines | Multi-platform video transcription |
+| PDF Analyzer | ⏳ Skeleton | 8 lines | **Next to build** |
+| Image Intelligence | ⏳ Skeleton | 8 lines | Not started |
+| Confluence Scorer | ⏳ Skeleton | 8 lines | Phase 3 |
+| Cross-Reference | ⏳ Skeleton | 8 lines | Phase 3 |
+
 ### Agent Specifications
 
-#### 1. Content Classifier Agent
+#### 1. Content Classifier Agent ✅ IMPLEMENTED
+**Status**: Fully functional (334 lines)
 **Purpose**: First-pass triage of all collected content
 **Input**: Raw content (text, file path, URL)
-**Output**: 
+**Output**:
 ```json
 {
   "content_type": "video|pdf|image|text",
-  "source": "42macro|discord|twitter|youtube|substack",
+  "source": "42macro|discord|twitter|youtube|substack|kt_technical",
   "priority": "high|medium|low",
   "route_to": ["transcript_harvester", "pdf_analyzer"],
-  "metadata": {...}
+  "detected_topics": ["topic1", "topic2"],
+  "confidence": 0.95
 }
 ```
-**Claude Prompt Focus**: Pattern recognition, content type detection
+**Implementation**: Uses Claude API with priority rules and routing logic
+**File**: `agents/content_classifier.py`
 
-#### 2. Transcript Harvester Agent
+#### 2. Transcript Harvester Agent ✅ IMPLEMENTED
+**Status**: Fully functional (363 lines)
 **Purpose**: Convert video/audio to analyzed text
 **Inputs**: Video URL (YouTube, Zoom, Webex, Twitter video)
 **Process**:
-1. Download video (if needed)
+1. Download video via yt-dlp
 2. Extract audio → Whisper API transcription
 3. Claude analysis of transcript
 **Output**:
@@ -312,16 +362,20 @@ git branch -d feature/add-discord-collector
   "catalysts": ["FOMC meeting", "earnings"]
 }
 ```
+**Implementation**: Multi-platform support (YouTube, Zoom, Vimeo, Twitter)
+**File**: `agents/transcript_harvester.py`
 
-#### 3. PDF Analyzer Agent
+#### 3. PDF Analyzer Agent ⏳ NOT YET BUILT
+**Status**: Skeleton only (8 lines) - **Next to build**
 **Purpose**: Extract structured insights from PDF research reports
 **Process**:
-1. Text extraction (pypdf2)
-2. Table extraction (camelot/tabula)
-3. Claude analysis for themes
+1. Text extraction (pypdf2/pdfplumber)
+2. Table extraction (if needed)
+3. Claude analysis for themes, tickers, sentiment
 **Output**: Similar structure to transcript harvester
+**File**: `agents/pdf_analyzer.py`
 
-#### 4. Image Intelligence Agent
+#### 4. Image Intelligence Agent ⏳ NOT YET BUILT
 **Purpose**: Interpret charts, graphs, volatility surfaces
 **Process**:
 1. OCR if text-heavy
@@ -655,6 +709,7 @@ GitHub Actions:
 
 ---
 
-**Last Updated**: 2025-11-18
+**Last Updated**: 2025-11-19
 **Project Start Date**: 2025-11-18
 **Target MVP Completion**: 2025-12-16 (4 weeks)
+**Current Phase**: Phase 2 - Intelligence Layer (In Progress)
