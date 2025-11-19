@@ -84,7 +84,7 @@ class TwitterCollector(BaseCollector):
             try:
                 tweets = self._collect_with_ntscraper()
                 if tweets:
-                    logger.info(f"✅ Collected {len(tweets)} tweets using ntscraper")
+                    logger.info(f"Collected {len(tweets)} tweets using ntscraper")
                     return tweets
             except ImportError:
                 logger.warning("ntscraper not available, falling back to manual scraping")
@@ -98,7 +98,7 @@ class TwitterCollector(BaseCollector):
             try:
                 tweets = self._collect_account_tweets(account)
                 collected_tweets.extend(tweets)
-                logger.info(f"✅ Collected {len(tweets)} tweets from @{account}")
+                logger.info(f"Collected {len(tweets)} tweets from @{account}")
 
             except Exception as e:
                 logger.error(f"Error collecting from @{account}: {e}")

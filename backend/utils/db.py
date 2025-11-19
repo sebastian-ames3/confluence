@@ -317,6 +317,44 @@ class DatabaseManager:
             conn.execute("VACUUM")
 
 
+def get_or_create_source(db_session, source_name: str):
+    """
+    Get existing source by name or create if doesn't exist.
+
+    Args:
+        db_session: SQLAlchemy database session
+        source_name: Name of the source (e.g., "youtube", "42macro")
+
+    Returns:
+        Source object
+
+    Example:
+        from backend.models import SessionLocal
+        from backend.utils.db import get_or_create_source
+
+        db = SessionLocal()
+        source = get_or_create_source(db, "youtube")
+    """
+    from backend.models import Source
+
+    # Try to find existing source
+    source = db_session.query(Source).filter(Source.name == source_name).first()
+
+    if source:
+        return source
+
+    # Create new source
+    source = Source(
+        name=source_name,
+        type="api" if source_name in ["youtube", "twitter"] else "web",
+        active=True
+    )
+    db_session.add(source)
+    db_session.commit()
+
+    return source
+
+
 # Singleton instance
 _db_instance = None
 
