@@ -23,6 +23,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - PRD-004 updated to v1.1 with comprehensive Discord collection strategy
   - Added channel-based collection approach with configuration system
   - Added helper scripts and complete implementation details
+- **Testing Infrastructure**
+  - Added tests/test_setup.py with placeholder tests
+  - Verifies project structure, required files, and documentation
+  - Ensures CI pipeline passes during Phase 0
 
 ### Changed
 - PRD-001 status updated from "Not Started" to "Completed"
