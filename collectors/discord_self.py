@@ -98,7 +98,7 @@ class DiscordSelfCollector(BaseCollector):
 
         # Start the client
         try:
-            await self.client.start(self.user_token, bot=False)
+            await self.client.start(self.user_token)
         except discord.LoginFailure:
             logger.error("Failed to login to Discord. Check your user token.")
             raise
@@ -110,7 +110,7 @@ class DiscordSelfCollector(BaseCollector):
 
     async def _collect_channel(self, channel_config: Dict[str, Any]) -> List[Dict[str, Any]]:
         """
-        Collect messages from a single Discord channel.
+        Collect messages from a single Discord channel and its threads.
 
         Args:
             channel_config: Channel configuration from config file
@@ -122,8 +122,13 @@ class DiscordSelfCollector(BaseCollector):
         channel = self.client.get_channel(channel_id)
 
         if not channel:
-            logger.warning(f"⚠️  Channel {channel_config['name']} (ID: {channel_id}) not found!")
+            logger.warning(f"Channel {channel_config['name']} (ID: {channel_id}) not found!")
             return []
+
+        # Check if this is a Forum channel (requires different handling)
+        if hasattr(channel, 'type') and str(channel.type) == 'forum':
+            logger.info(f"Collecting from #{channel_config['name']} (Forum)...")
+            return await self._collect_forum_channel(channel, channel_config)
 
         # Determine lookback time
         lookback_time = self._get_lookback_time(channel_config["name"])
@@ -132,9 +137,10 @@ class DiscordSelfCollector(BaseCollector):
         messages_data = []
         message_count = 0
 
-        logger.info(f"📡 Collecting from #{channel_config['name']}...")
+        logger.info(f"Collecting from #{channel_config['name']}...")
 
         try:
+            # Collect from main channel
             async for message in channel.history(limit=max_messages, after=lookback_time):
                 # Apply filters
                 if not self._should_collect_message(message):
@@ -145,6 +151,14 @@ class DiscordSelfCollector(BaseCollector):
                     messages_data.append(message_data)
                     message_count += 1
 
+            # Collect from active threads in the channel
+            if hasattr(channel, 'threads'):
+                thread_messages = await self._collect_threads(channel, channel_config, lookback_time)
+                messages_data.extend(thread_messages)
+                message_count += len(thread_messages)
+                if thread_messages:
+                    logger.info(f"  └─ Collected {len(thread_messages)} messages from threads")
+
         except discord.Forbidden:
             logger.error(f"No permission to access #{channel_config['name']}")
         except Exception as e:
@@ -153,13 +167,138 @@ class DiscordSelfCollector(BaseCollector):
         logger.info(f"✅ Collected {message_count} messages from #{channel_config['name']}")
         return messages_data
 
+    async def _collect_threads(
+        self,
+        channel: discord.TextChannel,
+        channel_config: Dict[str, Any],
+        lookback_time: datetime
+    ) -> List[Dict[str, Any]]:
+        """
+        Collect messages from all active threads in a channel.
+
+        Args:
+            channel: Discord channel object
+            channel_config: Channel configuration
+            lookback_time: How far back to collect messages
+
+        Returns:
+            List of collected thread messages
+        """
+        thread_messages = []
+        max_messages_per_thread = 100  # Limit messages per thread
+
+        try:
+            # Get active threads
+            active_threads = channel.threads
+
+            # Also get archived threads if needed
+            try:
+                archived_threads = []
+                async for thread in channel.archived_threads(limit=10):
+                    archived_threads.append(thread)
+                all_threads = active_threads + archived_threads
+            except Exception:
+                # If archived thread access fails, just use active threads
+                all_threads = active_threads
+
+            for thread in all_threads:
+                try:
+                    # Check if thread has recent activity
+                    if hasattr(thread, 'archive_timestamp'):
+                        if thread.archive_timestamp and thread.archive_timestamp < lookback_time:
+                            continue
+
+                    thread_msg_count = 0
+                    async for message in thread.history(limit=max_messages_per_thread, after=lookback_time):
+                        if not self._should_collect_message(message):
+                            continue
+
+                        message_data = await self._process_message(message, channel_config)
+                        if message_data:
+                            thread_messages.append(message_data)
+                            thread_msg_count += 1
+
+                    if thread_msg_count > 0:
+                        logger.debug(f"    🧵 Thread '{thread.name}': {thread_msg_count} messages")
+
+                except discord.Forbidden:
+                    logger.debug(f"    ⚠️  No access to thread '{thread.name}'")
+                except Exception as e:
+                    logger.debug(f"    ⚠️  Error in thread '{thread.name}': {e}")
+
+        except Exception as e:
+            logger.warning(f"Error collecting threads: {e}")
+
+        return thread_messages
+
+    async def _collect_forum_channel(
+        self,
+        channel: discord.ForumChannel,
+        channel_config: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
+        """
+        Collect messages from a Forum channel (collects from forum posts/threads).
+
+        Args:
+            channel: Discord Forum channel object
+            channel_config: Channel configuration
+
+        Returns:
+            List of collected messages from forum threads
+        """
+        messages_data = []
+        lookback_time = self._get_lookback_time(channel_config["name"])
+        max_messages_per_thread = 100
+
+        try:
+            # Get all active threads in the forum
+            threads = channel.threads if hasattr(channel, 'threads') else []
+
+            # Also try to get archived threads
+            try:
+                archived_threads = []
+                async for thread in channel.archived_threads(limit=20):
+                    archived_threads.append(thread)
+                all_threads = list(threads) + archived_threads
+            except Exception:
+                all_threads = list(threads)
+
+            logger.info(f"  Found {len(all_threads)} forum threads")
+
+            # Collect messages from each thread
+            for thread in all_threads:
+                try:
+                    thread_msg_count = 0
+                    async for message in thread.history(limit=max_messages_per_thread, after=lookback_time):
+                        if not self._should_collect_message(message):
+                            continue
+
+                        message_data = await self._process_message(message, channel_config)
+                        if message_data:
+                            messages_data.append(message_data)
+                            thread_msg_count += 1
+
+                    if thread_msg_count > 0:
+                        logger.debug(f"    Thread '{thread.name}': {thread_msg_count} messages")
+
+                except discord.Forbidden:
+                    logger.debug(f"    No access to thread '{thread.name}'")
+                except Exception as e:
+                    logger.debug(f"    Error in thread '{thread.name}': {e}")
+
+        except Exception as e:
+            logger.warning(f"Error collecting from forum channel: {e}")
+
+        logger.info(f"Collected {len(messages_data)} messages from #{channel_config['name']}")
+        return messages_data
+
     async def _process_message(
         self,
         message: discord.Message,
         channel_config: Dict[str, Any]
     ) -> Optional[Dict[str, Any]]:
         """
-        Process a single Discord message.
+        Process a single Discord message with full context tracking.
 
         Args:
             message: Discord message object
@@ -201,6 +340,15 @@ class DiscordSelfCollector(BaseCollector):
                 content_type = "video"
                 url = video_links[0]["url"]
 
+        # Extract mentions
+        mentions_data = self._extract_mentions(message)
+
+        # Extract reactions
+        reactions_data = self._extract_reactions(message)
+
+        # Check if message is in a thread or is a reply
+        thread_data = self._extract_thread_info(message)
+
         # Build message data
         message_data = {
             "content_type": content_type,
@@ -216,8 +364,13 @@ class DiscordSelfCollector(BaseCollector):
                 "author": message.author.name,
                 "author_id": str(message.author.id),
                 "timestamp": message.created_at.isoformat(),
+                "edited_at": message.edited_at.isoformat() if message.edited_at else None,
+                "is_edited": message.edited_at is not None,
                 "attachments": attachments_data,
                 "video_links": video_links,
+                "mentions": mentions_data,
+                "reactions": reactions_data,
+                "thread_info": thread_data,
                 "embeds": [
                     {
                         "type": embed.type,
@@ -225,7 +378,9 @@ class DiscordSelfCollector(BaseCollector):
                         "title": embed.title
                     }
                     for embed in message.embeds
-                ] if message.embeds else []
+                ] if message.embeds else [],
+                "is_pinned": message.pinned,
+                "jump_url": message.jump_url
             }
         }
 
@@ -369,6 +524,118 @@ class DiscordSelfCollector(BaseCollector):
                 })
 
         return found_links
+
+    def _extract_mentions(self, message: discord.Message) -> Dict[str, Any]:
+        """
+        Extract all mentions from a Discord message.
+
+        Args:
+            message: Discord message object
+
+        Returns:
+            Dictionary containing user, role, and channel mentions
+        """
+        mentions_data = {
+            "users": [],
+            "roles": [],
+            "channels": [],
+            "everyone": message.mention_everyone
+        }
+
+        # Extract user mentions
+        for user in message.mentions:
+            mentions_data["users"].append({
+                "id": str(user.id),
+                "username": user.name,
+                "display_name": user.display_name if hasattr(user, 'display_name') else user.name
+            })
+
+        # Extract role mentions
+        for role in message.role_mentions:
+            mentions_data["roles"].append({
+                "id": str(role.id),
+                "name": role.name
+            })
+
+        # Extract channel mentions
+        if hasattr(message, 'channel_mentions'):
+            for channel in message.channel_mentions:
+                mentions_data["channels"].append({
+                    "id": str(channel.id),
+                    "name": channel.name
+                })
+
+        return mentions_data
+
+    def _extract_reactions(self, message: discord.Message) -> List[Dict[str, Any]]:
+        """
+        Extract reactions from a Discord message.
+
+        Args:
+            message: Discord message object
+
+        Returns:
+            List of reaction data
+        """
+        reactions_data = []
+
+        for reaction in message.reactions:
+            reaction_info = {
+                "emoji": str(reaction.emoji),
+                "count": reaction.count,
+                "me": reaction.me  # Whether the bot/user reacted
+            }
+
+            # Try to get custom emoji details
+            if hasattr(reaction.emoji, 'id'):
+                reaction_info["emoji_id"] = str(reaction.emoji.id)
+                reaction_info["emoji_name"] = reaction.emoji.name
+                reaction_info["is_custom"] = True
+            else:
+                reaction_info["is_custom"] = False
+
+            reactions_data.append(reaction_info)
+
+        return reactions_data
+
+    def _extract_thread_info(self, message: discord.Message) -> Dict[str, Any]:
+        """
+        Extract thread and reply information from a Discord message.
+
+        Args:
+            message: Discord message object
+
+        Returns:
+            Dictionary containing thread and reply metadata
+        """
+        thread_info = {
+            "is_in_thread": False,
+            "thread_id": None,
+            "thread_name": None,
+            "is_reply": False,
+            "reply_to_message_id": None,
+            "reply_to_author_id": None,
+            "reply_to_author_name": None
+        }
+
+        # Check if message is in a Discord thread
+        if hasattr(message.channel, 'parent') and message.channel.parent is not None:
+            thread_info["is_in_thread"] = True
+            thread_info["thread_id"] = str(message.channel.id)
+            thread_info["thread_name"] = message.channel.name
+
+        # Check if message is a reply (message reference)
+        if message.reference is not None:
+            thread_info["is_reply"] = True
+            thread_info["reply_to_message_id"] = str(message.reference.message_id)
+
+            # Try to get the referenced message details
+            if message.reference.resolved is not None:
+                referenced_msg = message.reference.resolved
+                thread_info["reply_to_author_id"] = str(referenced_msg.author.id)
+                thread_info["reply_to_author_name"] = referenced_msg.author.name
+
+        return thread_info
 
     def _get_lookback_time(self, channel_name: str) -> datetime:
         """

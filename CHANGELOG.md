@@ -8,6 +8,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **[PRD-006] Discord Collector Enhancement - Thread-Aware Context Tracking** (2025-11-19) ✅ COMPLETED
+  - **Thread & Reply Tracking**:
+    - Automatic collection from Discord threads (both active and archived)
+    - Reply chain tracking with parent message IDs
+    - Thread hierarchy preservation (thread_id, thread_name, parent channel)
+    - Distinction between Discord threads and message replies
+  - **Reaction Tracking**:
+    - All emoji reactions captured with counts
+    - Custom and standard emoji support
+    - Reaction metadata (emoji ID, name, is_custom flag)
+    - Sentiment indicators through reactions (🔥, ✅, ❤️, etc.)
+  - **Edit Tracking**:
+    - `edited_at` timestamp for all edited messages
+    - `is_edited` boolean flag for quick filtering
+    - Original timestamp preserved alongside edit timestamp
+  - **Mention Tracking**:
+    - User mentions with full details (ID, username, display_name)
+    - Role mentions (@role with ID and name)
+    - Channel mentions (#channel with ID and name)
+    - @everyone/@here detection
+  - **Enhanced Metadata**:
+    - Message pinned status tracking
+    - Jump URLs for direct navigation to messages
+    - Complete thread information in metadata
+    - Improved attachment metadata (type, filename, size, path)
+  - **Implementation** (collectors/discord_self.py):
+    - New helper methods: `_extract_mentions()`, `_extract_reactions()`, `_extract_thread_info()`
+    - Enhanced `_process_message()` with full context extraction
+    - New `_collect_threads()` method for thread collection
+    - Updated `_collect_channel()` to include thread messages
+  - **Test Script** (scripts/test_discord_collector.py):
+    - Comprehensive message summary display
+    - Conversation structure analysis (threads, replies, edits)
+    - Reaction analytics (top reactions, counts)
+    - Mention analysis (users, roles)
+    - Reply chain visualization
+  - **Documentation**:
+    - Updated COLLECTOR_STATUS.md with Discord enhancements
+    - Detailed feature descriptions and collection strategy
+
 - **[PRD-005] Transcript Harvester Agent** (2025-11-19) ✅ COMPLETED
   - **Complete video transcription pipeline**:
     - Video download from multiple platforms (YouTube, Zoom, Webex, Twitter) using yt-dlp
