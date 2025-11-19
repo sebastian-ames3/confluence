@@ -20,15 +20,14 @@ class TwitterCollector(BaseCollector):
     Collector for Twitter/X content using official Twitter API v2.
 
     Monitors:
-    - @KTTECHPRIVATE (KT Technical Analysis - trade setups)
-    - @MelMattison1 (Market analysis)
+    - @MelMattison1 (Macro trader, economic history, market analysis)
 
-    Uses Twitter API Free Tier (1,500 tweets/month limit).
+    Uses Twitter API Free Tier (100 tweets/month limit).
+    Collection Strategy: Run weekly, collect ~20 recent tweets to stay within quota.
     """
 
     ACCOUNTS = {
-        "KTTECHPRIVATE": None,  # Will be looked up via API
-        "MelMattison1": None
+        "MelMattison1": None  # Macro/economic history trader
     }
 
     def __init__(
@@ -127,7 +126,7 @@ class TwitterCollector(BaseCollector):
         self,
         username: str,
         user_id: str,
-        max_results: int = 50
+        max_results: int = 20
     ) -> List[Dict[str, Any]]:
         """
         Collect recent tweets from a user.
@@ -135,7 +134,7 @@ class TwitterCollector(BaseCollector):
         Args:
             username: Twitter username
             user_id: Twitter user ID
-            max_results: Maximum tweets to collect (max 100 per request)
+            max_results: Maximum tweets to collect (default 20 for free tier quota)
 
         Returns:
             List of tweet content items
