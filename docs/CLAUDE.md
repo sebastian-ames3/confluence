@@ -40,53 +40,86 @@ Sebastian subscribes to multiple premium research services ($1000s/month) but st
 
 ## Data Sources
 
-### 1. 42 Macro (app.42macro.com)
-- **Authentication**: Email/password login
-- **Content Types**: 
-  - PDFs: "Leadoff Morning Note", "Around The Horn", "Macro Scouting Report"
-  - Videos: "Macro Minute" daily videos with transcripts
-  - KISS Model Portfolio signals and Excel data
-- **Collection Method**: Authenticated web scraping, S3 PDF downloads
-- **Frequency**: Daily (morning notes), Weekly (reports)
+### Current Collector Status (as of 2025-11-19)
 
-### 2. Options Insight (Discord)
-- **Authentication**: Sebastian's personal Discord account (always logged in)
+| Source | Status | Method | Priority | Frequency |
+|--------|--------|--------|----------|-----------|
+| **Discord (Options Insight)** | ✅ **WORKING** | discord.py-self (local) | HIGH | Real-time |
+| **YouTube** | ✅ **WORKING** | YouTube Data API v3 | Medium | Daily check |
+| **Substack (Visser Labs)** | ✅ **WORKING** | RSS feed | Medium | Weekly |
+| **Twitter (@KTTECHPRIVATE, @MelMattison1)** | 🔄 **IN PROGRESS** | Twitter API Free Tier | HIGH | Daily |
+| **42 Macro** | 🔄 **IN PROGRESS** | Selenium (CloudFront bypass) | HIGH | Daily |
+| **KT Technical Website** | 🔄 **TO BUILD** | Session-based auth | HIGH | Weekly (Sundays) |
+
+---
+
+### 1. Options Insight (Discord) - ✅ PRODUCTION READY
+- **Authentication**: Sebastian's personal Discord account (user token)
 - **Content Types**:
-  - Text analysis in #stocks-chat, #crypto-weekly, #macro-daily
+  - Text analysis from 6 channels
   - Chart images (IV vs spot, volatility surfaces)
   - PDFs with market summaries
   - Zoom/Webex video links with live analysis (HIGH VALUE - Imran's commentary)
 - **Collection Method**: Local Python script using discord.py-self
-- **Key Channels**: 
-  - stocks-chat (pre-market analysis)
-  - crypto-weekly 
+- **Channels Monitored**:
   - macro-daily
   - spx-fixed-strike-vol
+  - macro-weekly
+  - crypto-weekly
   - vix-monitor
+  - stock-trades
+- **Schedule**: Runs locally on laptop (6am, 6pm via Task Scheduler)
 - **Note**: Videos contain majority of alpha - transcripts are critical
 
-### 3. KT Technical Analysis
-- **Twitter Account**: @KTTECHPRIVATE
-- **Website**: Daily/weekly guidance (authentication TBD)
-- **Content Types**: Trade setups, technical levels, day/swing trade ideas
-- **Collection Method**: Twitter scraping (no API), website scraping
-
-### 4. YouTube Channels
-- **Accounts**:
-  - https://www.youtube.com/@peterdiamandis
-  - https://www.youtube.com/@JordiVisserLabs
-  - https://www.youtube.com/@ForwardGuidanceBW
-  - https://www.youtube.com/@42Macro
+### 2. YouTube - ✅ PRODUCTION READY
+- **Channel IDs** (real, tested):
+  - Peter Diamandis: UCCpNQKYvrnWQNjZprabMJlw
+  - Jordi Visser Labs: UCSLOw8JrFTBb3qF-p4v0v_w
+  - Forward Guidance: UCEOv-8wHvYC6mzsY2Gm5WcQ
+  - 42 Macro: UCu0L0QCubkYD3Cd9jSdxTNQ
 - **Content Types**: Long-form macro discussions, interviews, market analysis
-- **Collection Method**: YouTube API for metadata + transcripts
+- **Collection Method**: YouTube Data API v3 (official)
+- **Test Results**: 40 videos collected (10 per channel)
+- **Frequency**: Check daily, publish weekly
 
-### 5. Additional Twitter
-- **Accounts**: @MelMattison1
-- **Collection Method**: Web scraping
+### 3. Substack (Visser Labs) - ✅ PRODUCTION READY
+- **URL**: https://visserlabs.substack.com/
+- **Collection Method**: RSS feed parsing (feedparser)
+- **Content Types**: Weekly macro/crypto analysis articles
+- **Test Results**: 20 articles collected successfully
+- **Frequency**: Weekly publications
 
-### 6. Substack
-- **Account**: https://visserlabs.substack.com/
-- **Collection Method**: RSS feed parsing
+### 4. Twitter (KT Technical + Mel Mattison) - 🔄 IN PROGRESS
+- **Accounts**:
+  - @KTTECHPRIVATE (KT Technical trade setups)
+  - @MelMattison1 (Market analysis)
+- **Collection Method**: Twitter API Free Tier (1,500 tweets/month limit)
+- **Content Types**: Trade setups, technical levels, entry/exit signals
+- **Status**: Framework complete, switching from ntscraper to official API
+- **Next Step**: Implement tweepy with TWITTER_BEARER_TOKEN
+
+### 5. 42 Macro - 🔄 IN PROGRESS
+- **URL**: https://app.42macro.com
+- **Authentication**: Email/password (CloudFront protected)
+- **Content Types**:
+  - PDFs: "Leadoff Morning Note", "Around The Horn", "Macro Scouting Report"
+  - Videos: "Macro Minute" daily videos with transcripts
+  - KISS Model Portfolio signals (in weekly PDFs)
+- **Collection Method**: Selenium (headless Chrome to bypass CloudFront WAF)
+- **Status**: Framework complete, needs Selenium implementation
+- **Frequency**: Daily (morning notes), Weekly (reports)
+- **Next Step**: Implement Selenium-based login and scraping
+
+### 6. KT Technical Analysis Website - 🔄 TO BUILD
+- **URL**: https://kttechnicalanalysis.com/blog-feed/
+- **Authentication**: Email/password (credentials in .env)
+- **Content Types**:
+  - Weekly blog post with price chart images
+  - Synopsis of stock/asset price action
+  - Technical analysis and trade ideas
+- **Collection Method**: Session-based authentication (requests library)
+- **Frequency**: Weekly (Sundays)
+- **Next Step**: Build collector (simple blog scraping)
 
 ---
 
