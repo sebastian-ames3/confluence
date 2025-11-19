@@ -195,6 +195,7 @@ class KTTechnicalCollector(BaseCollector):
     def _parse_blog_post(self, post_elem) -> Optional[Dict[str, Any]]:
         """
         Parse a blog post element into standardized format.
+        Visits individual post page to get full content and images.
 
         Args:
             post_elem: BeautifulSoup element containing post
@@ -218,30 +219,14 @@ class KTTechnicalCollector(BaseCollector):
             if post_url.startswith('/'):
                 post_url = self.BASE_URL + post_url
 
-            # Extract date
-            date_elem = post_elem.find(class_=re.compile(r'date|time|published', re.I))
-            date_text = date_elem.get_text(strip=True) if date_elem else None
+            # Visit individual post page to get full content and images
+            logger.info(f"Fetching full post: {title[:50]}...")
+            full_content, images, date_text = self._fetch_full_post(post_url)
 
-            # Extract content text
-            content_elem = (
-                post_elem.find(class_=re.compile(r'content|body|excerpt|description', re.I)) or
-                post_elem.find('p')
-            )
-            content_text = content_elem.get_text(strip=True) if content_elem else ""
-
-            # Extract images (price charts)
-            images = []
-            img_elements = post_elem.find_all('img')
-            for img in img_elements:
-                img_src = img.get('src') or img.get('data-src')
-                if img_src:
-                    if img_src.startswith('/'):
-                        img_src = self.BASE_URL + img_src
-                    images.append(img_src)
-
-            # Download images
+            # Download images (price charts)
             downloaded_images = []
-            for img_url in images[:5]:  # Limit to 5 images per post
+            logger.info(f"Found {len(images)} images in post")
+            for img_url in images[:10]:  # Limit to 10 images per post
                 img_path = self._download_image(img_url, title)
                 if img_path:
                     downloaded_images.append(str(img_path))
@@ -250,7 +235,7 @@ class KTTechnicalCollector(BaseCollector):
             post_data = {
                 "content_type": "blog_post",
                 "url": post_url,
-                "content_text": f"{title}\n\n{content_text}",
+                "content_text": f"{title}\n\n{full_content}",
                 "collected_at": datetime.utcnow().isoformat(),
                 "metadata": {
                     "title": title,
@@ -261,11 +246,80 @@ class KTTechnicalCollector(BaseCollector):
                 }
             }
 
+            logger.info(f"Downloaded {len(downloaded_images)} chart images")
             return post_data
 
         except Exception as e:
             logger.error(f"Error parsing blog post: {e}")
             return None
+
+    def _fetch_full_post(self, post_url: str) -> tuple:
+        """
+        Fetch full blog post content from individual post page.
+
+        Args:
+            post_url: URL of individual blog post
+
+        Returns:
+            Tuple of (content_text, image_urls, date_text)
+        """
+        try:
+            response = self.session.get(post_url, timeout=10)
+
+            if response.status_code != 200:
+                logger.warning(f"Failed to fetch post page: {response.status_code}")
+                return ("", [], None)
+
+            soup = BeautifulSoup(response.content, 'html.parser')
+
+            # Extract full content
+            # Look for main content area (common WordPress patterns)
+            content_elem = (
+                soup.find('article') or
+                soup.find(class_=re.compile(r'entry-content|post-content|content-area', re.I)) or
+                soup.find('div', class_=re.compile(r'content', re.I))
+            )
+
+            content_text = ""
+            if content_elem:
+                # Get all text from paragraphs
+                paragraphs = content_elem.find_all('p')
+                content_text = '\n\n'.join([p.get_text(strip=True) for p in paragraphs if p.get_text(strip=True)])
+
+            # Extract date
+            date_elem = soup.find(class_=re.compile(r'date|time|published', re.I))
+            date_text = date_elem.get_text(strip=True) if date_elem else None
+
+            # Extract all images from content area
+            images = []
+            if content_elem:
+                img_elements = content_elem.find_all('img')
+                for img in img_elements:
+                    # Try multiple attributes where image URL might be
+                    img_src = (
+                        img.get('src') or
+                        img.get('data-src') or
+                        img.get('data-lazy-src') or
+                        img.get('data-original')
+                    )
+
+                    if img_src:
+                        # Make URL absolute
+                        if img_src.startswith('/'):
+                            img_src = self.BASE_URL + img_src
+                        elif not img_src.startswith('http'):
+                            img_src = self.BASE_URL + '/' + img_src
+
+                        # Filter out small icons/logos (likely not price charts)
+                        # Price charts are usually large images
+                        if 'icon' not in img_src.lower() and 'logo' not in img_src.lower():
+                            images.append(img_src)
+
+            return (content_text, images, date_text)
+
+        except Exception as e:
+            logger.warning(f"Error fetching full post: {e}")
+            return ("", [], None)
 
     def _download_image(self, url: str, post_title: str) -> Optional[Path]:
         """
