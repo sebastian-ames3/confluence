@@ -72,7 +72,7 @@ This will show all servers and channels. Look for **"Options Insight Official"**
 - `spx-fixed-strike-vol`
 - `macro-weekly`
 - `crypto-weekly`
-- `delta-trades`
+- `vix-monitor`
 - `stock-trades`
 
 ### 4. Configure Channels
@@ -93,7 +93,7 @@ Example:
   "server_id": "1234567890123456789",
   "channels_to_monitor": [
     {
-      "name": "stocks-chat",
+      "name": "macro-daily",
       "channel_id": "9876543210987654321",
       "priority": "high",
       ...

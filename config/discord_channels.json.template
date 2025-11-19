@@ -31,11 +31,11 @@
       "description": "Weekly crypto volatility updates"
     },
     {
-      "name": "delta-trades",
+      "name": "vix-monitor",
       "channel_id": "CHANNEL_ID_HERE",
       "priority": "high",
       "collect_types": ["text", "images", "pdfs", "video_links"],
-      "description": "Delta-based trade ideas and analysis"
+      "description": "VIX term structure and positioning"
     },
     {
       "name": "stock-trades",
