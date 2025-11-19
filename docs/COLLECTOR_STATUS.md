@@ -14,12 +14,44 @@ This document summarizes the status of all 6 data collectors for the Macro Confl
 ### ✅ Production-Ready Collectors (3/3)
 
 #### 1. Discord Collector (`discord_self.py`)
-- **Status**: ✅ PRODUCTION READY
+- **Status**: ✅ PRODUCTION READY (Enhanced)
 - **Method**: Local script using `discord.py-self`
 - **Channels**: 6 monitored channels
 - **Authentication**: Discord user token (stored in `.env`)
-- **Testing**: Successfully tested, collecting messages
+- **Testing**: Successfully tested, collecting messages with full context
 - **Notes**: Must run locally on Sebastian's machine (not on Railway)
+
+**Advanced Features** (Enhanced):
+- **Thread-Aware Collection**: Automatically collects from Discord threads and reply chains
+  - Tracks if message is in a thread (separate thread channels)
+  - Tracks if message is a reply to another message
+  - Stores parent message IDs for conversation reconstruction
+  - Collects from both active and archived threads
+- **Reaction Tracking**: Captures all emoji reactions with counts
+  - Standard and custom emoji support
+  - Reaction counts per message
+  - Sentiment indicators (🔥, ✅, ❤️, etc.)
+- **Edit Tracking**: Detects and timestamps message edits
+  - `edited_at` timestamp for modified messages
+  - `is_edited` flag for quick filtering
+- **Mention Tracking**: Extracts all mentions with full details
+  - User mentions (@username with ID and display name)
+  - Role mentions (@role)
+  - Channel mentions (#channel)
+  - @everyone/@here tracking
+- **Enhanced Metadata**:
+  - Message pinned status
+  - Jump URLs for quick navigation
+  - Complete thread hierarchy
+  - Attachment details (PDFs, images with size tracking)
+  - Video link extraction (Zoom, Webex, YouTube)
+
+**Collection Strategy**:
+- Main channel messages + all thread messages
+- Lookback configurable per channel
+- Filters out bot messages and low-quality content
+- Comprehensive attachment download (PDFs, images)
+- Thread collection includes archived threads (last 10)
 
 #### 2. YouTube Collector (`youtube_api.py`)
 - **Status**: ✅ PRODUCTION READY
