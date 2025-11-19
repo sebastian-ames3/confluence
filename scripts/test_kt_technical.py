@@ -72,9 +72,14 @@ async def main():
                 print(f"  Date: {post['metadata'].get('published_date', 'N/A')}")
                 print(f"  Images: {post['metadata']['num_images']}")
 
-                # Show content preview
+                # Show content preview (encode safely for Windows console)
                 content_preview = post['content_text'][:200]
-                print(f"  Preview: {content_preview}...")
+                try:
+                    print(f"  Preview: {content_preview}...")
+                except UnicodeEncodeError:
+                    # Replace emojis and special chars with safe representation
+                    safe_preview = content_preview.encode('ascii', errors='replace').decode('ascii')
+                    print(f"  Preview: {safe_preview}...")
 
                 # Show downloaded images
                 if post['metadata']['image_paths']:
