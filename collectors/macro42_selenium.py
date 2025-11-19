@@ -98,6 +98,15 @@ class Macro42Collector(BaseCollector):
         if self.headless:
             chrome_options.add_argument("--headless=new")
 
+        # Configure download directory
+        prefs = {
+            "download.default_directory": str(self.download_dir.absolute()),
+            "download.prompt_for_download": False,
+            "download.directory_upgrade": True,
+            "plugins.always_open_pdf_externally": True  # Don't open PDFs in browser
+        }
+        chrome_options.add_experimental_option("prefs", prefs)
+
         # Additional options for better compatibility
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
@@ -108,7 +117,7 @@ class Macro42Collector(BaseCollector):
         service = Service(ChromeDriverManager().install())
         self.driver = webdriver.Chrome(service=service, options=chrome_options)
 
-        logger.info("Chrome WebDriver initialized")
+        logger.info(f"Chrome WebDriver initialized, downloads to: {self.download_dir}")
 
     def _login(self) -> bool:
         """
@@ -178,6 +187,10 @@ class Macro42Collector(BaseCollector):
         Returns:
             List of PDF content items
         """
+        import time
+        import os
+        from glob import glob
+
         pdfs = []
 
         try:
@@ -189,7 +202,6 @@ class Macro42Collector(BaseCollector):
             wait = WebDriverWait(self.driver, 15)
 
             # Wait for research cards to appear
-            # Cards have class "cursor-pointer bg-card"
             try:
                 wait.until(EC.presence_of_element_located(
                     (By.CSS_SELECTOR, ".cursor-pointer.bg-card")
@@ -199,7 +211,6 @@ class Macro42Collector(BaseCollector):
                 return pdfs
 
             # Give extra time for all cards to render
-            import time
             time.sleep(2)
 
             # Find all research card elements
@@ -207,7 +218,7 @@ class Macro42Collector(BaseCollector):
 
             logger.info(f"Found {len(cards)} research cards")
 
-            for card in cards[:15]:  # Limit to most recent 15
+            for idx, card in enumerate(cards[:10]):  # Limit to most recent 10
                 try:
                     # Extract report type (e.g., "Leadoff Morning Note", "Around the Horn")
                     type_elem = card.find_element(By.CSS_SELECTOR, ".capitalize")
@@ -225,42 +236,82 @@ class Macro42Collector(BaseCollector):
                     except:
                         pass
 
-                    # Skip locked content for now
+                    # Skip locked content
                     if is_locked:
                         logger.info(f"Skipping locked content: {report_type} - {date_text}")
                         continue
 
-                    # Try to find download button and extract href
-                    # Download buttons are in divs with download icon
-                    pdf_url = None
-                    try:
-                        # Look for clickable elements that might have PDF links
-                        download_btn = card.find_element(By.CSS_SELECTOR, ".ml-auto.mr-6")
-                        # Try to click and intercept download (advanced technique)
-                        # For now, we'll just record metadata
-                    except:
-                        pass
-
-                    # Create content item with metadata
                     title = f"{report_type} - {date_text}"
+                    logger.info(f"Downloading: {title}")
 
-                    pdfs.append({
-                        "content_type": "pdf",
-                        "url": research_url,  # Use research page URL since no direct PDF link
-                        "content_text": title,
-                        "collected_at": datetime.utcnow().isoformat(),
-                        "metadata": {
-                            "title": title,
-                            "report_type": report_type,
-                            "date": date_text,
-                            "is_locked": is_locked,
-                            "source_url": research_url,
-                            "note": "PDF download requires clicking card - not yet implemented"
-                        }
-                    })
+                    # Get list of files before download
+                    before_files = set(glob(str(self.download_dir / "*.pdf")))
+
+                    # Try to find and click download button
+                    try:
+                        # Look for download button (has download icon)
+                        download_btn = card.find_element(By.CSS_SELECTOR, ".ml-auto.mr-6")
+
+                        # Scroll to element to ensure it's clickable
+                        self.driver.execute_script("arguments[0].scrollIntoView(true);", download_btn)
+                        time.sleep(0.5)
+
+                        # Click the download button
+                        download_btn.click()
+
+                        # Wait for download to start and complete (max 15 seconds)
+                        download_complete = False
+                        for _ in range(30):  # Check every 0.5 seconds for 15 seconds
+                            time.sleep(0.5)
+                            after_files = set(glob(str(self.download_dir / "*.pdf")))
+                            new_files = after_files - before_files
+
+                            # Check if we have a new file that's not a .crdownload
+                            for new_file in new_files:
+                                if not new_file.endswith('.crdownload'):
+                                    pdf_path = Path(new_file)
+                                    download_complete = True
+                                    break
+
+                            if download_complete:
+                                break
+
+                        if not download_complete:
+                            logger.warning(f"Download timeout for: {title}")
+                            continue
+
+                        # Rename file to something more descriptive
+                        safe_title = re.sub(r'[^a-zA-Z0-9_-]', '_', title)[:80]
+                        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                        new_filename = f"{timestamp}_{safe_title}.pdf"
+                        new_path = self.download_dir / new_filename
+
+                        pdf_path.rename(new_path)
+                        logger.info(f"Downloaded and renamed: {new_filename}")
+
+                        # Create content item with downloaded file
+                        pdfs.append({
+                            "content_type": "pdf",
+                            "file_path": str(new_path),
+                            "url": research_url,
+                            "content_text": title,
+                            "collected_at": datetime.utcnow().isoformat(),
+                            "metadata": {
+                                "title": title,
+                                "report_type": report_type,
+                                "date": date_text,
+                                "is_locked": is_locked,
+                                "source_url": research_url,
+                                "file_size_mb": round(new_path.stat().st_size / (1024 * 1024), 2)
+                            }
+                        })
+
+                    except Exception as e:
+                        logger.warning(f"Error downloading PDF for '{title}': {e}")
+                        continue
 
                 except Exception as e:
-                    logger.warning(f"Error processing research card: {e}")
+                    logger.warning(f"Error processing research card {idx}: {e}")
                     continue
 
         except Exception as e:

@@ -39,7 +39,7 @@ async def main():
     print("This may take 10-20 seconds...")
 
     # Initialize collector (headless=False to see browser)
-    collector = Macro42Collector(email, password, headless=True)
+    collector = Macro42Collector(email, password, headless=False)
 
     # Collect content
     print("\n" + "-"*60)

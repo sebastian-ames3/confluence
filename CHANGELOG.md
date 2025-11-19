@@ -8,6 +8,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **[PRD-007] 42 Macro Collector - Complete PDF Downloading** (2025-11-19) ✅ COMPLETED
+  - **Implemented PDF Downloading**:
+    - Selenium-based automation clicks download buttons on research cards
+    - Monitors download directory for completed files
+    - Automatic file renaming with descriptive titles (report type + date)
+    - Download timeout handling (15 seconds max per PDF)
+    - File size tracking in metadata
+  - **Chrome Configuration**:
+    - Configured download directory via Chrome preferences
+    - Disabled PDF viewer to force external downloads
+    - No download prompts for seamless automation
+  - **Research Collection**:
+    - Successfully collects "Around The Horn" PDFs
+    - Successfully collects "Macro Scouting Report" PDFs
+    - Skips locked content (Leadoff Morning Note - premium tier)
+    - Extracts report metadata (type, date, locked status)
+  - **Testing**:
+    - Tested with real credentials
+    - Successfully downloaded 4 PDFs in test run
+    - Verified file naming and organization
+  - **Production Ready**: Collector now fully functional for PDF collection
+
 - **[PRD-006] Discord Collector Enhancement - Thread-Aware Context Tracking** (2025-11-19) ✅ COMPLETED
   - **Thread & Reply Tracking**:
     - Automatic collection from Discord threads (both active and archived)

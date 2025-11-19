@@ -84,18 +84,25 @@ This document summarizes the status of all 6 data collectors for the Macro Confl
   - **Result**: Now successfully authenticates and scrapes blog posts
 
 #### 5. 42 Macro Collector (`macro42_selenium.py`)
-- **Status**: ✅ WORKING (with limitations)
+- **Status**: ✅ PRODUCTION READY
 - **Method**: Selenium + headless Chrome
 - **Authentication**: Email/password (stored in `.env` as `MACRO42_EMAIL`, `MACRO42_PASSWORD`)
-- **Testing**: Successfully collected 7 unlocked items
-- **Recent Fix**:
-  - **Issue**: Site is React SPA with dynamic content, no direct PDF links
-  - **Solution**: Updated to scrape rendered cards instead of direct PDF links
-  - **Result**: Now collects metadata for Around The Horn and Macro Scouting Report
+- **Testing**: Successfully collected and downloaded 4 PDFs
+- **Implementation**:
+  - React SPA with dynamic content rendering
+  - Selenium-based automation with card clicking
+  - Automatic PDF downloading to configured directory
+  - Download monitoring with timeout handling
+  - Automatic file renaming with descriptive titles
+- **Features**:
+  - Collects "Around The Horn" and "Macro Scouting Report" PDFs
+  - Skips locked content (Leadoff Morning Note - requires premium tier)
+  - Extracts report type, date, and metadata
+  - Downloads PDFs by clicking download buttons on cards
+  - Tracks file size and download status
 - **Limitations**:
-  - **Locked Content**: Leadoff Morning Note items are locked (premium tier)
-  - **PDF Download**: Currently collects metadata only, not actual PDFs (requires clicking cards)
-- **Next Steps**: Consider implementing card clicking to trigger PDF downloads
+  - **Locked Content**: Leadoff Morning Note items require higher subscription tier
+  - **Video Collection**: Videos page needs implementation (currently returns 0 videos)
 
 #### 6. Twitter Collector (`twitter_api.py`)
 - **Status**: ✅ PRODUCTION READY (Thread-Aware)
