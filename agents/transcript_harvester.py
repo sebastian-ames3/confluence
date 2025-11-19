@@ -1,8 +1,363 @@
 """
 Transcript Harvester Agent
 
-Converts video/audio content to analyzed text using Whisper API.
-To be implemented in Phase 2 (PRD-005).
+Converts video/audio content to transcripts and extracts structured insights.
+Uses Whisper API for transcription and Claude for analysis.
+
+Priority Tiers:
+- Tier 1 (HIGH): Imran's Discord videos, Darius Dale's 42 Macro videos
+- Tier 2 (MEDIUM): Mel's Twitter videos
+- Tier 3 (STANDARD): YouTube long-form videos
 """
 
-# TODO: Implement video transcription and analysis
+import os
+import subprocess
+import logging
+from pathlib import Path
+from typing import Dict, Any, Optional, List
+from datetime import datetime
+import openai
+from pydub import AudioSegment
+
+from agents.base_agent import BaseAgent
+
+logger = logging.getLogger(__name__)
+
+
+class TranscriptHarvesterAgent(BaseAgent):
+    """
+    Agent for transcribing videos and extracting investment insights.
+
+    Pipeline:
+    1. Download video (yt-dlp)
+    2. Extract audio (ffmpeg/pydub)
+    3. Transcribe with Whisper API
+    4. Analyze with Claude
+    """
+
+    # Priority tier prompts
+    TIER1_SYSTEM_PROMPT = """You are analyzing a high-priority financial market analysis video.
+This content is data-driven, high production value, and contains dense alpha.
+Extract precise details: specific levels, tickers, conviction scores, and actionable insights.
+Be thorough and technical."""
+
+    TIER2_SYSTEM_PROMPT = """You are analyzing a market analysis video.
+This content is valuable but may include off-topic commentary.
+Focus on extracting the main investment thesis and actionable insights.
+Filter out casual discussion."""
+
+    TIER3_SYSTEM_PROMPT = """You are analyzing a long-form market discussion video.
+This is background content, less time-sensitive.
+Extract high-level themes and key insights."""
+
+    def __init__(
+        self,
+        claude_api_key: Optional[str] = None,
+        openai_api_key: Optional[str] = None,
+        downloads_dir: Optional[Path] = None,
+        model: str = "claude-sonnet-4-20250514"
+    ):
+        """
+        Initialize Transcript Harvester Agent.
+
+        Args:
+            claude_api_key: Claude API key (defaults to env var)
+            openai_api_key: OpenAI API key for Whisper (defaults to env var)
+            downloads_dir: Directory for downloaded videos/audio
+            model: Claude model to use
+        """
+        super().__init__(api_key=claude_api_key, model=model)
+
+        # Initialize OpenAI client for Whisper
+        self.openai_api_key = openai_api_key or os.getenv("WHISPER_API_KEY") or os.getenv("OPENAI_API_KEY")
+        if not self.openai_api_key:
+            raise ValueError("OpenAI API key required for Whisper. Set WHISPER_API_KEY or OPENAI_API_KEY.")
+
+        self.openai_client = openai.OpenAI(api_key=self.openai_api_key)
+
+        # Setup downloads directory
+        if downloads_dir:
+            self.downloads_dir = Path(downloads_dir)
+        else:
+            self.downloads_dir = Path(__file__).parent.parent / "downloads" / "videos"
+
+        self.downloads_dir.mkdir(parents=True, exist_ok=True)
+
+        logger.info(f"Initialized TranscriptHarvesterAgent")
+        logger.info(f"Downloads directory: {self.downloads_dir}")
+
+    async def harvest(
+        self,
+        video_url: str,
+        source: str,
+        metadata: Optional[Dict[str, Any]] = None,
+        priority: str = "medium"
+    ) -> Dict[str, Any]:
+        """
+        Full pipeline: video → transcript → analysis.
+
+        Args:
+            video_url: URL to video (YouTube, Zoom, Webex, Twitter, etc.)
+            source: Source of video (discord, youtube, twitter, 42macro)
+            metadata: Optional metadata (speaker, title, date)
+            priority: Priority tier (high, medium, standard)
+
+        Returns:
+            Complete analysis with transcript and insights
+        """
+        if metadata is None:
+            metadata = {}
+
+        try:
+            logger.info(f"Starting harvest for video: {video_url}")
+            logger.info(f"Source: {source}, Priority: {priority}")
+
+            # Step 1: Download video and extract audio
+            audio_file = await self.download_and_extract_audio(video_url, source)
+
+            # Step 2: Transcribe with Whisper
+            transcript = await self.transcribe(audio_file)
+
+            # Step 3: Analyze with Claude
+            analysis = await self.analyze_transcript(
+                transcript,
+                metadata=metadata,
+                priority=priority
+            )
+
+            # Add original metadata
+            analysis["video_url"] = video_url
+            analysis["source"] = source
+            analysis["priority"] = priority
+            analysis["processed_at"] = datetime.utcnow().isoformat()
+
+            logger.info(f"Harvest complete. Extracted {len(analysis.get('key_themes', []))} themes")
+
+            return analysis
+
+        except Exception as e:
+            logger.error(f"Harvest failed: {e}")
+            raise
+
+    async def download_and_extract_audio(
+        self,
+        video_url: str,
+        source: str
+    ) -> Path:
+        """
+        Download video and extract audio.
+
+        Args:
+            video_url: URL to video
+            source: Source identifier
+
+        Returns:
+            Path to extracted audio file (MP3)
+        """
+        try:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            safe_source = source.replace("/", "_").replace(":", "_")
+
+            # Output paths
+            video_path = self.downloads_dir / f"{safe_source}_{timestamp}"
+            audio_path = self.downloads_dir / f"{safe_source}_{timestamp}.mp3"
+
+            logger.info(f"Downloading video from: {video_url}")
+
+            # Download video using yt-dlp
+            # yt-dlp handles YouTube, Zoom, Webex, Twitter, and many other platforms
+            cmd = [
+                "yt-dlp",
+                "-f", "bestaudio/best",  # Get best audio quality
+                "-x",  # Extract audio
+                "--audio-format", "mp3",  # Convert to MP3
+                "--audio-quality", "0",  # Best quality
+                "-o", str(video_path),  # Output template
+                video_url
+            ]
+
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=600  # 10 minute timeout
+            )
+
+            if result.returncode != 0:
+                logger.error(f"yt-dlp error: {result.stderr}")
+                raise Exception(f"Video download failed: {result.stderr}")
+
+            logger.info(f"Audio extracted to: {audio_path}")
+
+            # Optimize audio for Whisper (16kHz, mono)
+            audio = AudioSegment.from_mp3(audio_path)
+            audio = audio.set_frame_rate(16000).set_channels(1)
+            audio.export(audio_path, format="mp3")
+
+            logger.info(f"Audio optimized for Whisper: 16kHz mono")
+
+            return audio_path
+
+        except subprocess.TimeoutExpired:
+            logger.error("Video download timed out")
+            raise Exception("Video download timeout (10 minutes)")
+        except Exception as e:
+            logger.error(f"Download/extraction failed: {e}")
+            raise
+
+    async def transcribe(self, audio_file: Path) -> Dict[str, Any]:
+        """
+        Transcribe audio using Whisper API.
+
+        Args:
+            audio_file: Path to audio file
+
+        Returns:
+            Transcript with timestamps
+        """
+        try:
+            logger.info(f"Transcribing audio file: {audio_file}")
+
+            # Check file size (Whisper has 25MB limit)
+            file_size_mb = audio_file.stat().st_size / (1024 * 1024)
+            logger.info(f"Audio file size: {file_size_mb:.2f} MB")
+
+            if file_size_mb > 25:
+                logger.warning("File exceeds 25MB, chunking required")
+                # TODO: Implement chunking for large files
+                raise Exception("Audio file too large (>25MB). Chunking not yet implemented.")
+
+            # Transcribe with Whisper
+            with open(audio_file, "rb") as audio:
+                transcript_response = self.openai_client.audio.transcriptions.create(
+                    model="whisper-1",
+                    file=audio,
+                    response_format="verbose_json",  # Get timestamps
+                    timestamp_granularities=["segment"]  # Segment-level timestamps
+                )
+
+            # Extract transcript text and segments
+            transcript_text = transcript_response.text
+            segments = transcript_response.segments if hasattr(transcript_response, 'segments') else []
+
+            logger.info(f"Transcription complete. Length: {len(transcript_text)} characters")
+            logger.info(f"Segments: {len(segments)}")
+
+            return {
+                "text": transcript_text,
+                "segments": segments,
+                "duration": transcript_response.duration if hasattr(transcript_response, 'duration') else None
+            }
+
+        except Exception as e:
+            logger.error(f"Transcription failed: {e}")
+            raise
+
+    async def analyze_transcript(
+        self,
+        transcript: Dict[str, Any],
+        metadata: Dict[str, Any],
+        priority: str = "medium"
+    ) -> Dict[str, Any]:
+        """
+        Analyze transcript with Claude to extract insights.
+
+        Args:
+            transcript: Transcript dict with text and segments
+            metadata: Video metadata (speaker, date, title)
+            priority: Priority tier for prompt selection
+
+        Returns:
+            Structured analysis
+        """
+        try:
+            transcript_text = transcript["text"]
+            speaker = metadata.get("speaker", "Unknown")
+            date = metadata.get("date", datetime.now().strftime("%Y-%m-%d"))
+            title = metadata.get("title", "Market Analysis")
+
+            logger.info(f"Analyzing transcript for: {speaker} - {title}")
+
+            # Select system prompt based on priority
+            if priority.lower() == "high":
+                system_prompt = self.TIER1_SYSTEM_PROMPT
+            elif priority.lower() == "medium":
+                system_prompt = self.TIER2_SYSTEM_PROMPT
+            else:
+                system_prompt = self.TIER3_SYSTEM_PROMPT
+
+            # Build analysis prompt
+            user_prompt = f"""Analyze this financial market analysis video transcript.
+
+Speaker: {speaker}
+Date: {date}
+Title: {title}
+
+Transcript:
+{transcript_text}
+
+Extract the following information in JSON format:
+
+{{
+    "key_themes": ["list of main macro/market themes discussed"],
+    "tickers_mentioned": ["specific securities, indexes, or assets"],
+    "sentiment": "bullish|bearish|neutral",
+    "conviction": <0-10 integer>,
+    "time_horizon": "1d|1w|1m|3m|6m|6m+",
+    "catalysts": ["upcoming events that matter for this thesis"],
+    "falsification_criteria": ["what would invalidate this view"],
+    "key_quotes": [
+        {{"timestamp": "HH:MM:SS", "text": "quote text"}},
+        ...
+    ]
+}}
+
+Instructions:
+- Focus on ACTIONABLE insights, not general commentary
+- For key_quotes: Extract 3-5 most important quotes with timestamps
+- For conviction: Rate 0-10 based on speaker's confidence and data backing
+- For falsification_criteria: Be specific (e.g., "If VIX drops below 15", not "if market rallies")
+- If speaker discusses multiple distinct theses, focus on the primary/strongest one
+
+Return ONLY valid JSON, no markdown formatting."""
+
+            # Call Claude
+            analysis = self.call_claude(
+                prompt=user_prompt,
+                system_prompt=system_prompt,
+                max_tokens=4096,
+                temperature=0.0,
+                expect_json=True
+            )
+
+            # Validate response
+            required_fields = [
+                "key_themes",
+                "tickers_mentioned",
+                "sentiment",
+                "conviction",
+                "time_horizon"
+            ]
+            self.validate_response_schema(analysis, required_fields)
+
+            # Add transcript to response
+            analysis["transcript"] = transcript_text
+            analysis["transcript_segments"] = transcript.get("segments", [])
+            analysis["video_duration_seconds"] = transcript.get("duration")
+
+            logger.info(f"Analysis complete: {analysis['sentiment']} sentiment, conviction {analysis['conviction']}/10")
+
+            return analysis
+
+        except Exception as e:
+            logger.error(f"Analysis failed: {e}")
+            raise
+
+    def analyze(self, *args, **kwargs) -> Dict[str, Any]:
+        """
+        Synchronous wrapper for harvest (for BaseAgent compatibility).
+
+        Use harvest() directly for async operation.
+        """
+        import asyncio
+        return asyncio.run(self.harvest(*args, **kwargs))

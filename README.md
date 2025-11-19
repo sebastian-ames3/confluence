@@ -115,6 +115,10 @@ As an active investor, I subscribe to multiple premium research services costing
 - Node.js 18+ (for frontend, if using React)
 - SQLite3
 - Railway account (for deployment)
+- **ffmpeg** (for video/audio processing)
+  - Windows: `choco install ffmpeg` or download from [ffmpeg.org](https://ffmpeg.org/download.html)
+  - macOS: `brew install ffmpeg`
+  - Linux: `sudo apt install ffmpeg`
 
 ### Installation
 
