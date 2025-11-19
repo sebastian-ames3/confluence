@@ -8,6 +8,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **[PRD-005] Transcript Harvester Agent** (2025-11-19) ✅ COMPLETED
+  - **Complete video transcription pipeline**:
+    - Video download from multiple platforms (YouTube, Zoom, Webex, Twitter) using yt-dlp
+    - Audio extraction and optimization (16kHz mono) for Whisper API
+    - Transcription with OpenAI Whisper API (segment-level timestamps)
+    - Claude analysis with priority-based system prompts
+  - **Priority Tiers**:
+    - Tier 1 (HIGH): Imran Discord videos, Darius Dale 42 Macro videos - thorough technical analysis
+    - Tier 2 (MEDIUM): Mel Twitter videos - focused on actionable insights
+    - Tier 3 (STANDARD): YouTube long-form - high-level themes
+  - **Structured Insight Extraction**:
+    - Key themes and macro topics
+    - Tickers/securities mentioned
+    - Sentiment and conviction scoring (0-10)
+    - Time horizons (1d, 1w, 1m, 3m, 6m, 6m+)
+    - Catalysts and falsification criteria
+    - Key quotes with timestamps
+  - **Implementation** (agents/transcript_harvester.py):
+    - TranscriptHarvesterAgent class extending BaseAgent
+    - Full async/await pipeline
+    - 25MB file size handling (Whisper API limit)
+    - Configurable downloads directory
+    - Comprehensive error handling and logging
+  - **Dependencies Added** (requirements.txt):
+    - yt-dlp==2024.8.6 (multi-platform video downloading)
+    - pydub==0.25.1 (audio processing)
+    - ffmpeg system dependency (documented in README.md)
+  - **Test Script** (scripts/test_transcript_harvester.py):
+    - Interactive testing with user-provided video URLs
+    - Priority tier selection
+    - Full results display with JSON export option
+  - **Documentation**:
+    - README.md updated with ffmpeg installation instructions
+    - System dependency setup for Windows, macOS, Linux
+
 - **[PRD-004] Collector Testing & Production Readiness** (2025-11-19)
   - **YouTube Collector**: ✅ PRODUCTION READY
     - Updated with real channel IDs (Peter Diamandis, Jordi Visser, Forward Guidance, 42 Macro)
