@@ -28,8 +28,13 @@ google-api-python-client==2.116.0
 # RSS
 feedparser==6.0.11
 
-# Twitter Scraping
+# Twitter API & Scraping
+tweepy==4.16.0
 ntscraper==0.3.0
+
+# Browser Automation
+selenium==4.36.0
+webdriver-manager==4.0.2
 
 # Utilities
 python-dotenv==1.0.0

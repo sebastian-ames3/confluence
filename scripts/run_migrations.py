@@ -110,7 +110,7 @@ def apply_migration(db, version, file_path):
         "name": file_path.name
     })
 
-    print(f"✅ Migration {version:03d} applied successfully")
+    print(f"SUCCESS: Migration {version:03d} applied successfully")
 
 
 def rollback_migration(db, version, file_path):
@@ -136,7 +136,7 @@ def rollback_migration(db, version, file_path):
     # Remove migration record
     db.delete("migrations", version)
 
-    print(f"✅ Migration {version:03d} rolled back successfully")
+    print(f"SUCCESS: Migration {version:03d} rolled back successfully")
 
 
 def main():
@@ -204,14 +204,14 @@ def main():
         for version, file_path in to_rollback:
             rollback_migration(db, version, file_path)
 
-        print(f"\n✅ Rolled back to version {target_version}")
+        print(f"\nSUCCESS: Rolled back to version {target_version}")
 
     else:
         # Apply pending migrations
         pending = [(v, p) for v, p in available if v not in applied]
 
         if not pending:
-            print("\n✓ Database is up to date! No pending migrations.")
+            print("\nDatabase is up to date! No pending migrations.")
             return
 
         print(f"\nPending migrations ({len(pending)}):")
@@ -226,7 +226,7 @@ def main():
         for version, file_path in pending:
             apply_migration(db, version, file_path)
 
-        print(f"\n✅ All migrations applied successfully!")
+        print(f"\nSUCCESS: All migrations applied successfully!")
 
     print("=" * 60)
 

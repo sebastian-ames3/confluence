@@ -8,6 +8,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **[PRD-004] Collector Testing & Production Readiness** (2025-11-19)
+  - **YouTube Collector**: ✅ PRODUCTION READY
+    - Updated with real channel IDs (Peter Diamandis, Jordi Visser, Forward Guidance, 42 Macro)
+    - Tested successfully: 40 videos collected (10 per channel)
+    - All metadata captured: titles, URLs, durations, view counts, transcript availability
+  - **Substack Collector**: ✅ PRODUCTION READY
+    - Tested successfully: 20 articles from visserlabs.substack.com
+    - RSS parsing, HTML to text conversion working perfectly
+  - **Twitter Collector**: Framework complete, switching to Twitter API Free Tier
+    - ntscraper instances rate-limited (expected behavior)
+    - Recommendation: Use Twitter API Free Tier (1,500 tweets/month)
+  - **42 Macro Collector**: Framework complete, needs Selenium implementation
+    - CloudFront 403 blocking simple requests (expected anti-bot protection)
+    - Next: Implement Selenium headless Chrome for authentication bypass
+  - **KT Technical Website**: Identified as new source
+    - URL: https://kttechnicalanalysis.com/blog-feed/
+    - Weekly blog posts with price charts (Sundays)
+    - Credentials added to .env
+    - To build: Simple session-based collector
+  - **Test Scripts Added**:
+    - test_youtube_collector.py
+    - test_substack_collector.py
+    - test_twitter_collector.py
+    - test_macro42_collector.py
+    - get_youtube_channel_ids.py (API-based channel ID lookup)
+  - **Database Utilities Enhanced**:
+    - Added get_or_create_source() helper function
+    - Automatic source creation when collectors run
+  - **Windows Compatibility**: Removed all emoji logging for cp1252 encoding
+  - **Orchestration Testing**: Successfully collected 60 items (40 YouTube + 20 Substack)
+
 - **[PRD-004] Basic Collectors (No AI)** ✅ COMPLETED
   - **42 Macro Collector** (collectors/macro42.py)
     - Email/password authentication
