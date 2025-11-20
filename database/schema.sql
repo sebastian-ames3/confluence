@@ -1,10 +1,11 @@
 -- ============================================================================
 -- Macro Confluence Hub - Database Schema
 -- ============================================================================
--- Version: 1.0
--- Date: 2025-11-18
+-- Version: 1.1
+-- Date: 2025-11-20
 -- Description: Complete SQLite schema for storing collected content,
 --              AI analysis, confluence scores, and theme tracking
+-- Changelog v1.1: Added extracted_images table for Chart Intelligence System
 -- ============================================================================
 
 -- Enable foreign key constraints
@@ -72,6 +73,31 @@ CREATE INDEX IF NOT EXISTS idx_analyzed_content_themes ON analyzed_content(key_t
 CREATE INDEX IF NOT EXISTS idx_analyzed_content_tickers ON analyzed_content(tickers_mentioned);
 CREATE INDEX IF NOT EXISTS idx_analyzed_content_sentiment ON analyzed_content(sentiment);
 CREATE INDEX IF NOT EXISTS idx_analyzed_content_analyzed_at ON analyzed_content(analyzed_at DESC);
+
+-- ============================================================================
+-- TABLE: extracted_images
+-- Purpose: Stores images extracted from PDFs for visual analysis
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS extracted_images (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    raw_content_id INTEGER NOT NULL,        -- Which PDF/content this image came from
+    image_path TEXT NOT NULL,               -- File path to extracted image
+    page_number INTEGER,                    -- Page number in source PDF (null for web images)
+    extraction_method TEXT,                 -- "pymupdf", "web_download", etc.
+    content_type TEXT,                      -- "single_chart", "multi_panel", "table", "text_only", "unknown"
+    analyzed BOOLEAN DEFAULT 0,             -- Has Image Intelligence Agent analyzed this?
+    analyzed_content_id INTEGER,            -- Link to analysis result if analyzed
+    json_metadata TEXT,                     -- JSON: Image size, format, detected elements, etc.
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (raw_content_id) REFERENCES raw_content(id) ON DELETE CASCADE,
+    FOREIGN KEY (analyzed_content_id) REFERENCES analyzed_content(id) ON DELETE SET NULL
+);
+
+-- Indexes for extracted_images
+CREATE INDEX IF NOT EXISTS idx_extracted_images_raw_content ON extracted_images(raw_content_id);
+CREATE INDEX IF NOT EXISTS idx_extracted_images_analyzed ON extracted_images(analyzed);
+CREATE INDEX IF NOT EXISTS idx_extracted_images_content_type ON extracted_images(content_type);
+CREATE INDEX IF NOT EXISTS idx_extracted_images_created_at ON extracted_images(created_at DESC);
 
 -- ============================================================================
 -- TABLE: confluence_scores
