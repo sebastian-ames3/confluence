@@ -105,6 +105,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Tested on 42 Macro PDF: 142 images extracted, 131 filtered (92%), 2 analyzed successfully
   - Backwards compatible: analyze_images=False (default) maintains existing behavior
   - Created test script: scripts/test_pdf_image_integration.py
+- **✅ Production Deployment**: Chart Intelligence Enabled for 42 Macro + Discord
+  - Updated run_analysis_pipeline.py to enable Chart Intelligence for 42 Macro + Discord PDFs
+  - Automatic detection: analyze_images=True for sources in ["42macro", "discord", "discord_options_insight"]
+  - Multi-source testing: 42 Macro (31 pages, 3 images) + Discord (11 pages, 1 image)
+  - Successfully detected chart types: volatility_surface (Discord), technical charts (42 Macro)
+  - Successfully extracted tickers from visual charts: BTC, ETH identified from Discord volatility surface
+  - Both sources: text + visual insights combined, convoy 7-8/10
+  - Created test script: scripts/test_multi_source_analysis.py
 - **PRD Created**: Chart Intelligence System (docs/PRD_ChartIntelligence.md)
   - Multi-modal analysis pipeline for extracting visual data from all sources
   - Specialized tools approach: OCR for tables, Claude Vision for charts, segmentation for multi-panel
