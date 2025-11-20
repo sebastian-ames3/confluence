@@ -22,6 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ✅ **PRD-006**: PDF Analyzer Agent (fully implemented)
 - ✅ **PRD-007**: Image Intelligence Agent (fully implemented)
 
+**Phase 3: Confluence Engine**
+- ✅ **PRD-008**: Confluence Scorer Agent (fully implemented)
+
 **Additional Work (not in original PRD master plan)**
 - ✅ **Discord Collector Enhancement**: Thread-Aware Context Tracking
 - ✅ **42 Macro Collector Enhancement**: Complete PDF Downloading
@@ -33,8 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ✅ **Complete** - All agents implemented
 
 **Phase 3: Confluence Engine**
-- ⏳ **Confluence Scorer Agent** (`agents/confluence_scorer.py` - 8 lines, skeleton only)
-- ⏳ **Cross-Reference Agent** (`agents/cross_reference.py` - 8 lines, skeleton only)
+- ⏳ **Cross-Reference Agent** (`agents/cross_reference.py` - 8 lines, skeleton only) - **Next to build**
 
 **Phase 4: Dashboard & Deployment**
 - ⏳ **Web Dashboard** (not started)
@@ -56,19 +58,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 | Content Classifier | ✅ Complete | 334 lines | Fully functional with Claude API |
 | Transcript Harvester | ✅ Complete | 363 lines | Multi-platform video transcription |
 | PDF Analyzer | ✅ Complete | 527 lines | Production-ready |
-| Image Intelligence | ✅ Complete | 451 lines | **Production-ready** - Claude Vision API |
-| Confluence Scorer | ⏳ Skeleton | 8 lines | **Next to build** - Phase 3 |
-| Cross-Reference | ⏳ Skeleton | 8 lines | Phase 3 |
+| Image Intelligence | ✅ Complete | 451 lines | Claude Vision API |
+| Confluence Scorer | ✅ Complete | 491 lines | **Production-ready** - 7-pillar framework |
+| Cross-Reference | ⏳ Skeleton | 8 lines | **Next to build** - Phase 3 |
 
 ### 🎯 Next Recommended Task
 
-**Build Confluence Scorer Agent** - Score analyzed content against 7-pillar investment framework. Critical for identifying high-conviction ideas.
+**Build Cross-Reference Agent** - Find confluence patterns across multiple sources. Final Phase 3 agent for identifying when independent analyses align.
 
 ---
 
 ## [Unreleased]
 
 ### Added
+- **[PRD-008] Confluence Scorer Agent** (2025-11-19) ✅ COMPLETED
+  - **Full Implementation** (491 lines):
+    - Institutional-grade 7-pillar investment framework scoring
+    - Rigorous scoring rubric (0-2 per pillar)
+    - Automated confluence threshold determination
+    - Falsification criteria generation
+    - Variant view identification
+    - P&L mechanism extraction
+  - **7-Pillar Framework**:
+    - **Core 5 Pillars** (0-2 each, max 10 points):
+      1. Macro data & regime (growth/inflation/policy/liquidity)
+      2. Fundamentals (sector/company cash flow impact)
+      3. Valuation & capital cycle (what's priced in, supply response)
+      4. Positioning/flows (how others positioned, forced buying/selling)
+      5. Policy/narrative (regulatory alignment, political priorities)
+    - **Hybrid 2 Pillars** (0-2 each):
+      6. Price action (technical structure, trend, key levels)
+      7. Options/volatility (vol surface, skew, term structure)
+  - **Scoring Rubric**:
+    - 0 = Weak (story only, no evidence)
+    - 1 = Medium (some evidence, but incomplete)
+    - 2 = Strong (multiple independent indicators, clear mechanism)
+  - **Confluence Thresholds**:
+    - Strong: Core ≥6-7/10 AND at least one hybrid pillar = 2/2
+    - Medium: Core 4-5/10 OR hybrid pillars weak
+    - Weak: Core <4/10
+  - **Output Schema**:
+    - pillar_scores (all 7 pillars scored 0-2)
+    - reasoning (detailed justification for each score)
+    - falsification_criteria (specific, measurable conditions)
+    - variant_view (how view differs from consensus/priced-in)
+    - p_and_l_mechanism (explicit path to profit with instruments)
+    - conviction_tier (strong|medium|weak)
+    - primary_thesis (one sentence summary)
+    - core_total, total_score, meets_threshold, confluence_level
+  - **Content Summarization**:
+    - Intelligently extracts key themes, tickers, sentiment, conviction
+    - Handles outputs from all Phase 2 agents (transcript, PDF, image)
+    - Preserves context from market regime, positioning, catalysts
+    - Truncates long content while preserving critical information
+  - **Testing**:
+    - Test script created (`scripts/test_confluence_scorer.py`)
+    - 3 sample content types tested (42macro PDF, Discord vol chart, KT technical chart)
+    - Agent initialization and pipeline verified
+    - Claude API integration tested
+  - **Production Ready**: Agent fully functional, applies institutional-grade framework rigorously
+  - **Note**: This is the heart of the system - determines actionability of ideas
+
 - **[PRD-007] Image Intelligence Agent** (2025-11-19) ✅ COMPLETED
   - **Full Implementation** (451 lines):
     - Claude Vision API integration for chart interpretation
