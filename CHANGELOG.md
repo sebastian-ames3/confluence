@@ -24,19 +24,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 **Phase 3: Confluence Engine**
 - ✅ **PRD-008**: Confluence Scorer Agent (fully implemented)
+- ✅ **PRD-009**: Cross-Reference Agent (fully implemented)
 
 **Additional Work (not in original PRD master plan)**
 - ✅ **Discord Collector Enhancement**: Thread-Aware Context Tracking
 - ✅ **42 Macro Collector Enhancement**: Complete PDF Downloading
 - ✅ **KT Technical Fix**: Price chart image downloading
 
-### 🔧 Not Yet Started (Skeleton Only)
+### 🔧 Not Yet Started
 
-**Phase 2: Intelligence Layer (Original Plan)**
+**Phase 2: Intelligence Layer**
 - ✅ **Complete** - All agents implemented
 
 **Phase 3: Confluence Engine**
-- ⏳ **Cross-Reference Agent** (`agents/cross_reference.py` - 8 lines, skeleton only) - **Next to build**
+- ✅ **Complete** - All agents implemented
 
 **Phase 4: Dashboard & Deployment**
 - ⏳ **Web Dashboard** (not started)
@@ -59,18 +60,72 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 | Transcript Harvester | ✅ Complete | 363 lines | Multi-platform video transcription |
 | PDF Analyzer | ✅ Complete | 527 lines | Production-ready |
 | Image Intelligence | ✅ Complete | 451 lines | Claude Vision API |
-| Confluence Scorer | ✅ Complete | 491 lines | **Production-ready** - 7-pillar framework |
-| Cross-Reference | ⏳ Skeleton | 8 lines | **Next to build** - Phase 3 |
+| Confluence Scorer | ✅ Complete | 491 lines | 7-pillar framework |
+| Cross-Reference | ✅ Complete | 602 lines | **Production-ready** - Bayesian confluence |
 
 ### 🎯 Next Recommended Task
 
-**Build Cross-Reference Agent** - Find confluence patterns across multiple sources. Final Phase 3 agent for identifying when independent analyses align.
+**Phase 4: Dashboard & Deployment** - Build web dashboard to visualize high-conviction ideas, or integrate agents into end-to-end pipeline.
 
 ---
 
 ## [Unreleased]
 
 ### Added
+- **[PRD-009] Cross-Reference Agent** (2025-11-19) ✅ COMPLETED
+  - **Full Implementation** (602 lines):
+    - Theme extraction from confluence-scored content
+    - Claude-based semantic theme clustering with fallback
+    - Cross-source confluence detection (finds when 2+ sources align)
+    - Bayesian conviction updating with proper P(H|E) formula
+    - Contradiction detection between opposing views
+    - High-conviction idea extraction (conviction >=0.75, sources >=2)
+    - Conviction trend tracking (rising/falling/stable)
+    - Source reliability weighting system
+  - **Core Features**:
+    - **Theme Extraction**: Pulls investment theses from confluence-scored content
+    - **Semantic Clustering**: Uses Claude to identify similar themes across sources
+      - Example: "Tech sector outperformance" + "NASDAQ to outperform S&P" = SAME theme
+      - Fallback to individual clustering when Claude unavailable
+    - **Cross-Source Confluence**: Detects when independent sources agree
+      - Configurable minimum source threshold (default: 2)
+      - Aggregates scores and metadata from supporting sources
+    - **Bayesian Conviction Updating**: Proper Bayesian formula implementation
+      - Formula: P(H|E) = P(E|H) * P(H) / P(E)
+      - Tracks conviction evolution over time
+      - Maintains conviction history (last 10 updates)
+      - Incorporates source reliability weights
+    - **Contradiction Detection**: Identifies opposing views across sources
+      - Severity classification (high/medium/low)
+      - Helps surface where further research needed
+    - **High-Conviction Filtering**: Extracts actionable ideas
+      - Threshold: conviction >=0.75 AND sources >=2
+      - Tracks conviction trends
+      - Surfaces strongest multi-source agreement
+  - **Source Reliability Weights**:
+    - 42macro: 0.9 (institutional-grade macro research)
+    - discord: 0.85 (curated expert discussions)
+    - kt_technical: 0.8 (technical analysis specialist)
+    - youtube: 0.75 (video content)
+    - substack: 0.75 (written content)
+    - twitter: 0.7 (public social media)
+  - **Output Schema**:
+    - confluent_themes: Themes with 2+ source agreement
+    - contradictions: Opposing views detected
+    - high_conviction_ideas: Filtered actionable ideas
+    - Pipeline metrics: themes extracted, clustered, confluence count
+  - **Testing**:
+    - Test script created (`scripts/test_cross_reference.py`, 380 lines)
+    - 5 sample confluence-scored content pieces
+    - Includes contradictory views for detection testing
+    - Verifies theme extraction (5/5 themes extracted)
+    - Verifies clustering logic (proper fallback)
+    - Verifies Bayesian updating with historical context
+    - Verifies contradiction and high-conviction filtering
+    - Windows console-safe output (no Unicode issues)
+  - **Production Ready**: Final Phase 3 agent complete, finds multi-source confluence
+  - **Milestone**: **COMPLETES PHASE 3 (Confluence Engine)**
+
 - **[PRD-008] Confluence Scorer Agent** (2025-11-19) ✅ COMPLETED
   - **Full Implementation** (491 lines):
     - Institutional-grade 7-pillar investment framework scoring
