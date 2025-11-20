@@ -24,8 +24,8 @@ sys.path.insert(0, str(project_root))
 
 from collectors.youtube_api import YouTubeCollector
 from collectors.substack_rss import SubstackCollector
-from collectors.twitter_scraper import TwitterCollector
-from collectors.macro42 import Macro42Collector
+from collectors.twitter_api import TwitterCollector
+from collectors.macro42_selenium import Macro42Collector
 from collectors.kt_technical import KTTechnicalCollector
 
 # Setup logging
@@ -64,19 +64,18 @@ async def run_collection(time_label: str):
     # Substack
     collectors.append(("Substack", SubstackCollector()))
 
-    # Twitter
-    twitter_token = os.getenv('TWITTER_SESSION_TOKEN') or os.getenv('TWITTER_BEARER_TOKEN')
-    if twitter_token:
-        collectors.append(("Twitter", TwitterCollector(auth_token=twitter_token)))
+    # Twitter (using Twitter API v2)
+    twitter_bearer = os.getenv('TWITTER_BEARER_TOKEN')
+    if twitter_bearer:
+        collectors.append(("Twitter", TwitterCollector(bearer_token=twitter_bearer)))
     else:
-        logger.warning("[Twitter] Using default collector (may have limited functionality)")
-        collectors.append(("Twitter", TwitterCollector()))
+        logger.warning("[Twitter] Skipping - TWITTER_BEARER_TOKEN not set")
 
-    # 42 Macro
+    # 42 Macro (using Selenium)
     macro42_email = os.getenv('MACRO42_EMAIL')
     macro42_password = os.getenv('MACRO42_PASSWORD')
     if macro42_email and macro42_password:
-        collectors.append(("42 Macro", Macro42Collector(email=macro42_email, password=macro42_password)))
+        collectors.append(("42 Macro", Macro42Collector(email=macro42_email, password=macro42_password, headless=True)))
     else:
         logger.warning("[42 Macro] Skipping - MACRO42_EMAIL and MACRO42_PASSWORD not set")
 
