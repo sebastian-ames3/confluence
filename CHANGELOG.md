@@ -89,13 +89,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Saves images to temp directory with metadata (page number, format, size)
   - Added PyMuPDF==1.24.0 to requirements.txt
   - Created test script: scripts/test_pdf_image_extraction.py
+- **✅ Phase 2 Complete**: Visual Content Classifier
+  - Created VisualContentClassifier (agents/visual_content_classifier.py)
+  - Lightweight classification: single_chart, multi_panel, table, text_only, unknown
+  - Dual-mode: heuristics-only (fast, free) or Vision API (accurate, low cost)
+  - Tested on 20 images: 85% classified as text_only (skip), 15% routed to Vision API
+  - Smart routing: filters out logos/decorative elements, focuses Vision API on real charts
+  - Added Pillow==10.2.0 to requirements.txt for image processing
+  - Created test script: scripts/test_visual_classifier.py
 - **PRD Created**: Chart Intelligence System (docs/PRD_ChartIntelligence.md)
   - Multi-modal analysis pipeline for extracting visual data from all sources
   - Specialized tools approach: OCR for tables, Claude Vision for charts, segmentation for multi-panel
   - Transcript-based chart prioritization for 42 Macro videos
   - Cost: ~$0.40 per 42 Macro video, ~$0.08 per KT Technical post
   - Implementation phases: 4 weeks planned
-  - **Status**: Phase 1.1-1.2 complete, proceeding with Phase 2 (Visual Content Classifier)
+  - **Status**: Phase 1.1-1.2-2 complete, proceeding with Phase 3 (PDF+Image Integration)
 
 ### MVP Completion & Refinements (2025-11-20)
 - **🎉 MVP OFFICIALLY COMPLETE** - All core functionality working end-to-end

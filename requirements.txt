@@ -19,6 +19,7 @@ discord.py-self==2.0.0
 pypdf2==3.0.1
 pdfplumber==0.10.3
 PyMuPDF==1.24.0  # For image extraction from PDFs (Chart Intelligence)
+Pillow==10.2.0  # For image processing (Chart Intelligence)
 
 # AI APIs
 anthropic==0.18.1
