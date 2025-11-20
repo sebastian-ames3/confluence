@@ -69,7 +69,8 @@ class PDFAnalyzerAgent(BaseAgent):
         source: str = "unknown",
         metadata: Optional[Dict[str, Any]] = None,
         analyze_images: bool = False,
-        image_limit: Optional[int] = None
+        image_limit: Optional[int] = None,
+        transcript: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Full pipeline: PDF → text+tables+images → analysis.
@@ -80,6 +81,7 @@ class PDFAnalyzerAgent(BaseAgent):
             metadata: Optional metadata (report_type, date, etc.)
             analyze_images: Whether to extract and analyze images (Chart Intelligence)
             image_limit: Maximum number of images to analyze (for testing/cost control)
+            transcript: Optional video transcript to match charts (for 42macro cost optimization)
 
         Returns:
             Complete analysis with extracted insights
@@ -100,7 +102,7 @@ class PDFAnalyzerAgent(BaseAgent):
             # Step 3: Extract and analyze images (if enabled)
             image_analyses = []
             if analyze_images:
-                image_analyses = self.analyze_images(pdf_path, source, image_limit)
+                image_analyses = self.analyze_images(pdf_path, source, image_limit, transcript)
 
             # Step 4: Detect report type (for 42macro)
             report_type = self._detect_report_type(extracted_text, source, metadata)
@@ -345,21 +347,24 @@ class PDFAnalyzerAgent(BaseAgent):
         self,
         pdf_path: str,
         source: str = "unknown",
-        image_limit: Optional[int] = None
+        image_limit: Optional[int] = None,
+        transcript: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """
         Extract, classify, and analyze images from PDF.
 
         Pipeline:
         1. Extract all images from PDF
-        2. Classify each image (filter out text_only)
-        3. Analyze non-text_only images with Image Intelligence Agent
-        4. Return list of image analyses
+        2. [Optional] Match to transcript (42macro only) for cost optimization
+        3. Classify each image (filter out text_only)
+        4. Analyze non-text_only images with Image Intelligence Agent
+        5. Return list of image analyses
 
         Args:
             pdf_path: Path to PDF file
             source: Source of PDF
             image_limit: Maximum number of images to analyze (for cost control)
+            transcript: Optional video transcript for transcript-chart matching (42macro)
 
         Returns:
             List of image analysis results
@@ -375,11 +380,36 @@ class PDFAnalyzerAgent(BaseAgent):
                 logger.info("No images to analyze")
                 return []
 
-            # Step 2: Classify images
+            # Step 2: Transcript-Chart Matching (42macro only, if transcript provided)
+            images_for_analysis = extracted_images
+            if transcript and source == "42macro":
+                logger.info("Transcript provided - using Transcript-Chart Matching for prioritization")
+                from agents.transcript_chart_matcher import TranscriptChartMatcher
+
+                matcher = TranscriptChartMatcher()
+                match_result = matcher.prioritize_for_analysis(
+                    transcript=transcript,
+                    all_images=extracted_images,
+                    max_analyze=image_limit or 15  # Default to 15 if no limit specified
+                )
+
+                if match_result["status"] == "success":
+                    images_for_analysis = match_result["images_to_analyze"]
+                    logger.info(
+                        f"Transcript-Chart Matching: Prioritized {len(images_for_analysis)}/{len(extracted_images)} images "
+                        f"(cost reduction: {match_result['cost_reduction_pct']:.1f}%)"
+                    )
+                else:
+                    logger.warning(f"Transcript-Chart Matching fallback: {match_result.get('fallback_reason', 'unknown')}")
+                    # Fallback: use all images (or first N if image_limit specified)
+                    if image_limit:
+                        images_for_analysis = extracted_images[:image_limit]
+
+            # Step 3: Classify images
             from agents.visual_content_classifier import VisualContentClassifier
             classifier = VisualContentClassifier()
 
-            image_paths = [img["image_path"] for img in extracted_images]
+            image_paths = [img["image_path"] for img in images_for_analysis]
             classification_results = classifier.classify_batch(
                 image_paths,
                 use_vision_api=False  # Use heuristics only for classification
@@ -396,7 +426,7 @@ class PDFAnalyzerAgent(BaseAgent):
                         # Find the original image metadata
                         image_path = item["image_path"]
                         image_metadata = next(
-                            (img for img in extracted_images if img["image_path"] == image_path),
+                            (img for img in images_for_analysis if img["image_path"] == image_path),
                             None
                         )
                         if image_metadata:
@@ -406,14 +436,15 @@ class PDFAnalyzerAgent(BaseAgent):
                             })
 
             logger.info(
-                f"Filtered {len(images_to_analyze)}/{len(extracted_images)} images for analysis "
-                f"({len(extracted_images) - len(images_to_analyze)} skipped as text_only)"
+                f"Filtered {len(images_to_analyze)}/{len(images_for_analysis)} images for analysis "
+                f"({len(images_for_analysis) - len(images_to_analyze)} skipped as text_only)"
             )
 
-            # Apply image limit if specified
-            if image_limit and len(images_to_analyze) > image_limit:
-                logger.info(f"Limiting analysis to {image_limit} images (cost control)")
-                images_to_analyze = images_to_analyze[:image_limit]
+            # Apply image limit if specified (only if transcript matching wasn't used)
+            if not (transcript and source == "42macro"):
+                if image_limit and len(images_to_analyze) > image_limit:
+                    logger.info(f"Limiting analysis to {image_limit} images (cost control)")
+                    images_to_analyze = images_to_analyze[:image_limit]
 
             # Step 4: Analyze images with Image Intelligence Agent
             if not images_to_analyze:

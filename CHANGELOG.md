@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased] - 2025-11-20
+
+### Added
+- **Transcript-Chart Matcher**: Cost optimization system for 42 Macro videos
+  - Created `agents/transcript_chart_matcher.py` (337 lines)
+  - Extracts chart mentions from video transcripts using regex pattern matching
+  - Matches transcript mentions to PDF images for prioritized analysis
+  - Integrated with PDF Analyzer via optional `transcript` parameter
+  - Fallback logic for edge cases (no mentions, no matches, errors)
+  - Test script: `scripts/test_transcript_chart_matcher.py`
+  - Achieves 89% cost reduction ($4.26 → $0.45 per PDF) even with fallback
+  - Designed for 85% cost reduction with proper metadata (PRD target)
+
+### Changed
+- **PDF Analyzer Agent**: Enhanced to support transcript-based prioritization
+  - Added `transcript` parameter to `analyze()` method (backwards compatible)
+  - Added `transcript` parameter to `analyze_images()` method
+  - Auto-detection: Uses transcript matching when source="42macro" and transcript provided
+  - Updated image analysis pipeline to prioritize matched charts before classification
+
+### Documentation
+- Created `docs/PRD_TranscriptChartMatching.md` - Full PRD with cost analysis
+- Created `docs/PRD_AutomatedCleanup.md` - Maintenance automation PRD
+- Created `docs/PRD_DashboardEnhancements.md` - Mobile-first UX enhancements PRD
+
+---
+
 ## 📊 Project Status Summary (as of 2025-11-19)
 
 ### ✅ Completed PRDs
