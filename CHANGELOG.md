@@ -20,6 +20,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Achieves 89% cost reduction ($4.26 → $0.45 per PDF) even with fallback
   - Designed for 85% cost reduction with proper metadata (PRD target)
 
+- **Automated Cleanup System**: Prevent storage bloat and maintain system health
+  - Created `agents/cleanup_manager.py` (434 lines)
+  - Temp file cleanup: Deletes old extracted images and transcripts (24h retention)
+  - Database cleanup: Archives and deletes old processed records (6 months retention)
+  - Storage statistics: Real-time disk usage monitoring
+  - Configurable retention policies via config dictionary
+  - Dry-run mode for safe testing before production
+  - Safety mechanisms: Never deletes files < 1 hour old, graceful handling of missing tables
+  - Archive-before-delete: Optional JSON export of deleted records
+  - Test script: `scripts/test_cleanup.py`
+  - Tested: 12.72 MB current usage (9.58 MB temp, 3.14 MB database)
+
 ### Changed
 - **PDF Analyzer Agent**: Enhanced to support transcript-based prioritization
   - Added `transcript` parameter to `analyze()` method (backwards compatible)
