@@ -76,18 +76,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Chart Intelligence System - Phase 1 (2025-11-20)
-- **Database Schema v1.1**: Added `extracted_images` table for Chart Intelligence
+- **✅ Phase 1.1 Complete**: Database Schema v1.1
+  - Added `extracted_images` table for Chart Intelligence
   - Tracks images extracted from PDFs for visual analysis
   - Links to source content and analysis results
   - Supports page numbers, extraction method, content type classification
   - Indexes for efficient querying by raw_content_id, analyzed status, content type
+- **✅ Phase 1.2 Complete**: PDF Image Extraction
+  - Added `extract_images()` method to PDFAnalyzerAgent (agents/pdf_analyzer.py)
+  - Uses PyMuPDF (fitz) for robust image extraction from PDFs
+  - Successfully tested on 42 Macro "Around The Horn" PDF: 142 images from 31 pages
+  - Saves images to temp directory with metadata (page number, format, size)
+  - Added PyMuPDF==1.24.0 to requirements.txt
+  - Created test script: scripts/test_pdf_image_extraction.py
 - **PRD Created**: Chart Intelligence System (docs/PRD_ChartIntelligence.md)
   - Multi-modal analysis pipeline for extracting visual data from all sources
   - Specialized tools approach: OCR for tables, Claude Vision for charts, segmentation for multi-panel
   - Transcript-based chart prioritization for 42 Macro videos
   - Cost: ~$0.40 per 42 Macro video, ~$0.08 per KT Technical post
   - Implementation phases: 4 weeks planned
-  - **Status**: Phase 1.1 complete (database schema), proceeding with Phase 1.2 (image extraction)
+  - **Status**: Phase 1.1-1.2 complete, proceeding with Phase 2 (Visual Content Classifier)
 
 ### MVP Completion & Refinements (2025-11-20)
 - **🎉 MVP OFFICIALLY COMPLETE** - All core functionality working end-to-end
