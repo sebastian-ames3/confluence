@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Dict, Any, Optional, List
 from datetime import datetime
 import PyPDF2
+import fitz  # PyMuPDF
 
 from agents.base_agent import BaseAgent
 
@@ -243,6 +244,91 @@ class PDFAnalyzerAgent(BaseAgent):
         except Exception as e:
             logger.warning(f"Table extraction failed: {e}")
             return []
+
+    def extract_images(
+        self,
+        pdf_path: str,
+        output_dir: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Extract all images from PDF using PyMuPDF.
+
+        Args:
+            pdf_path: Path to PDF file
+            output_dir: Directory to save extracted images (defaults to temp dir)
+
+        Returns:
+            List of extracted image metadata
+        """
+        try:
+            logger.info(f"Extracting images from: {pdf_path}")
+
+            # Create output directory if not specified
+            if output_dir is None:
+                pdf_name = Path(pdf_path).stem
+                output_dir = os.path.join("temp", "extracted_images", pdf_name)
+
+            os.makedirs(output_dir, exist_ok=True)
+
+            extracted_images = []
+
+            # Open PDF with PyMuPDF
+            doc = fitz.open(pdf_path)
+
+            for page_num in range(len(doc)):
+                page = doc[page_num]
+
+                # Get list of images on this page
+                image_list = page.get_images(full=True)
+
+                for img_index, img in enumerate(image_list):
+                    # Extract image data
+                    xref = img[0]  # XREF number
+
+                    # Get image metadata
+                    base_image = doc.extract_image(xref)
+                    image_bytes = base_image["image"]
+                    image_ext = base_image["ext"]  # png, jpeg, etc.
+
+                    # Generate filename
+                    image_filename = f"page_{page_num + 1}_img_{img_index + 1}.{image_ext}"
+                    image_path = os.path.join(output_dir, image_filename)
+
+                    # Save image to file
+                    with open(image_path, "wb") as img_file:
+                        img_file.write(image_bytes)
+
+                    # Store metadata
+                    image_metadata = {
+                        "image_path": image_path,
+                        "page_number": page_num + 1,
+                        "image_index": img_index + 1,
+                        "format": image_ext,
+                        "size_bytes": len(image_bytes),
+                        "xref": xref
+                    }
+
+                    extracted_images.append(image_metadata)
+
+                    logger.debug(
+                        f"Extracted image {img_index + 1} from page {page_num + 1}: "
+                        f"{image_filename} ({len(image_bytes)} bytes)"
+                    )
+
+            # Store page count before closing document
+            total_pages = len(doc)
+            doc.close()
+
+            logger.info(
+                f"Extracted {len(extracted_images)} images from PDF "
+                f"({total_pages} pages) to {output_dir}"
+            )
+
+            return extracted_images
+
+        except Exception as e:
+            logger.error(f"Image extraction failed: {e}")
+            raise
 
     def analyze_content(
         self,
