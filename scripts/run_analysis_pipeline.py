@@ -91,7 +91,19 @@ class AnalysisPipeline:
             if "pdf_analyzer" in route_to or content_type == "pdf":
                 logger.info(f"[{results['raw_content_id']}] Step 2: Analyzing PDF...")
                 if content_item.get("file_path"):
-                    analyzed_content = await self.pdf_analyzer.analyze(content_item["file_path"])
+                    # Enable Chart Intelligence for 42 Macro and Discord PDFs
+                    source = content_item.get("source", "")
+                    analyze_images = source in ["42macro", "discord", "discord_options_insight"]
+
+                    if analyze_images:
+                        logger.info(f"[{results['raw_content_id']}] Chart Intelligence ENABLED for {source} PDF")
+
+                    analyzed_content = self.pdf_analyzer.analyze(
+                        pdf_path=content_item["file_path"],
+                        source=source,
+                        metadata=content_item.get("metadata", {}),
+                        analyze_images=analyze_images  # Enable for 42macro + Discord
+                    )
                     results["steps"]["pdf_analysis"] = analyzed_content
 
             # Handle Images
