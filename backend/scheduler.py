@@ -2,42 +2,151 @@
 Scheduled Tasks
 
 Background scheduler for automated data collection (6am, 6pm daily).
-To be implemented in Phase 4 (PRD-011).
+Runs all collectors except Discord (which runs locally on Sebastian's laptop).
 """
 
 import schedule
 import time
+import logging
 from datetime import datetime
+import os
+import sys
+from pathlib import Path
 
-# TODO: Implement in Phase 4
-# - Schedule 6am collection run
-# - Schedule 6pm collection run
-# - Error handling and logging
-# - Integration with Railway cron
+# Add project root to path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
+from collectors.youtube_api import YouTubeCollector
+from collectors.substack_rss import SubstackCollector
+from collectors.twitter_scraper import TwitterCollector
+from collectors.macro42 import Macro42Collector
+from collectors.kt_technical import KTTechnicalCollector
+
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('scheduler.log'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
+
+
+def run_collection(time_label: str):
+    """
+    Run all collectors (except Discord).
+
+    Args:
+        time_label: "6am" or "6pm" for logging
+    """
+    logger.info(f"=" * 80)
+    logger.info(f"Starting {time_label} collection run")
+    logger.info(f"=" * 80)
+
+    collectors = [
+        ("YouTube", YouTubeCollector),
+        ("Substack", SubstackCollector),
+        ("Twitter", TwitterCollector),
+        ("42 Macro", Macro42Collector),
+        ("KT Technical", KTTechnicalCollector)
+    ]
+
+    results = {
+        "total": len(collectors),
+        "successful": 0,
+        "failed": 0,
+        "errors": []
+    }
+
+    for name, CollectorClass in collectors:
+        try:
+            logger.info(f"[{name}] Starting collection...")
+            collector = CollectorClass()
+
+            # Run collection
+            collected = collector.collect()
+
+            # Log results
+            if isinstance(collected, list):
+                count = len(collected)
+            elif isinstance(collected, dict):
+                count = collected.get('count', 1)
+            else:
+                count = 1 if collected else 0
+
+            logger.info(f"[{name}] Collection complete - {count} items collected")
+            results["successful"] += 1
+
+        except Exception as e:
+            logger.error(f"[{name}] Collection failed: {e}")
+            results["failed"] += 1
+            results["errors"].append({"collector": name, "error": str(e)})
+
+    # Summary
+    logger.info(f"=" * 80)
+    logger.info(f"{time_label} collection complete")
+    logger.info(f"Successful: {results['successful']}/{results['total']}")
+    logger.info(f"Failed: {results['failed']}/{results['total']}")
+    if results["errors"]:
+        logger.error(f"Errors encountered:")
+        for error in results["errors"]:
+            logger.error(f"  - {error['collector']}: {error['error']}")
+    logger.info(f"=" * 80)
+
+    return results
 
 
 def collect_6am():
-    """Morning collection routine."""
-    print(f"[{datetime.now()}] Running 6am collection...")
-    # TODO: Trigger all collectors
+    """Morning collection routine - all collectors."""
+    run_collection("6am")
 
 
 def collect_6pm():
-    """Evening collection routine."""
-    print(f"[{datetime.now()}] Running 6pm collection...")
-    # TODO: Trigger all collectors
+    """Evening collection routine - all collectors."""
+    run_collection("6pm")
+
+
+def run_manual_collection():
+    """Manually trigger collection (for testing or on-demand)."""
+    logger.info("Running manual collection...")
+    return run_collection("manual")
 
 
 def run_scheduler():
     """Main scheduler loop."""
+    logger.info("=" * 80)
+    logger.info("Macro Confluence Hub - Scheduler Started")
+    logger.info("=" * 80)
+    logger.info("Scheduled collections:")
+    logger.info("  - 6:00 AM daily (all collectors)")
+    logger.info("  - 6:00 PM daily (all collectors)")
+    logger.info("")
+    logger.info("Note: Discord collection runs locally on Sebastian's laptop")
+    logger.info("=" * 80)
+
+    # Schedule daily tasks
     schedule.every().day.at("06:00").do(collect_6am)
     schedule.every().day.at("18:00").do(collect_6pm)
 
-    print("Scheduler started. Waiting for scheduled tasks...")
+    # Main loop
     while True:
-        schedule.run_pending()
-        time.sleep(60)  # Check every minute
+        try:
+            schedule.run_pending()
+            time.sleep(60)  # Check every minute
+        except KeyboardInterrupt:
+            logger.info("Scheduler stopped by user")
+            break
+        except Exception as e:
+            logger.error(f"Scheduler error: {e}")
+            time.sleep(60)  # Wait before retrying
 
 
 if __name__ == "__main__":
-    run_scheduler()
+    # Check if running as manual trigger
+    if len(sys.argv) > 1 and sys.argv[1] == "manual":
+        run_manual_collection()
+    else:
+        run_scheduler()
