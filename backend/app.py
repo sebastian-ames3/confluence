@@ -10,7 +10,9 @@ FastAPI application providing REST endpoints for:
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -57,6 +59,11 @@ async def health_check():
 from backend.routes import dashboard
 
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["dashboard"])
+
+# Mount static files for frontend
+frontend_path = Path(__file__).parent.parent / "frontend"
+if frontend_path.exists():
+    app.mount("/", StaticFiles(directory=str(frontend_path), html=True), name="frontend")
 
 
 if __name__ == "__main__":
