@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 **Phase 2: Intelligence Layer**
 - ✅ **PRD-005**: Transcript Harvester Agent (fully implemented)
 - ✅ **PRD-006**: PDF Analyzer Agent (fully implemented)
+- ✅ **PRD-007**: Image Intelligence Agent (fully implemented)
 
 **Additional Work (not in original PRD master plan)**
 - ✅ **Discord Collector Enhancement**: Thread-Aware Context Tracking
@@ -29,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### 🔧 Not Yet Started (Skeleton Only)
 
 **Phase 2: Intelligence Layer (Original Plan)**
-- ⏳ **Image Intelligence Agent** (`agents/image_intelligence.py` - 8 lines, skeleton only) - **Next to build**
+- ✅ **Complete** - All agents implemented
 
 **Phase 3: Confluence Engine**
 - ⏳ **Confluence Scorer Agent** (`agents/confluence_scorer.py` - 8 lines, skeleton only)
@@ -54,20 +55,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 |-------|--------|---------------|-------|
 | Content Classifier | ✅ Complete | 334 lines | Fully functional with Claude API |
 | Transcript Harvester | ✅ Complete | 363 lines | Multi-platform video transcription |
-| PDF Analyzer | ✅ Complete | 527 lines | **Production-ready** |
-| Image Intelligence | ⏳ Skeleton | 8 lines | **Next to build** |
-| Confluence Scorer | ⏳ Skeleton | 8 lines | Phase 3 |
+| PDF Analyzer | ✅ Complete | 527 lines | Production-ready |
+| Image Intelligence | ✅ Complete | 451 lines | **Production-ready** - Claude Vision API |
+| Confluence Scorer | ⏳ Skeleton | 8 lines | **Next to build** - Phase 3 |
 | Cross-Reference | ⏳ Skeleton | 8 lines | Phase 3 |
 
 ### 🎯 Next Recommended Task
 
-**Build Image Intelligence Agent** - Interpret charts, volatility surfaces, and technical analysis images. Critical for Discord and KT Technical content.
+**Build Confluence Scorer Agent** - Score analyzed content against 7-pillar investment framework. Critical for identifying high-conviction ideas.
 
 ---
 
 ## [Unreleased]
 
 ### Added
+- **[PRD-007] Image Intelligence Agent** (2025-11-19) ✅ COMPLETED
+  - **Full Implementation** (451 lines):
+    - Claude Vision API integration for chart interpretation
+    - Base64 image encoding for API transmission
+    - Support for PNG, JPG, JPEG, WEBP, GIF formats
+    - Chart type detection from context (volatility, technical, positioning)
+    - Source-specific system prompts (Discord vs KT Technical)
+  - **Discord-Specific Features**:
+    - Volatility surface analysis (IV levels, term structure, skew)
+    - Positioning chart interpretation (dealer gamma, options flow)
+    - Options-specific metrics extraction (strikes, expirations, Greeks)
+  - **KT Technical-Specific Features**:
+    - Elliott Wave count identification
+    - Support/resistance level extraction
+    - Fibonacci retracement/extension levels
+    - Technical trend analysis
+    - Entry/exit zones and target prices
+  - **Output Schema**:
+    - image_type (volatility_surface, technical_chart, positioning_chart, etc.)
+    - extracted_text (visible labels and annotations)
+    - interpretation (main_insight, key_levels, technical_details)
+    - implied_volatility (30d, 60d, 90d) for volatility charts
+    - support_resistance levels for technical charts
+    - tickers, sentiment, conviction (0-10), time_horizon
+    - actionable_levels and falsification_criteria
+  - **Testing**:
+    - Test script created (`scripts/test_image_intelligence.py`)
+    - Successfully loaded 3 sample images (165-270KB each)
+    - Chart type detection verified (volatility_surface from context)
+    - Base64 encoding and Claude Vision API integration verified
+    - Pipeline tested: image → base64 → Claude Vision → structured analysis
+  - **Production Ready**: Agent fully functional, tested end-to-end
+  - **Note**: Requires Claude API credits for vision analysis
+
 - **[PRD-006] PDF Analyzer Agent** (2025-11-19) ✅ COMPLETED
   - **Full Implementation** (527 lines):
     - Dual text extraction methods: pdfplumber (primary) + PyPDF2 (fallback)
