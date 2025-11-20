@@ -1,0 +1,66 @@
+{
+  "server_name": "Options Insight Official",
+  "server_id": 905153459874066462,
+  "channels_to_monitor": [
+    {
+      "name": "macro-daily",
+      "channel_id": 1299321525253570570,
+      "priority": "high",
+      "collect_types": ["text", "images", "pdfs", "video_links"],
+      "description": "Daily macro market analysis from Imran"
+    },
+    {
+      "name": "spx-fixed-strike-vol",
+      "channel_id": 1382310831643033700,
+      "priority": "high",
+      "collect_types": ["text", "images", "pdfs", "video_links"],
+      "description": "SPX volatility surface analysis"
+    },
+    {
+      "name": "macro-weekly",
+      "channel_id": 1300222154985705492,
+      "priority": "high",
+      "collect_types": ["text", "images", "pdfs", "video_links"],
+      "description": "Weekly macro analysis and updates"
+    },
+    {
+      "name": "crypto-weekly",
+      "channel_id": 1300944901500043294,
+      "priority": "high",
+      "collect_types": ["text", "images", "pdfs", "video_links"],
+      "description": "Weekly crypto volatility updates"
+    },
+    {
+      "name": "vix-monitor",
+      "channel_id": 1414644030234562641,
+      "priority": "high",
+      "collect_types": ["text", "images", "pdfs", "video_links"],
+      "description": "VIX term structure and positioning"
+    },
+    {
+      "name": "stock-trades",
+      "channel_id": 1299283661870465046,
+      "priority": "high",
+      "collect_types": ["text", "images", "pdfs", "video_links"],
+      "description": "Stock trade ideas and analysis"
+    }
+  ],
+  "collection_settings": {
+    "lookback_days_first_run": 7,
+    "collect_from_all_users": true,
+    "min_message_length": 20,
+    "ignore_patterns": [
+      "^!",
+      "^gm$",
+      "^gn$",
+      "^thanks$"
+    ],
+    "max_messages_per_channel": 500
+  },
+  "file_settings": {
+    "download_pdfs": true,
+    "download_images": true,
+    "extract_video_links": true,
+    "max_file_size_mb": 50
+  }
+}

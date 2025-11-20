@@ -1,0 +1,20 @@
+[
+  {
+    "name": "42 Macro PDF Analysis",
+    "source": "42macro",
+    "success": false,
+    "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CVJNTtm8ikcuWAc7XrgCH'}"
+  },
+  {
+    "name": "Discord Volatility Chart",
+    "source": "discord",
+    "success": false,
+    "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CVJNTuAT2ExqJQCgfMx7X'}"
+  },
+  {
+    "name": "KT Technical Chart",
+    "source": "kt_technical",
+    "success": false,
+    "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CVJNTuRpabQjnohiWN3Jp'}"
+  }
+]

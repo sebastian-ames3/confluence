@@ -19,7 +19,7 @@ from typing import List, Dict, Any, Optional
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from collectors.macro42 import Macro42Collector
+from collectors.macro42_selenium import Macro42Collector
 from collectors.youtube_api import YouTubeCollector
 from collectors.substack_rss import SubstackCollector
 from collectors.twitter_api import TwitterCollector
