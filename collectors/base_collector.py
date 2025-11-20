@@ -71,7 +71,7 @@ class BaseCollector(ABC):
                 return False
 
         # Content type must be valid
-        valid_types = ["text", "pdf", "video", "image", "article", "tweet", "chart", "post"]
+        valid_types = ["text", "pdf", "video", "image", "article", "tweet", "chart", "post", "blog_post"]
         if content["content_type"] not in valid_types:
             logger.warning(f"Invalid content type: {content['content_type']}")
             return False
@@ -192,7 +192,19 @@ class BaseCollector(ABC):
 
         try:
             # Collect content
-            content_items = await self.collect()
+            collection_result = await self.collect()
+
+            # Handle different return formats
+            if isinstance(collection_result, dict) and "content" in collection_result:
+                # Twitter-style return with nested content
+                content_items = collection_result["content"]
+            elif isinstance(collection_result, list):
+                # Standard list return
+                content_items = collection_result
+            else:
+                # Fallback to empty list
+                logger.warning(f"Unexpected collect() return type: {type(collection_result)}")
+                content_items = []
 
             # Save to database
             saved_count = await self.save_to_database(content_items)
