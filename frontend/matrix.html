@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confluence Matrix - Macro Confluence Hub</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .matrix-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .matrix-table th {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 12px 8px;
+            text-align: center;
+            border: 1px solid var(--border-color);
+            font-size: 12px;
+        }
+
+        .matrix-table td {
+            padding: 12px 8px;
+            text-align: center;
+            border: 1px solid var(--border-color);
+        }
+
+        .matrix-cell {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--radius-sm);
+            font-weight: 600;
+            margin: 0 auto;
+        }
+
+        .score-0 { background: rgba(239, 68, 68, 0.3); color: var(--danger); }
+        .score-1 { background: rgba(245, 158, 11, 0.3); color: var(--warning); }
+        .score-2 { background: rgba(16, 185, 129, 0.3); color: var(--success); }
+
+        .theme-cell {
+            text-align: left;
+            max-width: 250px;
+        }
+
+        .matrix-container {
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <a href="index.html" class="logo">Macro Confluence Hub</a>
+            <nav class="nav">
+                <a href="index.html">Today</a>
+                <a href="themes.html">Themes</a>
+                <a href="sources.html">Sources</a>
+                <a href="matrix.html" class="active">Matrix</a>
+                <a href="historical.html">Historical</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="container">
+        <div class="flex-between mb-lg">
+            <h1 class="section-title">Confluence Matrix</h1>
+            <div class="flex gap-md">
+                <select id="days-filter" class="btn btn-secondary" onchange="loadMatrix()">
+                    <option value="7">Last 7 days</option>
+                    <option value="30" selected>Last 30 days</option>
+                    <option value="90">Last 90 days</option>
+                </select>
+                <select id="score-filter" class="btn btn-secondary" onchange="loadMatrix()">
+                    <option value="0">All scores</option>
+                    <option value="4" selected>Score >=4</option>
+                    <option value="6">Score >=6</option>
+                    <option value="8">Score >=8</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="card mb-lg">
+            <div class="card-body">
+                <div class="flex gap-lg flex-center">
+                    <span class="text-secondary">Score Legend:</span>
+                    <div class="flex gap-sm flex-center">
+                        <div class="matrix-cell score-0">0</div>
+                        <span class="text-secondary">Weak</span>
+                    </div>
+                    <div class="flex gap-sm flex-center">
+                        <div class="matrix-cell score-1">1</div>
+                        <span class="text-secondary">Medium</span>
+                    </div>
+                    <div class="flex gap-sm flex-center">
+                        <div class="matrix-cell score-2">2</div>
+                        <span class="text-secondary">Strong</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Matrix -->
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h2 class="card-title">7-Pillar Confluence Scores</h2>
+                    <p class="card-subtitle" id="matrix-subtitle">Loading...</p>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="matrix-container" id="matrix-container">
+                    <div class="loading">Loading matrix...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/api.js"></script>
+    <script src="js/utils.js"></script>
+    <script>
+        // ====================================================================
+        // Confluence Matrix Logic
+        // ====================================================================
+
+        /**
+         * Load matrix data
+         */
+        async function loadMatrix() {
+            const days = parseInt(document.getElementById('days-filter').value);
+            const minScore = parseInt(document.getElementById('score-filter').value);
+
+            try {
+                showLoading('matrix-container');
+
+                const data = await getConfluenceMatrix(days, minScore);
+
+                document.getElementById('matrix-subtitle').textContent =
+                    `${data.matrix.length} items • Last ${days} days • Min score: ${minScore}`;
+
+                renderMatrix(data);
+
+            } catch (error) {
+                console.error('Error loading matrix:', error);
+                showError('matrix-container', 'Failed to load confluence matrix');
+            }
+        }
+
+        /**
+         * Render matrix table
+         */
+        function renderMatrix(data) {
+            const container = document.getElementById('matrix-container');
+
+            if (!data.matrix || data.matrix.length === 0) {
+                showEmpty('matrix-container', 'No data matches your filters');
+                return;
+            }
+
+            const pillarNames = [
+                { key: 'macro', label: 'Macro' },
+                { key: 'fundamentals', label: 'Funds' },
+                { key: 'valuation', label: 'Val' },
+                { key: 'positioning', label: 'Pos' },
+                { key: 'policy', label: 'Policy' },
+                { key: 'price_action', label: 'Price' },
+                { key: 'options_vol', label: 'Vol' }
+            ];
+
+            const html = `
+                <table class="matrix-table">
+                    <thead>
+                        <tr>
+                            <th style="min-width: 200px;">Theme / Source</th>
+                            ${pillarNames.map(p => `<th>${p.label}</th>`).join('')}
+                            <th>Core</th>
+                            <th>Total</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${data.matrix.map(item => `
+                            <tr>
+                                <td class="theme-cell">
+                                    <div style="font-weight: 500; margin-bottom: 4px;">
+                                        ${truncate(item.theme, 60)}
+                                    </div>
+                                    <div style="font-size: 12px; color: var(--text-secondary);">
+                                        <span class="badge badge-info">${item.source}</span>
+                                        ${formatDate(item.scored_at)}
+                                    </div>
+                                </td>
+                                ${pillarNames.map(p => `
+                                    <td>
+                                        <div class="matrix-cell score-${item.pillars[p.key]}">
+                                            ${item.pillars[p.key]}
+                                        </div>
+                                    </td>
+                                `).join('')}
+                                <td>
+                                    <strong>${item.totals.core}/10</strong>
+                                </td>
+                                <td>
+                                    <strong>${item.totals.total}/14</strong>
+                                </td>
+                                <td>
+                                    ${item.totals.meets_threshold ?
+                                        '<span class="badge badge-success">Pass</span>' :
+                                        '<span class="badge badge-neutral">-</span>'}
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+
+            container.innerHTML = html;
+        }
+
+        // Load matrix on page load
+        document.addEventListener('DOMContentLoaded', loadMatrix);
+    </script>
+</body>
+</html>
