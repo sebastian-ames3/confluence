@@ -98,19 +98,18 @@ async def run_collection(time_label: str):
         try:
             logger.info(f"[{name}] Starting collection...")
 
-            # Run collection (handle async)
-            collected = await collector.collect()
+            # Run full collection process (collect + save to database)
+            result = await collector.run()
 
             # Log results
-            if isinstance(collected, list):
-                count = len(collected)
-            elif isinstance(collected, dict):
-                count = collected.get('count', 1)
+            if result["status"] == "success":
+                logger.info(
+                    f"[{name}] Collection complete - "
+                    f"{result['saved']}/{result['collected']} items saved to database"
+                )
+                results["successful"] += 1
             else:
-                count = 1 if collected else 0
-
-            logger.info(f"[{name}] Collection complete - {count} items collected")
-            results["successful"] += 1
+                raise Exception(result.get("error", "Unknown error"))
 
         except Exception as e:
             logger.error(f"[{name}] Collection failed: {e}")
