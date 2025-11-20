@@ -11,7 +11,12 @@ import logging
 from datetime import datetime
 import os
 import sys
+import asyncio
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
@@ -35,7 +40,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def run_collection(time_label: str):
+async def run_collection(time_label: str):
     """
     Run all collectors (except Discord).
 
@@ -46,13 +51,42 @@ def run_collection(time_label: str):
     logger.info(f"Starting {time_label} collection run")
     logger.info(f"=" * 80)
 
-    collectors = [
-        ("YouTube", YouTubeCollector),
-        ("Substack", SubstackCollector),
-        ("Twitter", TwitterCollector),
-        ("42 Macro", Macro42Collector),
-        ("KT Technical", KTTechnicalCollector)
-    ]
+    # Initialize collectors with credentials from environment
+    collectors = []
+
+    # YouTube
+    youtube_api_key = os.getenv('YOUTUBE_API_KEY')
+    if youtube_api_key:
+        collectors.append(("YouTube", YouTubeCollector(api_key=youtube_api_key)))
+    else:
+        logger.warning("[YouTube] Skipping - YOUTUBE_API_KEY not set")
+
+    # Substack
+    collectors.append(("Substack", SubstackCollector()))
+
+    # Twitter
+    twitter_token = os.getenv('TWITTER_SESSION_TOKEN') or os.getenv('TWITTER_BEARER_TOKEN')
+    if twitter_token:
+        collectors.append(("Twitter", TwitterCollector(auth_token=twitter_token)))
+    else:
+        logger.warning("[Twitter] Using default collector (may have limited functionality)")
+        collectors.append(("Twitter", TwitterCollector()))
+
+    # 42 Macro
+    macro42_email = os.getenv('MACRO42_EMAIL')
+    macro42_password = os.getenv('MACRO42_PASSWORD')
+    if macro42_email and macro42_password:
+        collectors.append(("42 Macro", Macro42Collector(email=macro42_email, password=macro42_password)))
+    else:
+        logger.warning("[42 Macro] Skipping - MACRO42_EMAIL and MACRO42_PASSWORD not set")
+
+    # KT Technical
+    kt_email = os.getenv('KT_EMAIL')
+    kt_password = os.getenv('KT_PASSWORD')
+    if kt_email and kt_password:
+        collectors.append(("KT Technical", KTTechnicalCollector(email=kt_email, password=kt_password)))
+    else:
+        logger.warning("[KT Technical] Skipping - KT_EMAIL and KT_PASSWORD not set")
 
     results = {
         "total": len(collectors),
@@ -61,13 +95,12 @@ def run_collection(time_label: str):
         "errors": []
     }
 
-    for name, CollectorClass in collectors:
+    for name, collector in collectors:
         try:
             logger.info(f"[{name}] Starting collection...")
-            collector = CollectorClass()
 
-            # Run collection
-            collected = collector.collect()
+            # Run collection (handle async)
+            collected = await collector.collect()
 
             # Log results
             if isinstance(collected, list):
@@ -101,18 +134,18 @@ def run_collection(time_label: str):
 
 def collect_6am():
     """Morning collection routine - all collectors."""
-    run_collection("6am")
+    asyncio.run(run_collection("6am"))
 
 
 def collect_6pm():
     """Evening collection routine - all collectors."""
-    run_collection("6pm")
+    asyncio.run(run_collection("6pm"))
 
 
 def run_manual_collection():
     """Manually trigger collection (for testing or on-demand)."""
     logger.info("Running manual collection...")
-    return run_collection("manual")
+    return asyncio.run(run_collection("manual"))
 
 
 def run_scheduler():
