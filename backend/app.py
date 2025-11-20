@@ -53,11 +53,10 @@ async def health_check():
     }
 
 
-# TODO: Import and include route modules in Phase 1
-# from backend.routes import collect, analyze, confluence
-# app.include_router(collect.router, prefix="/api/collect", tags=["collection"])
-# app.include_router(analyze.router, prefix="/api/analyze", tags=["analysis"])
-# app.include_router(confluence.router, prefix="/api/confluence", tags=["confluence"])
+# Import and include route modules
+from backend.routes import dashboard
+
+app.include_router(dashboard.router, prefix="/api/dashboard", tags=["dashboard"])
 
 
 if __name__ == "__main__":

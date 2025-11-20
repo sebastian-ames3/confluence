@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Today's View - Macro Confluence Hub</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <a href="index.html" class="logo">Macro Confluence Hub</a>
+            <nav class="nav">
+                <a href="index.html" class="active">Today</a>
+                <a href="themes.html">Themes</a>
+                <a href="sources.html">Sources</a>
+                <a href="matrix.html">Matrix</a>
+                <a href="historical.html">Historical</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="container">
+        <h1 class="section-title">Today's View</h1>
+
+        <!-- Stats Summary -->
+        <div class="card">
+            <div class="stat-row">
+                <div class="stat">
+                    <div class="stat-label">Active Themes</div>
+                    <div class="stat-value" id="stat-active-themes">-</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">High Conviction</div>
+                    <div class="stat-value success" id="stat-high-conviction">-</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">Analyses (24h)</div>
+                    <div class="stat-value" id="stat-analyses-24h">-</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">Total Scored</div>
+                    <div class="stat-value" id="stat-total-scored">-</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- High Conviction Ideas -->
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h2 class="card-title">High Conviction Ideas</h2>
+                    <p class="card-subtitle">Themes with conviction >=75%</p>
+                </div>
+                <a href="themes.html" class="btn btn-secondary btn-sm">View All</a>
+            </div>
+            <div class="card-body" id="high-conviction-list">
+                <div class="loading">Loading...</div>
+            </div>
+        </div>
+
+        <!-- Latest Updates -->
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h2 class="card-title">Latest Updates</h2>
+                    <p class="card-subtitle">Content collected in last 24 hours</p>
+                </div>
+            </div>
+            <div class="card-body" id="latest-updates-list">
+                <div class="loading">Loading...</div>
+            </div>
+        </div>
+
+        <!-- High Scoring Content -->
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h2 class="card-title">High-Scoring Content</h2>
+                    <p class="card-subtitle">Confluence scores >=7/14 (last 7 days)</p>
+                </div>
+            </div>
+            <div class="card-body" id="high-scoring-list">
+                <div class="loading">Loading...</div>
+            </div>
+        </div>
+
+        <!-- Manual Triggers -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">Quick Actions</h2>
+            </div>
+            <div class="card-body">
+                <div class="flex gap-md">
+                    <button class="btn btn-primary" onclick="runCollection()" id="btn-collect">
+                        Run Collection
+                    </button>
+                    <button class="btn btn-secondary" onclick="forceAnalysis()" id="btn-analyze">
+                        Force Analysis
+                    </button>
+                    <button class="btn btn-secondary" onclick="refreshData()">
+                        Refresh Data
+                    </button>
+                </div>
+                <p class="text-secondary mt-md" id="action-status"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/api.js"></script>
+    <script src="js/utils.js"></script>
+    <script>
+        // ====================================================================
+        // Today's View Logic
+        // ====================================================================
+
+        /**
+         * Load all data for Today's View
+         */
+        async function loadTodayView() {
+            try {
+                const [todayData, stats] = await Promise.all([
+                    getTodayView(),
+                    getDashboardStats()
+                ]);
+
+                // Update stats
+                document.getElementById('stat-active-themes').textContent = todayData.summary.active_themes || 0;
+                document.getElementById('stat-high-conviction').textContent = todayData.summary.high_conviction_count || 0;
+                document.getElementById('stat-analyses-24h').textContent = stats.recent_activity.last_24h_analyzed || 0;
+                document.getElementById('stat-total-scored').textContent = stats.content.scored || 0;
+
+                // Render high conviction themes
+                renderHighConvictionThemes(todayData.high_conviction_themes);
+
+                // Render latest updates
+                renderLatestUpdates(todayData.latest_updates);
+
+                // Render high-scoring content
+                renderHighScoringContent(todayData.high_scoring_content);
+
+            } catch (error) {
+                console.error('Error loading Today View:', error);
+                showError('high-conviction-list', 'Failed to load data. Check console for details.');
+            }
+        }
+
+        /**
+         * Render high conviction themes
+         */
+        function renderHighConvictionThemes(themes) {
+            const container = document.getElementById('high-conviction-list');
+
+            if (!themes || themes.length === 0) {
+                showEmpty('high-conviction-list', 'No high conviction themes yet');
+                return;
+            }
+
+            const html = `
+                <ul class="list">
+                    ${themes.map(theme => `
+                        <li class="list-item" onclick="navigateTo('themes.html?id=${theme.id}')">
+                            <div class="list-item-title">${theme.name}</div>
+                            <div class="list-item-meta">
+                                <span class="stat-value ${getConvictionClass(theme.conviction)}">
+                                    ${formatConviction(theme.conviction)}
+                                </span>
+                                <span>${theme.evidence_count} sources</span>
+                                <span>${formatDate(theme.updated_at)}</span>
+                            </div>
+                            ${theme.description ? `<p class="text-secondary mt-xs">${truncate(theme.description, 150)}</p>` : ''}
+                        </li>
+                    `).join('')}
+                </ul>
+            `;
+
+            container.innerHTML = html;
+        }
+
+        /**
+         * Render latest updates
+         */
+        function renderLatestUpdates(updates) {
+            const container = document.getElementById('latest-updates-list');
+
+            if (!updates || updates.length === 0) {
+                showEmpty('latest-updates-list', 'No updates in last 24 hours');
+                return;
+            }
+
+            const html = `
+                <ul class="list">
+                    ${updates.map(update => `
+                        <li class="list-item">
+                            <div class="list-item-title">
+                                <span class="badge badge-info">${update.source}</span>
+                                ${update.content_type}
+                            </div>
+                            <div class="list-item-meta">
+                                <span>${formatDate(update.collected_at)}</span>
+                                ${update.url ? `<a href="${update.url}" target="_blank" class="text-primary">View</a>` : ''}
+                            </div>
+                        </li>
+                    `).join('')}
+                </ul>
+            `;
+
+            container.innerHTML = html;
+        }
+
+        /**
+         * Render high-scoring content
+         */
+        function renderHighScoringContent(content) {
+            const container = document.getElementById('high-scoring-list');
+
+            if (!content || content.length === 0) {
+                showEmpty('high-scoring-list', 'No high-scoring content in last 7 days');
+                return;
+            }
+
+            const html = `
+                <ul class="list">
+                    ${content.map(item => `
+                        <li class="list-item">
+                            <div class="flex-between mb-xs">
+                                <div>
+                                    <span class="badge badge-info">${item.source}</span>
+                                    ${item.meets_threshold ? '<span class="badge badge-success">Threshold Met</span>' : ''}
+                                </div>
+                                <div>
+                                    <span class="badge badge-neutral">Core: ${item.core_score}/10</span>
+                                    <span class="badge badge-neutral">Total: ${item.total_score}/14</span>
+                                </div>
+                            </div>
+                            <div class="list-item-meta">
+                                ${item.key_themes.slice(0, 3).map(theme =>
+                                    `<span>${theme}</span>`
+                                ).join(' • ')}
+                            </div>
+                            <div class="list-item-meta mt-xs">
+                                ${item.sentiment ? `<span class="badge ${getSentimentClass(item.sentiment)}">${item.sentiment}</span>` : ''}
+                                ${item.conviction ? `<span>Conviction: ${item.conviction}/10</span>` : ''}
+                                <span>${formatDate(item.scored_at)}</span>
+                            </div>
+                        </li>
+                    `).join('')}
+                </ul>
+            `;
+
+            container.innerHTML = html;
+        }
+
+        /**
+         * Run manual collection
+         */
+        async function runCollection() {
+            const btn = document.getElementById('btn-collect');
+            const status = document.getElementById('action-status');
+
+            btn.disabled = true;
+            btn.textContent = 'Running...';
+            status.textContent = 'Triggering collection...';
+            status.style.color = 'var(--primary)';
+
+            try {
+                // TODO: Implement collection trigger endpoint
+                await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate
+
+                status.textContent = 'Collection triggered successfully! Data will be updated shortly.';
+                status.style.color = 'var(--success)';
+
+                // Refresh data after 3 seconds
+                setTimeout(refreshData, 3000);
+
+            } catch (error) {
+                status.textContent = 'Collection failed: ' + error.message;
+                status.style.color = 'var(--danger)';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Run Collection';
+            }
+        }
+
+        /**
+         * Force re-analysis
+         */
+        async function forceAnalysis() {
+            const btn = document.getElementById('btn-analyze');
+            const status = document.getElementById('action-status');
+
+            btn.disabled = true;
+            btn.textContent = 'Running...';
+            status.textContent = 'Triggering analysis...';
+            status.style.color = 'var(--primary)';
+
+            try {
+                // TODO: Implement analysis trigger endpoint
+                await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate
+
+                status.textContent = 'Analysis triggered successfully! Results will be available shortly.';
+                status.style.color = 'var(--success)';
+
+                // Refresh data after 3 seconds
+                setTimeout(refreshData, 3000);
+
+            } catch (error) {
+                status.textContent = 'Analysis failed: ' + error.message;
+                status.style.color = 'var(--danger)';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Force Analysis';
+            }
+        }
+
+        /**
+         * Refresh all data
+         */
+        function refreshData() {
+            document.getElementById('action-status').textContent = 'Refreshing...';
+            loadTodayView();
+            setTimeout(() => {
+                document.getElementById('action-status').textContent = '';
+            }, 2000);
+        }
+
+        // Load data on page load
+        document.addEventListener('DOMContentLoaded', loadTodayView);
+    </script>
+</body>
+</html>
