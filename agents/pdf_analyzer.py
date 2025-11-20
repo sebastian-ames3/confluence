@@ -67,15 +67,19 @@ class PDFAnalyzerAgent(BaseAgent):
         self,
         pdf_path: str,
         source: str = "unknown",
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
+        analyze_images: bool = False,
+        image_limit: Optional[int] = None
     ) -> Dict[str, Any]:
         """
-        Full pipeline: PDF → text+tables → analysis.
+        Full pipeline: PDF → text+tables+images → analysis.
 
         Args:
             pdf_path: Path to PDF file
             source: Source of PDF (42macro, discord, etc.)
             metadata: Optional metadata (report_type, date, etc.)
+            analyze_images: Whether to extract and analyze images (Chart Intelligence)
+            image_limit: Maximum number of images to analyze (for testing/cost control)
 
         Returns:
             Complete analysis with extracted insights
@@ -85,7 +89,7 @@ class PDFAnalyzerAgent(BaseAgent):
 
         try:
             logger.info(f"Analyzing PDF: {pdf_path}")
-            logger.info(f"Source: {source}")
+            logger.info(f"Source: {source}, Analyze Images: {analyze_images}")
 
             # Step 1: Extract text
             extracted_text = self.extract_text(pdf_path)
@@ -93,16 +97,22 @@ class PDFAnalyzerAgent(BaseAgent):
             # Step 2: Extract tables
             tables = self.extract_tables(pdf_path)
 
-            # Step 3: Detect report type (for 42macro)
+            # Step 3: Extract and analyze images (if enabled)
+            image_analyses = []
+            if analyze_images:
+                image_analyses = self.analyze_images(pdf_path, source, image_limit)
+
+            # Step 4: Detect report type (for 42macro)
             report_type = self._detect_report_type(extracted_text, source, metadata)
 
-            # Step 4: Analyze with Claude
+            # Step 5: Analyze with Claude
             analysis = self.analyze_content(
                 text=extracted_text,
                 tables=tables,
                 source=source,
                 report_type=report_type,
-                metadata=metadata
+                metadata=metadata,
+                image_analyses=image_analyses
             )
 
             # Add metadata
@@ -110,11 +120,12 @@ class PDFAnalyzerAgent(BaseAgent):
             analysis["source"] = source
             analysis["report_type"] = report_type
             analysis["page_count"] = self._get_page_count(pdf_path)
+            analysis["images_extracted"] = len(image_analyses) if analyze_images else 0
             analysis["processed_at"] = datetime.utcnow().isoformat()
 
             logger.info(
                 f"Analysis complete. Extracted {len(analysis.get('key_themes', []))} themes, "
-                f"{len(tables)} tables"
+                f"{len(tables)} tables, {len(image_analyses)} images analyzed"
             )
 
             return analysis
@@ -330,13 +341,134 @@ class PDFAnalyzerAgent(BaseAgent):
             logger.error(f"Image extraction failed: {e}")
             raise
 
+    def analyze_images(
+        self,
+        pdf_path: str,
+        source: str = "unknown",
+        image_limit: Optional[int] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Extract, classify, and analyze images from PDF.
+
+        Pipeline:
+        1. Extract all images from PDF
+        2. Classify each image (filter out text_only)
+        3. Analyze non-text_only images with Image Intelligence Agent
+        4. Return list of image analyses
+
+        Args:
+            pdf_path: Path to PDF file
+            source: Source of PDF
+            image_limit: Maximum number of images to analyze (for cost control)
+
+        Returns:
+            List of image analysis results
+        """
+        try:
+            logger.info(f"Starting image analysis pipeline for: {pdf_path}")
+
+            # Step 1: Extract images
+            extracted_images = self.extract_images(pdf_path)
+            logger.info(f"Extracted {len(extracted_images)} images")
+
+            if not extracted_images:
+                logger.info("No images to analyze")
+                return []
+
+            # Step 2: Classify images
+            from agents.visual_content_classifier import VisualContentClassifier
+            classifier = VisualContentClassifier()
+
+            image_paths = [img["image_path"] for img in extracted_images]
+            classification_results = classifier.classify_batch(
+                image_paths,
+                use_vision_api=False  # Use heuristics only for classification
+            )
+
+            # Step 3: Filter images to analyze (skip text_only)
+            images_to_analyze = []
+            for item in classification_results["classifications"]:
+                if "classification" in item:
+                    content_type = item["classification"]["content_type"]
+                    route_to = item["classification"]["route_to"]
+
+                    if route_to != "skip":
+                        # Find the original image metadata
+                        image_path = item["image_path"]
+                        image_metadata = next(
+                            (img for img in extracted_images if img["image_path"] == image_path),
+                            None
+                        )
+                        if image_metadata:
+                            images_to_analyze.append({
+                                "metadata": image_metadata,
+                                "classification": item["classification"]
+                            })
+
+            logger.info(
+                f"Filtered {len(images_to_analyze)}/{len(extracted_images)} images for analysis "
+                f"({len(extracted_images) - len(images_to_analyze)} skipped as text_only)"
+            )
+
+            # Apply image limit if specified
+            if image_limit and len(images_to_analyze) > image_limit:
+                logger.info(f"Limiting analysis to {image_limit} images (cost control)")
+                images_to_analyze = images_to_analyze[:image_limit]
+
+            # Step 4: Analyze images with Image Intelligence Agent
+            if not images_to_analyze:
+                logger.info("No images need analysis after filtering")
+                return []
+
+            from agents.image_intelligence import ImageIntelligenceAgent
+            image_analyzer = ImageIntelligenceAgent()
+
+            image_analyses = []
+            for i, item in enumerate(images_to_analyze, 1):
+                logger.info(
+                    f"Analyzing image {i}/{len(images_to_analyze)}: "
+                    f"page {item['metadata']['page_number']}"
+                )
+
+                try:
+                    analysis = image_analyzer.analyze(
+                        image_path=item["metadata"]["image_path"],
+                        source=source,
+                        context=f"Chart from page {item['metadata']['page_number']}",
+                        metadata={
+                            "page_number": item["metadata"]["page_number"],
+                            "classification": item["classification"]["content_type"]
+                        }
+                    )
+
+                    image_analyses.append({
+                        "page_number": item["metadata"]["page_number"],
+                        "classification": item["classification"]["content_type"],
+                        "analysis": analysis
+                    })
+
+                except Exception as e:
+                    logger.error(
+                        f"Failed to analyze image on page {item['metadata']['page_number']}: {e}"
+                    )
+                    # Continue with other images
+
+            logger.info(f"Successfully analyzed {len(image_analyses)} images")
+            return image_analyses
+
+        except Exception as e:
+            logger.error(f"Image analysis pipeline failed: {e}")
+            # Return empty list to allow text analysis to continue
+            return []
+
     def analyze_content(
         self,
         text: str,
         tables: List[Dict[str, Any]],
         source: str,
         report_type: str,
-        metadata: Dict[str, Any]
+        metadata: Dict[str, Any],
+        image_analyses: Optional[List[Dict[str, Any]]] = None
     ) -> Dict[str, Any]:
         """
         Analyze extracted PDF content with Claude.
