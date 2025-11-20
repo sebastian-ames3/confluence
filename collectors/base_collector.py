@@ -71,7 +71,7 @@ class BaseCollector(ABC):
                 return False
 
         # Content type must be valid
-        valid_types = ["text", "pdf", "video", "image"]
+        valid_types = ["text", "pdf", "video", "image", "article", "tweet", "chart", "post"]
         if content["content_type"] not in valid_types:
             logger.warning(f"Invalid content type: {content['content_type']}")
             return False
