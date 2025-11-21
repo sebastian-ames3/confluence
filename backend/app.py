@@ -56,9 +56,10 @@ async def health_check():
 
 
 # Import and include route modules
-from backend.routes import dashboard
+from backend.routes import dashboard, websocket
 
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["dashboard"])
+app.include_router(websocket.router, tags=["websocket"])
 
 # Mount static files for frontend
 frontend_path = Path(__file__).parent.parent / "frontend"

@@ -32,6 +32,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Test script: `scripts/test_cleanup.py`
   - Tested: 12.72 MB current usage (9.58 MB temp, 3.14 MB database)
 
+- **Dashboard Enhancements**: Mobile-first UX with real-time updates
+  - Mobile-responsive CSS (`frontend/css/mobile.css`): Breakpoints for mobile (<768px), tablet (768-1024px), desktop (>1024px)
+  - Hamburger menu for mobile navigation
+  - WebSocket backend (`backend/routes/websocket.py`): Real-time push notifications with ConnectionManager
+  - WebSocket client (`frontend/js/websocket.js`): Auto-reconnect, heartbeat, event system, toast notifications
+  - Confluence Heatmap visualization (`frontend/heatmap.html`): 7-pillar scoring grid
+  - Real-time event broadcasting: new_analysis, collection_complete, confluence_update, theme_update, high_conviction_alert
+  - Toast notifications for all real-time events
+  - Connection status indicator in header (live/disconnected)
+  - Mobile touch optimizations (44px minimum tap targets)
+  - Responsive grids (4-column → 2-column → 1-column on smaller screens)
+
 ### Changed
 - **PDF Analyzer Agent**: Enhanced to support transcript-based prioritization
   - Added `transcript` parameter to `analyze()` method (backwards compatible)

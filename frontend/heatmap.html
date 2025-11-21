@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confluence Heatmap - Macro Confluence Hub</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/mobile.css">
+    <style>
+        /* Heatmap Specific Styles */
+        .heatmap {
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        .heatmap table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .heatmap th {
+            background: var(--bg-card);
+            padding: var(--spacing-sm);
+            text-align: center;
+            font-weight: 600;
+            border: 1px solid var(--border-color);
+        }
+
+        .heatmap td {
+            padding: var(--spacing-sm);
+            text-align: center;
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .heatmap td:hover {
+            transform: scale(1.1);
+            z-index: 10;
+            position: relative;
+        }
+
+        .heatmap .theme-name {
+            text-align: left;
+            font-weight: 500;
+            max-width: 200px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .heatmap .total-score {
+            font-weight: 600;
+        }
+
+        /* Score Colors */
+        .score-0 { background: rgba(50, 50, 50, 0.3); color: var(--text-secondary); }
+        .score-1 { background: rgba(245, 158, 11, 0.3); color: #fbbf24; }
+        .score-2 { background: rgba(16, 185, 129, 0.5); color: #10b981; }
+
+        /* Pillar Headers */
+        .pillar-header {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <a href="index.html" class="logo">Macro Confluence Hub</a>
+            <button class="hamburger" onclick="toggleMobileNav()">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <nav class="nav" id="main-nav">
+                <a href="index.html">Today</a>
+                <a href="themes.html">Themes</a>
+                <a href="sources.html">Sources</a>
+                <a href="matrix.html">Matrix</a>
+                <a href="heatmap.html" class="active">Heatmap</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="container">
+        <h1 class="section-title">Confluence Heatmap</h1>
+        <p class="text-secondary mb-lg">7-pillar confluence scores across active themes</p>
+
+        <!-- Heatmap Card -->
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h2 class="card-title">Active Themes</h2>
+                    <p class="card-subtitle">Real-time confluence scoring</p>
+                </div>
+                <button class="btn btn-secondary btn-sm" onclick="refreshHeatmap()">Refresh</button>
+            </div>
+            <div class="card-body">
+                <div class="heatmap" id="heatmap-container">
+                    <div class="loading">Loading heatmap...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">Scoring Legend</h2>
+            </div>
+            <div class="card-body">
+                <div class="grid grid-2">
+                    <div>
+                        <h3 style="font-size: 14px; margin-bottom: var(--spacing-sm);">Pillar Scores</h3>
+                        <ul class="list">
+                            <li class="list-item">
+                                <span class="badge" style="background: rgba(16, 185, 129, 0.5);">2</span>
+                                Strong signal with multiple independent indicators
+                            </li>
+                            <li class="list-item">
+                                <span class="badge" style="background: rgba(245, 158, 11, 0.3);">1</span>
+                                Some evidence but incomplete
+                            </li>
+                            <li class="list-item">
+                                <span class="badge score-0">0</span>
+                                Weak or no signal
+                            </li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 style="font-size: 14px; margin-bottom: var(--spacing-sm);">Pillars</h3>
+                        <ul class="list">
+                            <li class="list-item"><strong>Macro:</strong> Data & regime analysis</li>
+                            <li class="list-item"><strong>Fund:</strong> Sector/company fundamentals</li>
+                            <li class="list-item"><strong>Val:</strong> Valuation & capital cycle</li>
+                            <li class="list-item"><strong>Pos:</strong> Positioning/flows</li>
+                            <li class="list-item"><strong>Pol:</strong> Narrative/policy alignment</li>
+                            <li class="list-item"><strong>TA:</strong> Price action/technical</li>
+                            <li class="list-item"><strong>Vol:</strong> Options/volatility surface</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/api.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/websocket.js"></script>
+    <script>
+        /**
+         * Mobile nav toggle
+         */
+        function toggleMobileNav() {
+            const nav = document.getElementById('main-nav');
+            nav.classList.toggle('active');
+        }
+
+        /**
+         * Load and render heatmap
+         */
+        async function loadHeatmap() {
+            const container = document.getElementById('heatmap-container');
+
+            try {
+                // Mock data for demonstration - replace with real API call
+                const themes = await getConfluenceHeatmap();
+
+                renderHeatmap(themes);
+
+            } catch (error) {
+                console.error('Failed to load heatmap:', error);
+                container.innerHTML = '<div class="error">Failed to load heatmap. Using demo data.</div>';
+
+                // Demo data
+                renderHeatmap([
+                    {
+                        name: "Tech Sector Rotation",
+                        pillar_scores: { macro: 2, fundamentals: 1, valuation: 2, positioning: 1, policy: 2, price_action: 2, options_vol: 1 },
+                        total_score: 11
+                    },
+                    {
+                        name: "Fed Pivot Imminent",
+                        pillar_scores: { macro: 2, fundamentals: 1, valuation: 1, positioning: 2, policy: 2, price_action: 1, options_vol: 0 },
+                        total_score: 9
+                    },
+                    {
+                        name: "Dollar Weakness",
+                        pillar_scores: { macro: 1, fundamentals: 1, valuation: 0, positioning: 2, policy: 1, price_action: 2, options_vol: 1 },
+                        total_score: 8
+                    }
+                ]);
+            }
+        }
+
+        /**
+         * Get confluence heatmap data
+         */
+        async function getConfluenceHeatmap() {
+            // TODO: Replace with real API endpoint
+            const response = await fetch('/api/confluence/heatmap');
+            return await response.json();
+        }
+
+        /**
+         * Render heatmap table
+         */
+        function renderHeatmap(themes) {
+            const container = document.getElementById('heatmap-container');
+
+            if (!themes || themes.length === 0) {
+                container.innerHTML = '<div class="empty">No active themes to display</div>';
+                return;
+            }
+
+            const html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Theme</th>
+                            <th class="pillar-header">Macro</th>
+                            <th class="pillar-header">Fund</th>
+                            <th class="pillar-header">Val</th>
+                            <th class="pillar-header">Pos</th>
+                            <th class="pillar-header">Pol</th>
+                            <th class="pillar-header">TA</th>
+                            <th class="pillar-header">Vol</th>
+                            <th class="pillar-header">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${themes.map(theme => `
+                            <tr>
+                                <td class="theme-name" title="${theme.name}">${theme.name}</td>
+                                <td class="score-${theme.pillar_scores.macro}" onclick="showPillarDetail('${theme.name}', 'macro')">${theme.pillar_scores.macro}/2</td>
+                                <td class="score-${theme.pillar_scores.fundamentals}" onclick="showPillarDetail('${theme.name}', 'fundamentals')">${theme.pillar_scores.fundamentals}/2</td>
+                                <td class="score-${theme.pillar_scores.valuation}" onclick="showPillarDetail('${theme.name}', 'valuation')">${theme.pillar_scores.valuation}/2</td>
+                                <td class="score-${theme.pillar_scores.positioning}" onclick="showPillarDetail('${theme.name}', 'positioning')">${theme.pillar_scores.positioning}/2</td>
+                                <td class="score-${theme.pillar_scores.policy}" onclick="showPillarDetail('${theme.name}', 'policy')">${theme.pillar_scores.policy}/2</td>
+                                <td class="score-${theme.pillar_scores.price_action}" onclick="showPillarDetail('${theme.name}', 'price_action')">${theme.pillar_scores.price_action}/2</td>
+                                <td class="score-${theme.pillar_scores.options_vol}" onclick="showPillarDetail('${theme.name}', 'options_vol')">${theme.pillar_scores.options_vol}/2</td>
+                                <td class="total-score">${theme.total_score}/14</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+
+            container.innerHTML = html;
+        }
+
+        /**
+         * Show pillar detail modal (placeholder)
+         */
+        function showPillarDetail(themeName, pillar) {
+            console.log(`Show detail for ${themeName} - ${pillar}`);
+            // TODO: Implement modal with evidence details
+        }
+
+        /**
+         * Refresh heatmap
+         */
+        function refreshHeatmap() {
+            loadHeatmap();
+        }
+
+        // Load heatmap on page load
+        document.addEventListener('DOMContentLoaded', loadHeatmap);
+
+        // Refresh on WebSocket update
+        if (typeof wsClient !== 'undefined') {
+            wsClient.on('confluence_update', () => {
+                console.log('Confluence updated - refreshing heatmap');
+                loadHeatmap();
+            });
+        }
+    </script>
+</body>
+</html>
