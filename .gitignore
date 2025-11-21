@@ -50,3 +50,12 @@ htmlcov/
 # Debug files
 debug/
 nul
+
+# Development artifacts (in dev/ folder)
+dev/downloads/
+dev/temp/
+dev/logs/
+dev/test_output/
+dev/debug/
+dev/.pytest_cache/
+dev/*.log
