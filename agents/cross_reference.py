@@ -63,6 +63,16 @@ class CrossReferenceAgent(BaseAgent):
         "substack": 0.75
     }
 
+    # Conviction buckets for qualitative mapping
+    # Maps raw Bayesian probabilities to human-readable confidence levels
+    # Prevents false precision from displaying raw percentages
+    CONVICTION_BUCKETS = {
+        "low": (0.0, 0.45),           # Low conviction: <45%
+        "medium": (0.45, 0.65),       # Medium conviction: 45-65%
+        "high": (0.65, 0.85),         # High conviction: 65-85%
+        "table_pounding": (0.85, 1.0) # Table pounding: >85%
+    }
+
     def __init__(
         self,
         api_key: Optional[str] = None,
@@ -425,9 +435,13 @@ Return ONLY valid JSON."""
                 "conviction": round(posterior_conviction, 3)
             })
 
+            # Map conviction to qualitative bucket (prevents false precision)
+            conviction_bucket = self._map_conviction_to_bucket(posterior_conviction)
+
             # Update theme
             theme["current_conviction"] = round(posterior_conviction, 3)
             theme["prior_conviction"] = round(prior_conviction, 3)
+            theme["conviction_bucket"] = conviction_bucket  # Qualitative label for UI
             theme["confidence_interval"] = [round(c, 3) for c in confidence_interval]
             theme["conviction_history"] = conviction_history[-10:]  # Keep last 10
             theme["evidence_strength"] = round(evidence_strength, 3)
@@ -470,6 +484,28 @@ Return ONLY valid JSON."""
 
         # Ensure bounds
         return max(0.0, min(1.0, posterior))
+
+    def _map_conviction_to_bucket(self, conviction: float) -> str:
+        """
+        Map raw Bayesian conviction probability to qualitative bucket.
+
+        This prevents false precision - a 0.73 conviction is displayed as "high"
+        rather than "73%" which implies unwarranted mathematical certainty.
+
+        Trust the trend of the number, not the absolute value.
+
+        Args:
+            conviction: Raw conviction probability (0.0 - 1.0)
+
+        Returns:
+            Qualitative bucket: "low", "medium", "high", or "table_pounding"
+        """
+        for bucket_name, (min_val, max_val) in self.CONVICTION_BUCKETS.items():
+            if min_val <= conviction < max_val:
+                return bucket_name
+
+        # Fallback for exactly 1.0
+        return "table_pounding"
 
     def _detect_contradictions(
         self,

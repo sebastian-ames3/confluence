@@ -61,11 +61,40 @@ function formatDateTime(isoString) {
 }
 
 /**
- * Format conviction score (0-1) as percentage
+ * Format conviction score (0-1) as qualitative bucket or percentage.
+ *
+ * Prefers qualitative buckets (Low/Medium/High/Table Pounding) when available
+ * to avoid false precision. Falls back to percentage for legacy data.
+ *
+ * @param {number|object} conviction - Either a raw number (0-1) or object with bucket
  */
 function formatConviction(conviction) {
     if (conviction === null || conviction === undefined) return 'N/A';
-    return `${Math.round(conviction * 100)}%`;
+
+    // If conviction is an object with bucket, use qualitative label
+    if (typeof conviction === 'object' && conviction.bucket) {
+        return formatConvictionBucket(conviction.bucket);
+    }
+
+    // Legacy: raw number, show as percentage
+    if (typeof conviction === 'number') {
+        return `${Math.round(conviction * 100)}%`;
+    }
+
+    return 'N/A';
+}
+
+/**
+ * Format conviction bucket to human-readable label
+ */
+function formatConvictionBucket(bucket) {
+    const labels = {
+        'low': 'Low Conviction',
+        'medium': 'Medium',
+        'high': 'High',
+        'table_pounding': 'Table Pounding'
+    };
+    return labels[bucket] || bucket;
 }
 
 /**
@@ -98,14 +127,38 @@ function getSentimentClass(sentiment) {
 }
 
 /**
- * Get color class for conviction level
+ * Get color class for conviction level.
+ * Handles both qualitative buckets and legacy raw numbers.
  */
 function getConvictionClass(conviction) {
     if (conviction === null || conviction === undefined) return '';
 
-    if (conviction >= 0.75) return 'success';
-    if (conviction >= 0.5) return 'warning';
-    return 'danger';
+    // If conviction is an object with bucket
+    if (typeof conviction === 'object' && conviction.bucket) {
+        return getConvictionBucketClass(conviction.bucket);
+    }
+
+    // Legacy: raw number (0-1)
+    if (typeof conviction === 'number') {
+        if (conviction >= 0.75) return 'success';
+        if (conviction >= 0.5) return 'warning';
+        return 'danger';
+    }
+
+    return '';
+}
+
+/**
+ * Get color class for conviction bucket
+ */
+function getConvictionBucketClass(bucket) {
+    const classes = {
+        'low': 'danger',           // Red
+        'medium': 'warning',       // Yellow
+        'high': 'success',         // Green
+        'table_pounding': 'primary' // Blue (most confident)
+    };
+    return classes[bucket] || '';
 }
 
 /**

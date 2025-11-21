@@ -11,6 +11,7 @@ from repeated logins. Only re-authenticates when cookies expire.
 import logging
 import re
 import pickle
+import random
 from pathlib import Path
 from datetime import datetime
 from typing import List, Dict, Any, Optional
@@ -25,6 +26,17 @@ from webdriver_manager.chrome import ChromeDriverManager
 from collectors.base_collector import BaseCollector
 
 logger = logging.getLogger(__name__)
+
+# Pool of real browser User-Agents for rotation (reduces fingerprinting)
+USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15",
+]
 
 
 class Macro42Collector(BaseCollector):
@@ -102,7 +114,7 @@ class Macro42Collector(BaseCollector):
         return collected_items
 
     def _init_driver(self):
-        """Initialize Chrome WebDriver with options."""
+        """Initialize Chrome WebDriver with options and random User-Agent."""
         chrome_options = Options()
 
         if self.headless:
@@ -117,11 +129,15 @@ class Macro42Collector(BaseCollector):
         }
         chrome_options.add_experimental_option("prefs", prefs)
 
+        # Rotate User-Agent to reduce fingerprinting (WAF evasion)
+        user_agent = random.choice(USER_AGENTS)
+        chrome_options.add_argument(f"--user-agent={user_agent}")
+        logger.info(f"Using User-Agent: {user_agent[:50]}...")
+
         # Additional options for better compatibility
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
         chrome_options.add_argument("--window-size=1920,1080")
-        chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
 
         # Initialize driver with webdriver-manager
         service = Service(ChromeDriverManager().install())
