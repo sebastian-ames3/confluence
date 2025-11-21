@@ -525,3 +525,56 @@ body {
 .hidden {
     display: none;
 }
+
+/* ============================================================================
+   ALERT BANNER (Critical Warnings)
+   ============================================================================ */
+
+.alert-banner {
+    padding: var(--spacing-lg);
+    margin-bottom: var(--spacing-lg);
+    border-radius: var(--radius-md);
+    border: 2px solid;
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.alert-banner.alert-critical {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: var(--danger);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.alert-content {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.alert-icon {
+    font-size: 32px;
+    line-height: 1;
+}
+
+.alert-message strong {
+    display: block;
+    color: var(--danger);
+    font-size: 18px;
+    margin-bottom: var(--spacing-xs);
+    letter-spacing: 0.5px;
+}
+
+.alert-message p {
+    color: var(--text-primary);
+    margin: 0;
+}

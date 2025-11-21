@@ -106,6 +106,9 @@ class DiscordSelfCollector(BaseCollector):
             logger.error(f"Discord client error: {e}")
             raise
 
+        # Send heartbeat to backend
+        await self._send_heartbeat()
+
         return collected_data
 
     async def _collect_channel(self, channel_config: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -742,3 +745,23 @@ class DiscordSelfCollector(BaseCollector):
                 "elapsed_seconds": round(elapsed_time, 2),
                 "timestamp": datetime.utcnow().isoformat()
             }
+
+    async def _send_heartbeat(self):
+        """
+        Send heartbeat to Railway backend to indicate collector is alive.
+
+        This is critical for monitoring - if heartbeats stop, dashboard shows alert.
+        """
+        # Determine Railway URL - adjust if running locally vs in production
+        railway_url = "https://confluence-production.up.railway.app/api/heartbeat/discord"
+
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(railway_url) as response:
+                    if response.status == 200:
+                        logger.info("✓ Heartbeat sent to Railway")
+                    else:
+                        logger.warning(f"Heartbeat response: {response.status}")
+        except Exception as e:
+            logger.error(f"Failed to send heartbeat: {e}")
+            # Don't raise - heartbeat failure shouldn't block collection

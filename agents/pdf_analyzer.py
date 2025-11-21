@@ -451,6 +451,16 @@ class PDFAnalyzerAgent(BaseAgent):
                 logger.info("No images need analysis after filtering")
                 return []
 
+            # Budget check: Can we use Vision API?
+            from backend.utils.usage_limiter import get_usage_limiter
+            limiter = get_usage_limiter()
+            can_use, reason = limiter.can_use_vision(count=len(images_to_analyze))
+
+            if not can_use:
+                logger.warning(f"BUDGET LIMIT: {reason}")
+                logger.warning(f"Skipping vision analysis for {len(images_to_analyze)} images to prevent cost overrun")
+                return []
+
             from agents.image_intelligence import ImageIntelligenceAgent
             image_analyzer = ImageIntelligenceAgent()
 
@@ -483,6 +493,10 @@ class PDFAnalyzerAgent(BaseAgent):
                         f"Failed to analyze image on page {item['metadata']['page_number']}: {e}"
                     )
                     # Continue with other images
+
+            # Record vision API usage
+            if len(image_analyses) > 0:
+                limiter.record_vision_use(count=len(image_analyses), notes=f"PDF analysis: {source}")
 
             logger.info(f"Successfully analyzed {len(image_analyses)} images")
             return image_analyses
@@ -517,6 +531,24 @@ class PDFAnalyzerAgent(BaseAgent):
         try:
             logger.info(f"Analyzing content from {source} ({report_type})")
 
+            # Budget check: Can we use text API?
+            from backend.utils.usage_limiter import get_usage_limiter
+            limiter = get_usage_limiter()
+            can_use, reason = limiter.can_use_text()
+
+            if not can_use:
+                logger.warning(f"BUDGET LIMIT: {reason}")
+                logger.warning("Returning minimal analysis to prevent cost overrun")
+                return {
+                    "status": "budget_limited",
+                    "message": reason,
+                    "key_themes": [],
+                    "tickers_mentioned": [],
+                    "sentiment": "neutral",
+                    "conviction": 0,
+                    "time_horizon": "unknown"
+                }
+
             # Build system prompt based on source and report type
             system_prompt = self._get_system_prompt(source, report_type)
 
@@ -543,6 +575,9 @@ class PDFAnalyzerAgent(BaseAgent):
             # Add extracted text and tables to response
             analysis["extracted_text"] = text
             analysis["tables"] = tables
+
+            # Record text API usage
+            limiter.record_text_use(count=1, notes=f"PDF text analysis: {source} ({report_type})")
 
             logger.info(
                 f"Analysis complete: {len(analysis.get('key_themes', []))} themes, "

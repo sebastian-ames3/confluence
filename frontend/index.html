@@ -29,6 +29,17 @@
 
     <!-- Main Content -->
     <div class="container">
+        <!-- Discord Heartbeat Alert (Hidden by default, shown if stale) -->
+        <div id="discord-alert" class="alert-banner alert-critical" style="display: none;">
+            <div class="alert-content">
+                <span class="alert-icon">⚠️</span>
+                <div class="alert-message">
+                    <strong>DISCORD DISCONNECTED</strong>
+                    <p id="discord-alert-message">Data may be stale. Check your laptop script.</p>
+                </div>
+            </div>
+        </div>
+
         <h1 class="section-title">Today's View</h1>
 
         <!-- Stats Summary -->
@@ -334,8 +345,38 @@
             }, 2000);
         }
 
+        /**
+         * Check Discord heartbeat status and show alert if stale
+         */
+        async function checkDiscordHeartbeat() {
+            try {
+                const response = await fetch('/api/heartbeat/status');
+                const status = await response.json();
+
+                const discordAlert = document.getElementById('discord-alert');
+                const alertMessage = document.getElementById('discord-alert-message');
+
+                if (status.discord && status.discord.is_stale) {
+                    // Show red banner
+                    alertMessage.textContent = status.discord.message;
+                    discordAlert.style.display = 'block';
+                } else {
+                    // Hide banner
+                    discordAlert.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Failed to check Discord heartbeat:', error);
+            }
+        }
+
         // Load data on page load
-        document.addEventListener('DOMContentLoaded', loadTodayView);
+        document.addEventListener('DOMContentLoaded', () => {
+            loadTodayView();
+            checkDiscordHeartbeat();
+
+            // Check heartbeat every 5 minutes
+            setInterval(checkDiscordHeartbeat, 5 * 60 * 1000);
+        });
 
         /**
          * Toggle mobile navigation

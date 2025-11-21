@@ -3,10 +3,14 @@
 
 Collects research reports and videos from app.42macro.com using Selenium.
 Bypasses CloudFront WAF protection by using a real Chrome browser.
+
+Cookie Persistence: Saves cookies after successful login to avoid WAF red flags
+from repeated logins. Only re-authenticates when cookies expire.
 """
 
 import logging
 import re
+import pickle
 from pathlib import Path
 from datetime import datetime
 from typing import List, Dict, Any, Optional
@@ -35,6 +39,7 @@ class Macro42Collector(BaseCollector):
 
     BASE_URL = "https://app.42macro.com"
     LOGIN_URL = f"{BASE_URL}/login"
+    COOKIES_FILE = "temp/42macro_cookies.pkl"  # Cookie persistence file
 
     def __init__(self, email: str, password: str, headless: bool = True):
         """
@@ -52,7 +57,10 @@ class Macro42Collector(BaseCollector):
         self.headless = headless
         self.driver = None
 
-        logger.info("Initialized Macro42Collector (Selenium)")
+        # Ensure temp directory exists for cookies
+        Path("temp").mkdir(exist_ok=True)
+
+        logger.info("Initialized Macro42Collector (Selenium) with cookie persistence")
 
     async def collect(self) -> List[Dict[str, Any]]:
         """
@@ -67,9 +75,11 @@ class Macro42Collector(BaseCollector):
             # Initialize browser
             self._init_driver()
 
-            # Login
-            if not self._login():
-                raise Exception("Login failed")
+            # Try to load cookies first, only login if cookies don't work
+            if not self._try_load_session():
+                # Fresh login required
+                if not self._login():
+                    raise Exception("Login failed")
 
             # Collect PDFs
             logger.info("Collecting PDFs from 42 Macro...")
@@ -171,11 +181,78 @@ class Macro42Collector(BaseCollector):
             wait.until(lambda driver: driver.current_url != self.LOGIN_URL)
 
             logger.info("Login successful")
+
+            # Save cookies for next time to avoid repeated logins (WAF red flag)
+            self._save_cookies()
+
             return True
 
         except Exception as e:
             logger.error(f"Login failed: {e}")
             return False
+
+    def _try_load_session(self) -> bool:
+        """
+        Try to load saved cookies and verify session is still valid.
+
+        Returns:
+            True if session restored successfully
+        """
+        try:
+            cookies_path = Path(self.COOKIES_FILE)
+
+            if not cookies_path.exists():
+                logger.info("No saved cookies found - fresh login required")
+                return False
+
+            logger.info("Found saved cookies - attempting to restore session")
+
+            # Load cookies
+            self._load_cookies()
+
+            # Navigate to a protected page to test if session is valid
+            self.driver.get(f"{self.BASE_URL}/research")
+
+            # Check if we got redirected to login (session expired)
+            if "login" in self.driver.current_url.lower():
+                logger.info("Session expired - fresh login required")
+                return False
+
+            logger.info("✓ Session restored from cookies - skipping login")
+            return True
+
+        except Exception as e:
+            logger.warning(f"Failed to restore session from cookies: {e}")
+            return False
+
+    def _save_cookies(self):
+        """Save current browser cookies to file."""
+        try:
+            cookies = self.driver.get_cookies()
+            with open(self.COOKIES_FILE, 'wb') as f:
+                pickle.dump(cookies, f)
+            logger.info(f"Saved {len(cookies)} cookies to {self.COOKIES_FILE}")
+        except Exception as e:
+            logger.error(f"Failed to save cookies: {e}")
+
+    def _load_cookies(self):
+        """Load cookies from file into browser."""
+        try:
+            # Must navigate to domain first before adding cookies
+            self.driver.get(self.BASE_URL)
+
+            with open(self.COOKIES_FILE, 'rb') as f:
+                cookies = pickle.load(f)
+
+            for cookie in cookies:
+                # Remove 'expiry' if it's in the past to avoid errors
+                if 'expiry' in cookie:
+                    del cookie['expiry']
+                self.driver.add_cookie(cookie)
+
+            logger.info(f"Loaded {len(cookies)} cookies from {self.COOKIES_FILE}")
+        except Exception as e:
+            logger.error(f"Failed to load cookies: {e}")
 
     def _collect_pdfs(self) -> List[Dict[str, Any]]:
         """
