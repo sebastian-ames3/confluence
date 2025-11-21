@@ -17,22 +17,26 @@ class UsageLimiter:
     Enforces daily API usage limits with graceful degradation.
 
     Hard Limits (Daily):
-    - Vision analyses: 20 per day (~$0.60)
-    - Transcript analyses: 5 per day (~$1.50)
-    - Text analyses: 100 per day (~$5.00)
+    - Vision analyses: 20 per day (~$0.70)
+    - Transcript analyses: 10 per day (~$0.20)
+    - Text analyses: 150 per day (~$3.75)
 
-    Total estimated budget: ~$7/day = ~$210/month
+    Total estimated budget: ~$4.65/day = ~$140/month
+
+    Note: Actual costs may vary based on content length and complexity.
+    Estimates based on Claude Sonnet 4 pricing ($3/1M input, $15/1M output).
     """
 
     # Daily limits
     MAX_VISION_DAILY = 20
-    MAX_TRANSCRIPT_DAILY = 5
-    MAX_TEXT_DAILY = 100
+    MAX_TRANSCRIPT_DAILY = 10  # Increased since transcripts are cheap
+    MAX_TEXT_DAILY = 150       # Increased - text is cheap
 
-    # Estimated costs (USD)
-    COST_PER_VISION = 0.03
-    COST_PER_TRANSCRIPT = 0.30
-    COST_PER_TEXT = 0.05
+    # Estimated costs (USD) - Based on Claude Sonnet 4 pricing
+    # Input: $3/1M tokens, Output: $15/1M tokens
+    COST_PER_VISION = 0.035    # ~1,500 image tokens + analysis
+    COST_PER_TRANSCRIPT = 0.02 # YouTube API is FREE, only text analysis cost
+    COST_PER_TEXT = 0.025      # ~4,000 input + 800 output tokens
 
     def __init__(self):
         self.db = get_db()
