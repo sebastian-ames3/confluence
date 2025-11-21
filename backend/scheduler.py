@@ -2,7 +2,8 @@
 Scheduled Tasks
 
 Background scheduler for automated data collection (6am, 6pm daily).
-Runs all collectors except Discord (which runs locally on Sebastian's laptop).
+Runs: YouTube, Substack, 42 Macro, KT Technical
+Excluded: Discord (runs locally), Twitter (rate limits - manual only)
 """
 
 import schedule
@@ -24,7 +25,7 @@ sys.path.insert(0, str(project_root))
 
 from collectors.youtube_api import YouTubeCollector
 from collectors.substack_rss import SubstackCollector
-from collectors.twitter_api import TwitterCollector
+# from collectors.twitter_api import TwitterCollector  # Excluded - manual collection only
 from collectors.macro42_selenium import Macro42Collector
 from collectors.kt_technical import KTTechnicalCollector
 
@@ -64,12 +65,14 @@ async def run_collection(time_label: str):
     # Substack
     collectors.append(("Substack", SubstackCollector()))
 
-    # Twitter (using Twitter API v2)
-    twitter_bearer = os.getenv('TWITTER_BEARER_TOKEN')
-    if twitter_bearer:
-        collectors.append(("Twitter", TwitterCollector(bearer_token=twitter_bearer)))
-    else:
-        logger.warning("[Twitter] Skipping - TWITTER_BEARER_TOKEN not set")
+    # Twitter - EXCLUDED from automated collection due to Free tier rate limits (100 API calls/month)
+    # Twitter collector preserved for future manual use via chat interface or selective analysis
+    # See: scripts/test_twitter_manual.py for manual collection
+    # twitter_bearer = os.getenv('TWITTER_BEARER_TOKEN')
+    # if twitter_bearer:
+    #     collectors.append(("Twitter", TwitterCollector(bearer_token=twitter_bearer)))
+    # else:
+    #     logger.warning("[Twitter] Skipping - TWITTER_BEARER_TOKEN not set")
 
     # 42 Macro (using Selenium)
     macro42_email = os.getenv('MACRO42_EMAIL')
@@ -152,10 +155,12 @@ def run_scheduler():
     logger.info("Macro Confluence Hub - Scheduler Started")
     logger.info("=" * 80)
     logger.info("Scheduled collections:")
-    logger.info("  - 6:00 AM daily (all collectors)")
-    logger.info("  - 6:00 PM daily (all collectors)")
+    logger.info("  - 6:00 AM daily (YouTube, Substack, 42 Macro, KT Technical)")
+    logger.info("  - 6:00 PM daily (YouTube, Substack, 42 Macro, KT Technical)")
     logger.info("")
-    logger.info("Note: Discord collection runs locally on Sebastian's laptop")
+    logger.info("Excluded collectors:")
+    logger.info("  - Discord: Runs locally on Sebastian's laptop")
+    logger.info("  - Twitter: Rate limits - manual collection only")
     logger.info("=" * 80)
 
     # Schedule daily tasks
