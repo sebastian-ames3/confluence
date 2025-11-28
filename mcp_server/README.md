@@ -6,11 +6,17 @@ Model Context Protocol server for Claude Desktop integration. Query your collect
 
 ### 1. Requirements
 
-- Python 3.9+ (uses custom JSON-RPC implementation, no external MCP packages needed)
+- Python 3.10+ (required for official MCP SDK)
 - SQLite database with collected research data
 - Claude Desktop installed
 
-### 2. Configure Claude Desktop
+### 2. Install Dependencies
+
+```bash
+pip install mcp>=1.0.0
+```
+
+### 3. Configure Claude Desktop
 
 Add the following to your Claude Desktop configuration file:
 
@@ -35,7 +41,7 @@ Add the following to your Claude Desktop configuration file:
 }
 ```
 
-### 3. Restart Claude Desktop
+### 4. Restart Claude Desktop
 
 After saving the configuration, restart Claude Desktop. You should see the confluence-hub tools available.
 

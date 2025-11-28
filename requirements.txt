@@ -46,8 +46,8 @@ schedule==1.2.0
 pydantic==2.5.3
 
 # MCP Server (Claude Desktop Integration)
-# Note: Custom implementation using JSON-RPC over stdio
-# No external MCP package required - works with Python 3.9+
+# Requires Python 3.10+ for official MCP SDK
+mcp>=1.0.0
 
 # Testing
 pytest==7.4.4
