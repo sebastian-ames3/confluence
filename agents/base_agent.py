@@ -8,6 +8,7 @@ Provides common functionality for Claude API integration.
 import os
 import json
 import logging
+from pathlib import Path
 from typing import Dict, Any, Optional
 from anthropic import Anthropic
 from dotenv import load_dotenv
@@ -16,8 +17,9 @@ from dotenv import load_dotenv
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Load environment variables
-load_dotenv()
+# Load environment variables from project root
+project_root = Path(__file__).parent.parent
+load_dotenv(project_root / ".env")
 
 
 class BaseAgent:
