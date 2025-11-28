@@ -7,7 +7,77 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased] - 2025-11-20
+## [Unreleased] - 2025-11-28
+
+### Added
+- **PRD-012: Dashboard Simplification & Synthesis Agent** - Major architecture pivot
+  - Created `agents/synthesis_agent.py` (~320 lines) - AI-generated research synthesis
+  - Macro analyst persona for natural evidence weighting
+  - Generates 1-3 paragraph summaries with key themes, high-conviction ideas, contradictions
+  - Market regime detection (risk-on, risk-off, transitioning, unclear)
+
+- **Synthesis API Routes** (`backend/routes/synthesis.py` ~400 lines)
+  - POST /synthesis/generate - Generate new synthesis for time window
+  - GET /synthesis/latest - Get most recent synthesis
+  - GET /synthesis/history - Browse synthesis history
+  - GET /synthesis/{id} - Get specific synthesis
+  - GET /synthesis/status/overview - Collection status for dashboard
+  - GET /synthesis/status/collections - Collection run history
+
+- **New Database Tables** (Migration 004)
+  - `syntheses` - Stores AI-generated research synthesis
+  - `collection_runs` - Tracks collection runs for status display
+
+- **Simplified Dashboard** (`frontend/simple.html`)
+  - Clean single-page view with status grid and synthesis panel
+  - Generate synthesis buttons (24h and 7-day)
+  - Theme tags and high-conviction ideas display
+  - Source status overview
+  - Mobile-responsive design
+
+- **Automatic Synthesis Generation** - Scheduler integration
+  - Synthesis automatically generated after each collection run
+  - Collection runs recorded in database for status tracking
+
+- **PRD-013: MCP Server Planning** - Claude Desktop integration spec
+  - Tools: search_content, get_synthesis, get_themes, get_recent, get_source_view
+  - Configuration documentation for Claude Desktop
+
+- **Confluence Routes API** - Complete REST endpoints for confluence scoring and theme tracking
+  - GET /confluence/scores - List all confluence scores with filtering
+  - GET /confluence/scores/{id} - Get single confluence score detail
+  - POST /confluence/score/{analyzed_content_id} - Score analyzed content
+  - GET /confluence/themes - List themes with conviction data
+  - GET /confluence/themes/{id} - Get theme detail with evidence
+  - POST /confluence/cross-reference - Run cross-reference analysis
+  - GET /confluence/high-conviction - Get high-conviction ideas
+
+### Changed
+- **Architecture Pivot** - From complex scoring dashboard to research synthesis assistant
+  - Scoring/confluence logic remains internal (used by AI, not displayed to user)
+  - Focus on natural language synthesis instead of numeric scores
+  - User gets 1-3 paragraph summaries instead of score matrices
+
+- **Documentation Updates** - CLAUDE.md updated to reflect actual implementation status
+  - All 10 agents marked as complete (4,456 lines total)
+  - All 5 collectors marked as production-ready
+  - Phase completion status updated (all phases complete)
+  - Agent specifications updated with features and line counts
+
+- **PRD_MASTER.md** - Added Phase 5 (Simplification & Chat Integration)
+  - PRD-012 and PRD-013 added to appendix
+  - Updated next steps for new architecture
+
+### Removed
+- **Twitter Collector** - Removed due to no API subscription
+  - Deleted `collectors/twitter_api.py`
+  - Deleted `dev/scripts/test_twitter_api.py` and `test_twitter_manual.py`
+  - Removed `tweepy` and `ntscraper` from requirements.txt
+  - Manual tweet input via dashboard planned for future version (v1.1+)
+
+---
+
+## [0.9.0] - 2025-11-20
 
 ### Added
 - **Transcript-Chart Matcher**: Cost optimization system for 42 Macro videos
