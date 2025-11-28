@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Macro Confluence Hub - Research Synthesis</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/mobile.css">
+    <style>
+        /* Simple Dashboard Specific Styles */
+        .synthesis-panel {
+            background: linear-gradient(135deg, var(--bg-card) 0%, #1e3a5f 100%);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-xl);
+            margin-bottom: var(--spacing-lg);
+            border: 1px solid var(--primary);
+        }
+
+        .synthesis-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .synthesis-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .synthesis-meta {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        .synthesis-content {
+            color: var(--text-primary);
+            line-height: 1.8;
+            font-size: 1rem;
+        }
+
+        .synthesis-content p {
+            margin-bottom: var(--spacing-md);
+        }
+
+        .theme-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--spacing-sm);
+            margin-top: var(--spacing-lg);
+        }
+
+        .theme-tag {
+            background: var(--primary);
+            color: white;
+            padding: var(--spacing-xs) var(--spacing-md);
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .conviction-ideas {
+            margin-top: var(--spacing-lg);
+            padding-top: var(--spacing-lg);
+            border-top: 1px solid var(--border-color);
+        }
+
+        .conviction-idea {
+            background: rgba(59, 130, 246, 0.1);
+            border-left: 3px solid var(--primary);
+            padding: var(--spacing-md);
+            margin-bottom: var(--spacing-sm);
+            border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+        }
+
+        .conviction-idea-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .conviction-idea-title {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .conviction-badge {
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .conviction-high { background: var(--success); color: white; }
+        .conviction-medium { background: var(--warning); color: black; }
+        .conviction-low { background: var(--text-muted); color: white; }
+
+        .conviction-idea-sources {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .status-card {
+            background: var(--bg-card);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-lg);
+            border: 1px solid var(--border-color);
+        }
+
+        .status-card-title {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .status-card-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .status-card-value.success { color: var(--success); }
+        .status-card-value.warning { color: var(--warning); }
+        .status-card-value.danger { color: var(--danger); }
+
+        .status-card-meta {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            margin-top: var(--spacing-xs);
+        }
+
+        .source-status-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--spacing-sm) 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .source-status-row:last-child {
+            border-bottom: none;
+        }
+
+        .source-name {
+            font-weight: 500;
+        }
+
+        .source-stats {
+            display: flex;
+            gap: var(--spacing-md);
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .btn-generate {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: var(--spacing-md) var(--spacing-lg);
+            border-radius: var(--radius-md);
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-generate:hover {
+            background: #2563eb;
+        }
+
+        .btn-generate:disabled {
+            background: var(--text-muted);
+            cursor: not-allowed;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: var(--spacing-xl);
+            color: var(--text-secondary);
+        }
+
+        .empty-state-icon {
+            font-size: 3rem;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .market-regime {
+            display: inline-block;
+            padding: var(--spacing-xs) var(--spacing-md);
+            border-radius: var(--radius-sm);
+            font-weight: 500;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+        }
+
+        .regime-risk-on { background: var(--success); color: white; }
+        .regime-risk-off { background: var(--danger); color: white; }
+        .regime-transitioning { background: var(--warning); color: black; }
+        .regime-unclear { background: var(--text-muted); color: white; }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--text-muted);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Simple header for this view */
+        .simple-header {
+            text-align: center;
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .simple-header h1 {
+            font-size: 2rem;
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .simple-header p {
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <a href="simple.html" class="logo">Macro Confluence Hub</a>
+            <nav class="nav" id="main-nav">
+                <a href="simple.html" class="active">Synthesis</a>
+                <a href="index.html">Full Dashboard</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="container">
+        <div class="simple-header">
+            <h1>Research Synthesis</h1>
+            <p>AI-powered analysis of your investment research</p>
+        </div>
+
+        <!-- Status Grid -->
+        <div class="status-grid">
+            <div class="status-card">
+                <div class="status-card-title">Last Collection</div>
+                <div class="status-card-value" id="last-collection-time">-</div>
+                <div class="status-card-meta" id="last-collection-type">-</div>
+            </div>
+            <div class="status-card">
+                <div class="status-card-title">Content (24h)</div>
+                <div class="status-card-value" id="content-24h">-</div>
+                <div class="status-card-meta">items collected</div>
+            </div>
+            <div class="status-card">
+                <div class="status-card-title">Content (7d)</div>
+                <div class="status-card-value" id="content-7d">-</div>
+                <div class="status-card-meta">items collected</div>
+            </div>
+            <div class="status-card">
+                <div class="status-card-title">Last Synthesis</div>
+                <div class="status-card-value" id="last-synthesis-time">-</div>
+                <div class="status-card-meta" id="last-synthesis-window">-</div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="action-buttons">
+            <button class="btn-generate" id="generate-btn" onclick="generateSynthesis('24h')">
+                Generate 24h Synthesis
+            </button>
+            <button class="btn-generate" id="generate-7d-btn" onclick="generateSynthesis('7d')" style="background: var(--bg-card); border: 1px solid var(--border-color);">
+                Generate 7-Day Synthesis
+            </button>
+        </div>
+
+        <!-- Synthesis Panel -->
+        <div class="synthesis-panel" id="synthesis-panel">
+            <div class="empty-state" id="synthesis-empty">
+                <div class="empty-state-icon">📊</div>
+                <h3>No Synthesis Available</h3>
+                <p>Click "Generate Synthesis" to create an AI summary of your research.</p>
+            </div>
+
+            <div id="synthesis-content" style="display: none;">
+                <div class="synthesis-header">
+                    <div>
+                        <div class="synthesis-title">Research Synthesis</div>
+                        <div class="synthesis-meta">
+                            <span id="synthesis-window">24h</span> analysis |
+                            <span id="synthesis-count">0</span> items analyzed |
+                            <span id="synthesis-time">-</span>
+                        </div>
+                    </div>
+                    <div id="market-regime-badge"></div>
+                </div>
+
+                <div class="synthesis-content" id="synthesis-text">
+                    <!-- Synthesis paragraphs will be inserted here -->
+                </div>
+
+                <div class="theme-tags" id="theme-tags">
+                    <!-- Theme tags will be inserted here -->
+                </div>
+
+                <div class="conviction-ideas" id="conviction-ideas">
+                    <h4 style="margin-bottom: var(--spacing-md); color: var(--text-secondary);">High-Conviction Ideas</h4>
+                    <div id="conviction-ideas-list">
+                        <!-- Conviction ideas will be inserted here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Source Status -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">Source Status</h2>
+            </div>
+            <div class="card-body" id="source-status-list">
+                <div class="loading">Loading...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // API Base URL
+        const API_BASE = '/api';
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadStatus();
+            loadLatestSynthesis();
+        });
+
+        // Load status overview
+        async function loadStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/synthesis/status/overview`);
+                const data = await response.json();
+
+                // Update status cards
+                if (data.last_collection) {
+                    const lastTime = new Date(data.last_collection.started_at);
+                    document.getElementById('last-collection-time').textContent = formatTimeAgo(lastTime);
+                    document.getElementById('last-collection-type').textContent = data.last_collection.run_type;
+                } else {
+                    document.getElementById('last-collection-time').textContent = 'Never';
+                }
+
+                document.getElementById('content-24h').textContent = data.total_content_24h || 0;
+                document.getElementById('content-7d').textContent = data.total_content_7d || 0;
+
+                if (data.latest_synthesis) {
+                    const synthTime = new Date(data.latest_synthesis.generated_at);
+                    document.getElementById('last-synthesis-time').textContent = formatTimeAgo(synthTime);
+                    document.getElementById('last-synthesis-window').textContent = data.latest_synthesis.time_window + ' window';
+                } else {
+                    document.getElementById('last-synthesis-time').textContent = 'Never';
+                    document.getElementById('last-synthesis-window').textContent = '-';
+                }
+
+                // Update source status list
+                const sourceList = document.getElementById('source-status-list');
+                if (data.sources_status && data.sources_status.length > 0) {
+                    sourceList.innerHTML = data.sources_status.map(source => `
+                        <div class="source-status-row">
+                            <span class="source-name">${source.name}</span>
+                            <div class="source-stats">
+                                <span>${source.items_24h} (24h)</span>
+                                <span>${source.items_7d} (7d)</span>
+                                <span>${source.last_collected ? formatTimeAgo(new Date(source.last_collected)) : 'Never'}</span>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    sourceList.innerHTML = '<div class="empty-state">No sources configured</div>';
+                }
+
+            } catch (error) {
+                console.error('Error loading status:', error);
+            }
+        }
+
+        // Load latest synthesis
+        async function loadLatestSynthesis() {
+            try {
+                const response = await fetch(`${API_BASE}/synthesis/latest`);
+                const data = await response.json();
+
+                if (data.status === 'not_found') {
+                    showEmptySynthesis();
+                    return;
+                }
+
+                displaySynthesis(data);
+
+            } catch (error) {
+                console.error('Error loading synthesis:', error);
+                showEmptySynthesis();
+            }
+        }
+
+        // Generate new synthesis
+        async function generateSynthesis(timeWindow) {
+            const btn = timeWindow === '24h' ? document.getElementById('generate-btn') : document.getElementById('generate-7d-btn');
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading-spinner"></span> Generating...';
+
+            try {
+                const response = await fetch(`${API_BASE}/synthesis/generate`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ time_window: timeWindow })
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    // Reload the synthesis
+                    await loadLatestSynthesis();
+                    await loadStatus();
+                } else if (data.status === 'no_content') {
+                    alert(data.message || 'No content available for synthesis');
+                } else {
+                    throw new Error(data.detail || 'Generation failed');
+                }
+
+            } catch (error) {
+                console.error('Error generating synthesis:', error);
+                alert('Failed to generate synthesis: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }
+
+        // Display synthesis content
+        function displaySynthesis(data) {
+            document.getElementById('synthesis-empty').style.display = 'none';
+            document.getElementById('synthesis-content').style.display = 'block';
+
+            // Update meta info
+            document.getElementById('synthesis-window').textContent = data.time_window;
+            document.getElementById('synthesis-count').textContent = data.content_count;
+            document.getElementById('synthesis-time').textContent = data.generated_at ? formatDateTime(new Date(data.generated_at)) : '-';
+
+            // Market regime badge
+            const regimeBadge = document.getElementById('market-regime-badge');
+            if (data.market_regime) {
+                const regimeClass = `regime-${data.market_regime.replace('_', '-')}`;
+                regimeBadge.innerHTML = `<span class="market-regime ${regimeClass}">${data.market_regime}</span>`;
+            } else {
+                regimeBadge.innerHTML = '';
+            }
+
+            // Synthesis text (split by newlines for paragraphs)
+            const synthText = document.getElementById('synthesis-text');
+            const paragraphs = data.synthesis.split('\n\n').filter(p => p.trim());
+            synthText.innerHTML = paragraphs.map(p => `<p>${p}</p>`).join('');
+
+            // Theme tags
+            const themeTags = document.getElementById('theme-tags');
+            if (data.key_themes && data.key_themes.length > 0) {
+                themeTags.innerHTML = data.key_themes.map(theme =>
+                    `<span class="theme-tag">${theme}</span>`
+                ).join('');
+            } else {
+                themeTags.innerHTML = '';
+            }
+
+            // High-conviction ideas
+            const convictionList = document.getElementById('conviction-ideas-list');
+            if (data.high_conviction_ideas && data.high_conviction_ideas.length > 0) {
+                document.getElementById('conviction-ideas').style.display = 'block';
+                convictionList.innerHTML = data.high_conviction_ideas.map(idea => {
+                    const badgeClass = `conviction-${idea.confidence || 'medium'}`;
+                    return `
+                        <div class="conviction-idea">
+                            <div class="conviction-idea-header">
+                                <span class="conviction-idea-title">${idea.idea}</span>
+                                <span class="conviction-badge ${badgeClass}">${idea.confidence || 'medium'}</span>
+                            </div>
+                            <div class="conviction-idea-sources">
+                                Sources: ${(idea.sources || []).join(', ')}
+                                ${idea.rationale ? ` - ${idea.rationale}` : ''}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                document.getElementById('conviction-ideas').style.display = 'none';
+            }
+        }
+
+        // Show empty synthesis state
+        function showEmptySynthesis() {
+            document.getElementById('synthesis-empty').style.display = 'block';
+            document.getElementById('synthesis-content').style.display = 'none';
+        }
+
+        // Format time ago
+        function formatTimeAgo(date) {
+            const now = new Date();
+            const diff = Math.floor((now - date) / 1000);
+
+            if (diff < 60) return 'Just now';
+            if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+            if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+            return `${Math.floor(diff / 86400)}d ago`;
+        }
+
+        // Format date time
+        function formatDateTime(date) {
+            return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        }
+    </script>
+</body>
+</html>

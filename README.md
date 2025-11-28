@@ -14,7 +14,7 @@ As an active investor, I subscribe to multiple premium research services costing
 - 42 Macro (macro analysis, KISS model)
 - Options Insight (Discord community with daily vol analysis)
 - KT Technical Analysis (day/swing trade setups)
-- Multiple YouTube channels and Twitter accounts
+- Multiple YouTube channels and Substack newsletters
 
 **Current Pain**: Spending 2+ hours/day manually reviewing content, trying to identify confluence across sources, tracking how views evolve over time.
 
@@ -25,7 +25,7 @@ As an active investor, I subscribe to multiple premium research services costing
 ## ✨ Features
 
 ### Data Collection
-- 🤖 Automated collection from 6+ sources (6am, 6pm, on-demand)
+- 🤖 Automated collection from 5 sources (6am, 6pm, on-demand)
 - 📄 PDFs, videos, images, text posts all supported
 - 🎥 Video transcription using Whisper API
 - 🔐 Secure credential management
@@ -57,7 +57,7 @@ As an active investor, I subscribe to multiple premium research services costing
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                      Data Sources                            │
-│  42macro │ Discord │ Twitter │ YouTube │ Substack │ KT Tech │
+│   42 Macro  │  Discord  │  YouTube  │  Substack  │  KT Tech  │
 └────────┬────────────────────────────────────────────────────┘
          │
          ▼
@@ -238,7 +238,7 @@ pytest tests/test_integration/
 - YouTube Data API v3 (Google)
 - 42 Macro credentials
 - Discord user token (for local script)
-- Twitter session token
+- KT Technical credentials
 
 ---
 
@@ -340,8 +340,8 @@ If you're new to any of these technologies:
 - **Lines of Code**: TBD (post-development)
 - **Test Coverage**: Target 90%+
 - **API Endpoints**: ~15
-- **AI Agents**: 6
-- **Data Sources**: 6+
+- **AI Agents**: 10
+- **Data Sources**: 5
 - **Database Tables**: 7
 
 ---
@@ -373,13 +373,14 @@ Private project - All rights reserved.
 
 ### MVP (v1.0) - December 2025
 - [x] Project planning and documentation
-- [ ] All 6 collectors operational
-- [ ] 6 AI agents functional
+- [x] All 5 collectors operational
+- [x] 10 AI agents functional
 - [ ] Confluence scoring implemented
 - [ ] Web dashboard deployed
 - [ ] Automated scheduling (6am, 6pm)
 
 ### Post-MVP (v1.1+)
+- [ ] Manual tweet input via dashboard (for Twitter content without API)
 - [ ] Real-time Discord monitoring (WebSocket)
 - [ ] Push notifications for high-conviction ideas
 - [ ] Mobile app (React Native)

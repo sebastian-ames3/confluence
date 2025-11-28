@@ -404,37 +404,79 @@ Closes #5
 
 ---
 
+### Phase 5: Simplification & Chat Integration
+**Duration**: 3-5 days
+**PRDs**: PRD-012, PRD-013
+
+#### PRD-012: Dashboard Simplification & Synthesis Agent
+**What**: Transform complex scoring dashboard into simple research synthesis assistant
+
+**Key Changes**:
+- Strip dashboard to single status page
+- Create Synthesis Agent with macro analyst persona
+- Let Claude naturally weight evidence (internal scoring only)
+- Generate 1-3 paragraph summaries after each collection
+
+**Success Criteria**:
+- [ ] Simple dashboard showing collection status + synthesis
+- [ ] Synthesis Agent generating quality summaries
+- [ ] Synthesis triggered after scheduled collections
+- [ ] Sebastian validates synthesis quality
+
+#### PRD-013: MCP Server for Claude Desktop
+**What**: Enable natural language queries against collected research via Claude Desktop
+
+**Tools Exposed**:
+- `search_content` - Query research by keyword
+- `get_synthesis` - Retrieve latest AI summary
+- `get_themes` - List tracked macro themes
+- `get_recent` - Get recent collections by source
+- `get_source_view` - Get source's view on topic
+
+**Success Criteria**:
+- [ ] MCP server connects to Claude Desktop
+- [ ] All 5 tools functional
+- [ ] Sebastian can query research conversationally
+- [ ] Documentation complete
+
+---
+
 ## Next Steps
 
-1. **Sebastian Reviews**: Read all PRDs, CLAUDE.md, this master doc
-2. **Approval**: Sebastian approves to begin development
-3. **Phase 0 Kickoff**: Create GitHub Issues for PRD-001
-4. **Begin Development**: Start with PRD-002 (Database Schema)
+1. **Phase 5 Implementation**: Begin PRD-012 (Dashboard Simplification)
+2. **Testing**: Validate synthesis quality with real data
+3. **MCP Integration**: Implement PRD-013 after PRD-012 complete
+4. **Documentation**: Update setup guides for MCP configuration
 
 ---
 
 ## Appendix: PRD List
 
-- **PRD-001**: Project Setup & Infrastructure
-- **PRD-002**: Database Schema & Infrastructure
-- **PRD-003**: Content Classifier Agent
-- **PRD-004**: Basic Collectors (No AI)
-- **PRD-005**: Transcript Harvester Agent
-- **PRD-006**: PDF Analyzer Agent
-- **PRD-007**: Image Intelligence Agent
-- **PRD-008**: Confluence Scorer Agent
-- **PRD-009**: Cross-Reference Agent
-- **PRD-010**: Web Dashboard
-- **PRD-011**: Railway Deployment & Scheduler
+### Phase 0-4 (Complete)
+- **PRD-001**: Project Setup & Infrastructure ✅
+- **PRD-002**: Database Schema & Infrastructure ✅
+- **PRD-003**: Content Classifier Agent ✅
+- **PRD-004**: Basic Collectors (No AI) ✅
+- **PRD-005**: Transcript Harvester Agent ✅
+- **PRD-006**: PDF Analyzer Agent ✅
+- **PRD-007**: Image Intelligence Agent ✅
+- **PRD-008**: Confluence Scorer Agent ✅
+- **PRD-009**: Cross-Reference Agent ✅
+- **PRD-010**: Web Dashboard ✅
+- **PRD-011**: Railway Deployment & Scheduler ✅
+
+### Phase 5 (In Progress)
+- **PRD-012**: Dashboard Simplification & Synthesis Agent 🔄
+- **PRD-013**: MCP Server for Claude Desktop Integration 📋
 
 ---
 
-**Total Estimated Development Time**: 28 days (4 weeks)  
-**Estimated API Costs**: $50-75/month  
-**Primary Risk**: Discord collection reliability  
-**Primary Success Factor**: Confluence scoring accuracy
+**Total Estimated Development Time**: 32-35 days (4 weeks + Phase 5)
+**Estimated API Costs**: $50-75/month
+**Primary Risk**: MCP compatibility with Claude Desktop versions
+**Primary Success Factor**: Synthesis quality matches Sebastian's expectations
 
 ---
 
-**Document Status**: Draft - Awaiting Sebastian's Review  
-**Last Updated**: 2025-11-18
+**Document Status**: Updated for Phase 5
+**Last Updated**: 2025-11-28

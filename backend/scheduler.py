@@ -3,7 +3,9 @@ Scheduled Tasks
 
 Background scheduler for automated data collection (6am, 6pm daily).
 Runs: YouTube, Substack, 42 Macro, KT Technical
-Excluded: Discord (runs locally), Twitter (rate limits - manual only)
+Excluded: Discord (runs locally)
+
+After collection, automatically generates research synthesis.
 """
 
 import schedule
@@ -13,6 +15,7 @@ from datetime import datetime
 import os
 import sys
 import asyncio
+import json
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -25,7 +28,6 @@ sys.path.insert(0, str(project_root))
 
 from collectors.youtube_api import YouTubeCollector
 from collectors.substack_rss import SubstackCollector
-# from collectors.twitter_api import TwitterCollector  # Excluded - manual collection only
 from collectors.macro42_selenium import Macro42Collector
 from collectors.kt_technical import KTTechnicalCollector
 
@@ -64,15 +66,6 @@ async def run_collection(time_label: str):
 
     # Substack
     collectors.append(("Substack", SubstackCollector()))
-
-    # Twitter - EXCLUDED from automated collection due to Free tier rate limits (100 API calls/month)
-    # Twitter collector preserved for future manual use via chat interface or selective analysis
-    # See: scripts/test_twitter_manual.py for manual collection
-    # twitter_bearer = os.getenv('TWITTER_BEARER_TOKEN')
-    # if twitter_bearer:
-    #     collectors.append(("Twitter", TwitterCollector(bearer_token=twitter_bearer)))
-    # else:
-    #     logger.warning("[Twitter] Skipping - TWITTER_BEARER_TOKEN not set")
 
     # 42 Macro (using Selenium)
     macro42_email = os.getenv('MACRO42_EMAIL')
@@ -130,7 +123,131 @@ async def run_collection(time_label: str):
             logger.error(f"  - {error['collector']}: {error['error']}")
     logger.info(f"=" * 80)
 
+    # Record collection run in database
+    await record_collection_run(time_label, results)
+
+    # Generate synthesis after successful collection
+    if results["successful"] > 0:
+        await generate_post_collection_synthesis()
+
     return results
+
+
+async def record_collection_run(time_label: str, results: dict):
+    """Record collection run in database for status tracking."""
+    try:
+        from backend.models import SessionLocal, CollectionRun
+
+        db = SessionLocal()
+        try:
+            run = CollectionRun(
+                run_type=f"scheduled_{time_label}" if time_label in ["6am", "6pm"] else time_label,
+                started_at=datetime.utcnow(),
+                completed_at=datetime.utcnow(),
+                source_results=json.dumps({}),  # Could add per-source details here
+                total_items_collected=0,  # Could track from collector results
+                successful_sources=results.get("successful", 0),
+                failed_sources=results.get("failed", 0),
+                errors=json.dumps(results.get("errors", [])),
+                status="completed" if results.get("failed", 0) == 0 else "completed"
+            )
+            db.add(run)
+            db.commit()
+            logger.info(f"Collection run recorded in database (ID: {run.id})")
+        finally:
+            db.close()
+    except Exception as e:
+        logger.error(f"Failed to record collection run: {e}")
+
+
+async def generate_post_collection_synthesis():
+    """Generate research synthesis after collection completes."""
+    logger.info("=" * 80)
+    logger.info("Starting post-collection synthesis generation...")
+    logger.info("=" * 80)
+
+    try:
+        from backend.models import SessionLocal, AnalyzedContent, RawContent, Source, Synthesis
+        from agents.synthesis_agent import SynthesisAgent
+        from datetime import timedelta
+
+        db = SessionLocal()
+        try:
+            # Get content from last 24 hours
+            cutoff = datetime.utcnow() - timedelta(hours=24)
+
+            # Query analyzed content with source info
+            results = db.query(AnalyzedContent, RawContent, Source).join(
+                RawContent, AnalyzedContent.raw_content_id == RawContent.id
+            ).join(
+                Source, RawContent.source_id == Source.id
+            ).filter(
+                AnalyzedContent.analyzed_at >= cutoff
+            ).all()
+
+            if not results:
+                logger.info("No analyzed content in last 24h - skipping synthesis")
+                return
+
+            # Build content items for synthesis
+            content_items = []
+            for analyzed, raw, source in results:
+                try:
+                    analysis_data = json.loads(analyzed.analysis_result) if analyzed.analysis_result else {}
+                except json.JSONDecodeError:
+                    analysis_data = {}
+
+                try:
+                    metadata = json.loads(raw.json_metadata) if raw.json_metadata else {}
+                except json.JSONDecodeError:
+                    metadata = {}
+
+                content_items.append({
+                    "source": source.name,
+                    "type": raw.content_type,
+                    "title": metadata.get("title", f"{source.name} content"),
+                    "timestamp": raw.collected_at.isoformat() if raw.collected_at else None,
+                    "summary": analysis_data.get("summary", analyzed.analysis_result[:500] if analyzed.analysis_result else ""),
+                    "themes": analyzed.key_themes.split(",") if analyzed.key_themes else [],
+                    "tickers": analyzed.tickers_mentioned.split(",") if analyzed.tickers_mentioned else [],
+                    "sentiment": analyzed.sentiment,
+                    "conviction": analyzed.conviction,
+                    "content_text": raw.content_text[:1000] if raw.content_text else ""
+                })
+
+            logger.info(f"Generating synthesis from {len(content_items)} content items...")
+
+            # Generate synthesis
+            agent = SynthesisAgent()
+            result = agent.analyze(content_items=content_items, time_window="24h")
+
+            # Save to database
+            synthesis = Synthesis(
+                synthesis=result.get("synthesis", ""),
+                key_themes=json.dumps(result.get("key_themes", [])),
+                high_conviction_ideas=json.dumps(result.get("high_conviction_ideas", [])),
+                contradictions=json.dumps(result.get("contradictions", [])),
+                market_regime=result.get("market_regime"),
+                catalysts=json.dumps(result.get("catalysts", [])),
+                time_window="24h",
+                content_count=len(content_items),
+                sources_included=json.dumps(result.get("sources_included", [])),
+                generated_at=datetime.utcnow()
+            )
+            db.add(synthesis)
+            db.commit()
+
+            logger.info(f"Synthesis generated and saved (ID: {synthesis.id})")
+            logger.info(f"Key themes: {result.get('key_themes', [])}")
+            logger.info(f"Market regime: {result.get('market_regime', 'unclear')}")
+
+        finally:
+            db.close()
+
+    except Exception as e:
+        logger.error(f"Synthesis generation failed: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
 
 
 def collect_6am():
@@ -160,7 +277,6 @@ def run_scheduler():
     logger.info("")
     logger.info("Excluded collectors:")
     logger.info("  - Discord: Runs locally on Sebastian's laptop")
-    logger.info("  - Twitter: Rate limits - manual collection only")
     logger.info("=" * 80)
 
     # Schedule daily tasks

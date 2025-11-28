@@ -5,7 +5,28 @@ All notable changes to the Macro Confluence Hub project will be documented in th
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [Unreleased] - 2025-11-28
+
+### Added
+- **Confluence Routes API** - Complete REST endpoints for confluence scoring
+  - GET /confluence/scores - List all confluence scores with filtering
+  - GET /confluence/scores/{id} - Get single confluence score detail
+  - POST /confluence/score/{analyzed_content_id} - Score analyzed content
+  - GET /confluence/themes - List themes with conviction data
+  - GET /confluence/themes/{id} - Get theme detail with evidence
+  - POST /confluence/cross-reference - Run cross-reference analysis
+  - GET /confluence/high-conviction - Get high-conviction ideas
+
+### Changed
+- **Documentation Updates** - CLAUDE.md updated to reflect actual implementation status
+  - All 10 agents now marked as complete (4,456 lines total)
+  - All 7 collectors marked as production-ready
+  - Phase completion status updated (all phases complete)
+  - Agent specifications updated with features and line counts
+
+---
+
+## [0.9.0] - 2025-11-20
 
 ### Added
 - **[PRD-004] Discord Collector** - Local data collection from Discord

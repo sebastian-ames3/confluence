@@ -228,6 +228,72 @@ class BayesianUpdate(Base):
         return f"<BayesianUpdate(id={self.id}, theme_id={self.theme_id}, {self.prior_conviction:.2f}->{self.posterior_conviction:.2f})>"
 
 
+class Synthesis(Base):
+    """AI-generated research synthesis summaries"""
+    __tablename__ = "syntheses"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    # Synthesis content
+    synthesis = Column(Text, nullable=False)
+    key_themes = Column(Text)  # JSON array
+    high_conviction_ideas = Column(Text)  # JSON array
+    contradictions = Column(Text)  # JSON array
+    market_regime = Column(String)  # "risk-on", "risk-off", "transitioning", "unclear"
+    catalysts = Column(Text)  # JSON array
+
+    # Metadata
+    time_window = Column(String, nullable=False)  # "24h", "7d", "30d"
+    content_count = Column(Integer, default=0)
+    sources_included = Column(Text)  # JSON array
+
+    # Optional focus
+    focus_topic = Column(String)
+
+    # Cost tracking
+    token_usage = Column(Integer)
+
+    # Timestamps
+    generated_at = Column(DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<Synthesis(id={self.id}, time_window='{self.time_window}', generated_at={self.generated_at})>"
+
+
+class CollectionRun(Base):
+    """Tracks collection runs for status display"""
+    __tablename__ = "collection_runs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    # Run metadata
+    run_type = Column(String, nullable=False)  # "scheduled_6am", "scheduled_6pm", "manual"
+    started_at = Column(DateTime, nullable=False)
+    completed_at = Column(DateTime)
+
+    # Results per source (JSON object)
+    source_results = Column(Text)
+
+    # Totals
+    total_items_collected = Column(Integer, default=0)
+    successful_sources = Column(Integer, default=0)
+    failed_sources = Column(Integer, default=0)
+
+    # Error tracking
+    errors = Column(Text)  # JSON array
+
+    # Status
+    status = Column(String, default='running')  # "running", "completed", "failed"
+
+    # Constraints
+    __table_args__ = (
+        CheckConstraint("status IN ('running', 'completed', 'failed')", name='check_run_status'),
+    )
+
+    def __repr__(self):
+        return f"<CollectionRun(id={self.id}, type='{self.run_type}', status='{self.status}')>"
+
+
 # ============================================================================
 # Utility Functions
 # ============================================================================
