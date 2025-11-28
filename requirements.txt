@@ -45,6 +45,10 @@ python-dotenv==1.0.0
 schedule==1.2.0
 pydantic==2.5.3
 
+# MCP Server (Claude Desktop Integration)
+# Note: Custom implementation using JSON-RPC over stdio
+# No external MCP package required - works with Python 3.9+
+
 # Testing
 pytest==7.4.4
 pytest-asyncio==0.23.3
