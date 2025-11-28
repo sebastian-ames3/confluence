@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased] - 2025-11-28
 
 ### Added
+- **[PRD-013] MCP Server for Claude Desktop** - Model Context Protocol integration
+  - Official MCP SDK implementation (requires Python 3.10+)
+  - 5 tools for natural language research queries:
+    - `search_content` - Search research by keyword
+    - `get_synthesis` - Get AI-generated research summaries
+    - `get_themes` - List tracked macro themes with conviction data
+    - `get_recent` - Get recent content from specific sources
+    - `get_source_view` - Get source's current view on a topic
+  - Read-only database access for safe querying
+  - Claude Desktop configuration instructions
+  - Comprehensive README with setup guide
+
 - **Confluence Routes API** - Complete REST endpoints for confluence scoring
   - GET /confluence/scores - List all confluence scores with filtering
   - GET /confluence/scores/{id} - Get single confluence score detail
