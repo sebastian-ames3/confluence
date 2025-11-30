@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.0] - 2025-11-30
+
+### Added
+- **PRD-013: MCP Server for Claude Desktop** - Complete implementation
+  - 5 natural language query tools (search_content, get_synthesis, get_themes, get_recent, get_source_view)
+  - Official MCP SDK integration (requires Python 3.10+)
+  - Read-only database access for safety
+  - Comprehensive setup documentation in `mcp_server/README.md`
+  - Files: `mcp_server/server.py`, `mcp_server/database.py`, `mcp_server/config.py`, `mcp_server/tools/*.py`
+
+### Fixed
+- **Pydantic dependency conflict** - Updated from `2.5.3` to `>=2.11.0,<3` for mcp compatibility
+- **5 code TODOs resolved for production readiness**:
+  1. CORS restriction - Now uses `RAILWAY_API_URL` in production, localhost in dev
+  2. Database health check - Actually verifies DB connectivity with `SELECT 1`
+  3. Discord last collection time - Queries database instead of using fixed lookback
+  4. Audio chunking - Implements 10-minute chunk transcription for >25MB files
+  5. Collection triggers - Working triggers for youtube, substack, 42macro, kt_technical
+
+### Changed
+- **Requirements.txt** - Added `mcp>=1.0.0` dependency
+
+---
+
 ## [Unreleased] - 2025-11-28
 
 ### Added
@@ -1021,5 +1045,5 @@ Closes #issue-number
 
 ---
 
-**Last Updated**: 2025-11-18
-**Next Review**: After Phase 1 completion
+**Last Updated**: 2025-11-30
+**Version**: 1.0.0 (MVP Complete)
