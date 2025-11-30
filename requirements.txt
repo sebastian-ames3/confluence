@@ -40,10 +40,13 @@ webdriver-manager==4.0.2
 yt-dlp==2024.8.6
 pydub==0.25.1
 
+# MCP Server (PRD-013)
+mcp>=1.0.0
+
 # Utilities
 python-dotenv==1.0.0
 schedule==1.2.0
-pydantic==2.5.3
+pydantic>=2.11.0,<3
 
 # Testing
 pytest==7.4.4
