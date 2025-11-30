@@ -5,11 +5,13 @@ API endpoints for triggering data collection from research sources.
 Includes endpoint for receiving Discord data from local laptop script.
 """
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any
 import logging
 import json
+import os
+import asyncio
 from datetime import datetime
 
 from backend.models import get_db, RawContent, Source
@@ -136,12 +138,142 @@ async def trigger_collection(
             "instructions": "Run: python scripts/discord_local.py"
         }
 
-    # TODO: Implement collection triggers for other sources
-    return {
-        "status": "pending",
-        "message": f"Collection trigger for {source_name} not yet implemented",
-        "source": source_name
-    }
+    # For Twitter, collection is disabled due to API rate limits
+    if source_name == "twitter":
+        return {
+            "status": "info",
+            "message": "Twitter collection is disabled (API rate limits on free tier)",
+            "instructions": "Manually input tweets via dashboard if needed"
+        }
+
+    # Run collection in background for supported sources
+    try:
+        collected_items = await _run_collector(source_name)
+
+        # Save collected items to database
+        saved_count = await _save_collected_items(db, source_name, collected_items)
+
+        return {
+            "status": "success",
+            "message": f"Collected {len(collected_items)} items from {source_name}",
+            "saved": saved_count,
+            "source": source_name,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Collection failed for {source_name}: {e}")
+        raise HTTPException(status_code=500, detail=f"Collection failed: {str(e)}")
+
+
+async def _run_collector(source_name: str) -> List[Dict[str, Any]]:
+    """
+    Initialize and run the appropriate collector.
+
+    Args:
+        source_name: Name of source to collect from
+
+    Returns:
+        List of collected content items
+    """
+    if source_name == "youtube":
+        from collectors.youtube_api import YouTubeCollector
+
+        api_key = os.getenv("YOUTUBE_API_KEY")
+        if not api_key:
+            raise ValueError("YOUTUBE_API_KEY not configured")
+
+        collector = YouTubeCollector(api_key=api_key)
+        return await collector.collect()
+
+    elif source_name == "substack":
+        from collectors.substack_rss import SubstackCollector
+
+        collector = SubstackCollector()
+        return await collector.collect()
+
+    elif source_name == "42macro":
+        from collectors.macro42_selenium import Macro42Collector
+
+        email = os.getenv("MACRO42_EMAIL")
+        password = os.getenv("MACRO42_PASSWORD")
+        if not email or not password:
+            raise ValueError("MACRO42_EMAIL and MACRO42_PASSWORD not configured")
+
+        collector = Macro42Collector(email=email, password=password, headless=True)
+        return await collector.collect()
+
+    elif source_name == "kt_technical":
+        from collectors.kt_technical import KTTechnicalCollector
+
+        # Credentials default to env vars in the collector
+        collector = KTTechnicalCollector()
+        return await collector.collect()
+
+    else:
+        raise ValueError(f"Unknown source: {source_name}")
+
+
+async def _save_collected_items(
+    db: Session,
+    source_name: str,
+    items: List[Dict[str, Any]]
+) -> int:
+    """
+    Save collected items to database.
+
+    Args:
+        db: Database session
+        source_name: Name of the source
+        items: List of collected content items
+
+    Returns:
+        Number of items saved
+    """
+    if not items:
+        return 0
+
+    # Get or create source
+    source = db.query(Source).filter(Source.name == source_name).first()
+    if not source:
+        source = Source(
+            name=source_name,
+            type=source_name,
+            active=True,
+            last_collected_at=datetime.utcnow()
+        )
+        db.add(source)
+        db.commit()
+        db.refresh(source)
+    else:
+        source.last_collected_at = datetime.utcnow()
+
+    # Save each item
+    saved_count = 0
+    for item in items:
+        try:
+            raw_content = RawContent(
+                source_id=source.id,
+                content_type=item.get("content_type", "text"),
+                content_text=item.get("content_text"),
+                file_path=item.get("file_path"),
+                url=item.get("url"),
+                json_metadata=json.dumps(item.get("metadata", {})),
+                collected_at=item.get("collected_at", datetime.utcnow()),
+                processed=False
+            )
+            db.add(raw_content)
+            saved_count += 1
+        except Exception as e:
+            logger.error(f"Error saving item from {source_name}: {e}")
+            continue
+
+    db.commit()
+    logger.info(f"Saved {saved_count}/{len(items)} items from {source_name}")
+
+    return saved_count
 
 
 @router.get("/status")

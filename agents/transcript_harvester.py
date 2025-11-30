@@ -223,9 +223,8 @@ Extract high-level themes and key insights."""
             logger.info(f"Audio file size: {file_size_mb:.2f} MB")
 
             if file_size_mb > 25:
-                logger.warning("File exceeds 25MB, chunking required")
-                # TODO: Implement chunking for large files
-                raise Exception("Audio file too large (>25MB). Chunking not yet implemented.")
+                logger.warning("File exceeds 25MB, using chunked transcription")
+                return await self._transcribe_chunked(audio_file)
 
             # Transcribe with Whisper
             with open(audio_file, "rb") as audio:
@@ -252,6 +251,98 @@ Extract high-level themes and key insights."""
         except Exception as e:
             logger.error(f"Transcription failed: {e}")
             raise
+
+    async def _transcribe_chunked(self, audio_file: Path) -> Dict[str, Any]:
+        """
+        Transcribe large audio files by splitting into chunks.
+
+        Splits audio into 10-minute chunks to stay well under Whisper's 25MB limit.
+
+        Args:
+            audio_file: Path to audio file (>25MB)
+
+        Returns:
+            Combined transcript with adjusted timestamps
+        """
+        import tempfile
+
+        logger.info("Starting chunked transcription")
+
+        # Load audio file
+        audio = AudioSegment.from_mp3(audio_file)
+        total_duration_ms = len(audio)
+        total_duration_sec = total_duration_ms / 1000
+
+        logger.info(f"Audio duration: {total_duration_sec:.1f} seconds ({total_duration_sec/60:.1f} minutes)")
+
+        # Split into 10-minute chunks (600,000 ms)
+        chunk_duration_ms = 10 * 60 * 1000  # 10 minutes
+        chunks = []
+        start_ms = 0
+
+        while start_ms < total_duration_ms:
+            end_ms = min(start_ms + chunk_duration_ms, total_duration_ms)
+            chunks.append({
+                "audio": audio[start_ms:end_ms],
+                "start_sec": start_ms / 1000,
+                "end_sec": end_ms / 1000
+            })
+            start_ms = end_ms
+
+        logger.info(f"Split audio into {len(chunks)} chunks")
+
+        # Transcribe each chunk
+        all_text = []
+        all_segments = []
+
+        for i, chunk_data in enumerate(chunks):
+            logger.info(f"Transcribing chunk {i+1}/{len(chunks)} ({chunk_data['start_sec']:.0f}s - {chunk_data['end_sec']:.0f}s)")
+
+            # Save chunk to temporary file
+            with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp_file:
+                chunk_path = Path(tmp_file.name)
+                chunk_data["audio"].export(chunk_path, format="mp3")
+
+            try:
+                # Transcribe chunk
+                with open(chunk_path, "rb") as audio_chunk:
+                    response = self.openai_client.audio.transcriptions.create(
+                        model="whisper-1",
+                        file=audio_chunk,
+                        response_format="verbose_json",
+                        timestamp_granularities=["segment"]
+                    )
+
+                # Add text
+                all_text.append(response.text)
+
+                # Adjust segment timestamps and add to list
+                if hasattr(response, 'segments') and response.segments:
+                    for segment in response.segments:
+                        adjusted_segment = dict(segment) if hasattr(segment, '__dict__') else segment
+                        # Adjust timestamps by chunk start time
+                        if isinstance(adjusted_segment, dict):
+                            adjusted_segment['start'] = adjusted_segment.get('start', 0) + chunk_data['start_sec']
+                            adjusted_segment['end'] = adjusted_segment.get('end', 0) + chunk_data['start_sec']
+                        all_segments.append(adjusted_segment)
+
+            finally:
+                # Clean up temp file
+                chunk_path.unlink(missing_ok=True)
+
+        # Combine results
+        combined_text = " ".join(all_text)
+
+        logger.info(f"Chunked transcription complete. Total length: {len(combined_text)} characters")
+        logger.info(f"Total segments: {len(all_segments)}")
+
+        return {
+            "text": combined_text,
+            "segments": all_segments,
+            "duration": total_duration_sec,
+            "chunked": True,
+            "chunk_count": len(chunks)
+        }
 
     async def analyze_transcript(
         self,
