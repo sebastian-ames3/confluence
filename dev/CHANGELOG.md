@@ -39,9 +39,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Synthesis automatically generated after each collection run
   - Collection runs recorded in database for status tracking
 
-- **PRD-013: MCP Server Planning** - Claude Desktop integration spec
-  - Tools: search_content, get_synthesis, get_themes, get_recent, get_source_view
-  - Configuration documentation for Claude Desktop
+- **PRD-013: MCP Server Implementation** - Claude Desktop integration
+  - Custom JSON-RPC over stdio implementation (works with Python 3.9+)
+  - 5 tools: search_content, get_synthesis, get_themes, get_recent, get_source_view
+  - `mcp_server/server.py` - Main MCP server (~320 lines)
+  - `mcp_server/tools/` - Tool implementations for querying research data
+  - `mcp_server/database.py` - Read-only database connection
+  - `mcp_server/README.md` - Setup and usage documentation
+  - Configuration documentation for Claude Desktop (Windows/macOS)
 
 - **Confluence Routes API** - Complete REST endpoints for confluence scoring and theme tracking
   - GET /confluence/scores - List all confluence scores with filtering

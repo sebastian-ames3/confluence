@@ -27,6 +27,10 @@ A personal investment research aggregation and analysis system that collects mac
   - Web Dashboard ✅ (All 6 pages)
   - WebSocket real-time updates ✅
   - Railway deployment configuration ✅
+- ✅ **Phase 5**: Claude Desktop Integration (Complete)
+  - MCP Server ✅ (PRD-013)
+  - 5 natural language query tools ✅
+  - Official MCP SDK integration ✅
 
 ### What's Working Now
 - **5 data collectors** collecting content from Discord, YouTube, Substack, 42 Macro, KT Technical
@@ -34,6 +38,7 @@ A personal investment research aggregation and analysis system that collects mac
 - **Complete web dashboard** with real-time WebSocket updates
 - **Database** with full historical tracking and Bayesian updates
 - **Usage limiter** for API cost control
+- **MCP Server** for Claude Desktop integration (natural language queries)
 
 ### Implementation Summary
 | Component | Files | Lines | Status |
@@ -44,8 +49,9 @@ A personal investment research aggregation and analysis system that collects mac
 | Database | 2 | 291 | ✅ Complete |
 | Frontend | 6 pages | 639+ JS | ✅ Complete |
 | Tests | 6 | 1,220 | ✅ Good coverage |
+| MCP Server | 7 | ~800 | ✅ Complete |
 
-**Total codebase: ~14,000+ lines of production code**
+**Total codebase: ~15,000+ lines of production code**
 
 See CHANGELOG.md for detailed completion history.
 
@@ -481,6 +487,51 @@ Confluence Threshold: ≥6-7/10 core + at least one hybrid pillar at 2/2
 }
 ```
 **File**: `agents/cross_reference.py`
+
+---
+
+## MCP Server (Claude Desktop Integration)
+
+### Overview
+The MCP (Model Context Protocol) Server enables natural language queries of research data directly from Claude Desktop. Uses the official Anthropic MCP SDK.
+
+**Requirements**: Python 3.10+ (Python 3.14 installed)
+
+### Available Tools
+
+| Tool | Description |
+|------|-------------|
+| `search_content` | Search research by keyword (e.g., "gold positioning", "Fed policy") |
+| `get_synthesis` | Get AI-generated research summaries (24h, 7d, 30d windows) |
+| `get_themes` | List tracked macro themes with conviction data |
+| `get_recent` | Get recent content from specific sources |
+| `get_source_view` | Get source's current view on a topic |
+
+### Setup
+
+Add to `%APPDATA%\Claude\claude_desktop_config.json`:
+```json
+{
+  "mcpServers": {
+    "confluence-hub": {
+      "command": "python",
+      "args": ["-m", "mcp_server.server"],
+      "cwd": "C:/Users/14102/Documents/Sebastian Ames/Projects/Confluence",
+      "env": {
+        "DATABASE_PATH": "C:/Users/14102/Documents/Sebastian Ames/Projects/Confluence/database/confluence.db"
+      }
+    }
+  }
+}
+```
+
+### Example Queries
+- "Search my research for gold positioning"
+- "What are the key themes from today's research?"
+- "What does 42macro think about equities?"
+- "Show me the latest from Discord"
+
+**File Structure**: `mcp_server/` (server.py, config.py, database.py, tools/)
 
 ---
 
