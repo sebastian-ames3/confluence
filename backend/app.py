@@ -26,10 +26,29 @@ app = FastAPI(
     version="0.1.0",
 )
 
+
 # Configure CORS for frontend
+def get_allowed_origins():
+    """Get allowed CORS origins based on environment."""
+    railway_url = os.getenv("RAILWAY_API_URL")
+    railway_env = os.getenv("RAILWAY_ENV")
+
+    if railway_env == "production" and railway_url:
+        # Production: only allow the Railway URL
+        return [railway_url, railway_url.replace("https://", "http://")]
+    else:
+        # Development: allow localhost variants
+        return [
+            "http://localhost:8000",
+            "http://localhost:3000",
+            "http://127.0.0.1:8000",
+            "http://127.0.0.1:3000",
+        ]
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # TODO: Restrict in production
+    allow_origins=get_allowed_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -50,9 +69,20 @@ async def root():
 @app.get("/health")
 async def health_check():
     """Health check endpoint for Railway."""
+    from backend.models import SessionLocal
+
+    db_status = "connected"
+    try:
+        # Actually verify database connectivity
+        db = SessionLocal()
+        db.execute("SELECT 1")
+        db.close()
+    except Exception as e:
+        db_status = f"error: {str(e)}"
+
     return {
-        "status": "healthy",
-        "database": "connected",  # TODO: Add actual DB check in Phase 1
+        "status": "healthy" if db_status == "connected" else "degraded",
+        "database": db_status,
     }
 
 

@@ -644,15 +644,34 @@ class DiscordSelfCollector(BaseCollector):
         """
         Determine how far back to collect messages.
 
+        Checks database for last collection time. Falls back to configured
+        lookback_days if no previous collection exists.
+
         Args:
             channel_name: Name of the channel
 
         Returns:
             Datetime to start collecting from
         """
-        # TODO: Check last collection time from database
-        # For now, use configured lookback days
+        # Try to get last collection time from database
+        if self.use_local_db:
+            try:
+                from backend.models import SessionLocal, Source
+
+                db = SessionLocal()
+                source = db.query(Source).filter(Source.name == "discord").first()
+                db.close()
+
+                if source and source.last_collected_at:
+                    logger.info(f"Using last collection time from database: {source.last_collected_at}")
+                    # Add small buffer to avoid missing messages at the boundary
+                    return source.last_collected_at - timedelta(minutes=5)
+            except Exception as e:
+                logger.warning(f"Could not get last collection time from database: {e}")
+
+        # Fall back to configured lookback days for first run
         lookback_days = self.channel_config["collection_settings"]["lookback_days_first_run"]
+        logger.info(f"Using configured lookback: {lookback_days} days")
         return datetime.utcnow() - timedelta(days=lookback_days)
 
     async def upload_to_railway(self, collected_data: List[Dict[str, Any]]) -> bool:
