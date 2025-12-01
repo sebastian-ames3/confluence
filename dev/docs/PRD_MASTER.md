@@ -441,12 +441,81 @@ Closes #5
 
 ---
 
+### Phase 6: Production Hardening
+**Duration**: 3-5 days
+**PRDs**: PRD-014, PRD-015, PRD-016, PRD-017
+
+#### PRD-014: Deployment & Infrastructure Fixes
+**What**: Fix critical deployment blockers identified in production readiness review
+
+**Key Changes**:
+- Add FFmpeg, Chromium to Railway nixPackages
+- Auto-initialize database on first deploy
+- Create API trigger endpoints for collection
+- Implement GitHub Actions scheduler (Railway Hobby has no cron)
+
+**Success Criteria**:
+- [ ] Railway deployment includes system dependencies
+- [ ] Database auto-initializes on empty volume
+- [ ] GitHub Actions triggers collection at 6am/6pm EST
+- [ ] End-to-end deployment tested
+
+#### PRD-015: Security Hardening
+**What**: Implement security best practices
+
+**Key Changes**:
+- HTTP Basic Auth on all protected endpoints
+- API rate limiting (slowapi)
+- Move Discord channel IDs to environment variables
+- Replace pickle with JSON for cookie storage
+- Remove hardcoded URLs
+
+**Success Criteria**:
+- [ ] Authentication required for dashboard/API
+- [ ] Rate limiting prevents API abuse
+- [ ] No secrets in version control
+- [ ] Secure cookie handling
+
+#### PRD-016: MCP Server API Proxy Refactor
+**What**: Fix architecture gap where MCP server can't access Railway database
+
+**Key Changes**:
+- MCP tools call Railway API via HTTP (not local SQLite)
+- API client with authentication support
+- Graceful error handling for network failures
+- Updated Claude Desktop configuration
+
+**Success Criteria**:
+- [ ] MCP server fetches data from Railway API
+- [ ] All 5 tools work with API proxy pattern
+- [ ] Claude Desktop integration functional
+
+#### PRD-017: Polish & Reliability
+**What**: Address remaining issues from production review
+
+**Key Changes**:
+- Version consistency (update to 1.0.0)
+- Dependency cleanup (remove duplicates, update anthropic SDK)
+- Basic agent tests with mocked Claude responses
+- Database backup script
+- UsageLimiter timezone fix (explicit UTC)
+- Frontend button implementation
+- Dashboard unification
+
+**Success Criteria**:
+- [ ] Version 1.0.0 consistent across codebase
+- [ ] Agent tests passing with mocks
+- [ ] Backup script functional
+- [ ] All frontend buttons implemented
+
+---
+
 ## Next Steps
 
-1. **Phase 5 Implementation**: Begin PRD-012 (Dashboard Simplification)
-2. **Testing**: Validate synthesis quality with real data
-3. **MCP Integration**: Implement PRD-013 after PRD-012 complete
-4. **Documentation**: Update setup guides for MCP configuration
+1. **Phase 6 Implementation**: Begin PRD-014 (Deployment Fixes) - CRITICAL
+2. **Security**: Implement PRD-015 after infrastructure fixes
+3. **MCP Fix**: Implement PRD-016 to restore Claude Desktop functionality
+4. **Polish**: Complete PRD-017 for final production readiness
 
 ---
 
@@ -465,18 +534,24 @@ Closes #5
 - **PRD-010**: Web Dashboard ✅
 - **PRD-011**: Railway Deployment & Scheduler ✅
 
-### Phase 5 (In Progress)
-- **PRD-012**: Dashboard Simplification & Synthesis Agent 🔄
-- **PRD-013**: MCP Server for Claude Desktop Integration 📋
+### Phase 5 (Complete)
+- **PRD-012**: Dashboard Simplification & Synthesis Agent ✅
+- **PRD-013**: MCP Server for Claude Desktop Integration ✅
+
+### Phase 6 (Planning)
+- **PRD-014**: Deployment & Infrastructure Fixes 📋
+- **PRD-015**: Security Hardening 📋
+- **PRD-016**: MCP Server API Proxy Refactor 📋
+- **PRD-017**: Polish & Reliability 📋
 
 ---
 
-**Total Estimated Development Time**: 32-35 days (4 weeks + Phase 5)
+**Total Estimated Development Time**: 35-40 days (4 weeks + Phase 5 + Phase 6)
 **Estimated API Costs**: $50-75/month
-**Primary Risk**: MCP compatibility with Claude Desktop versions
-**Primary Success Factor**: Synthesis quality matches Sebastian's expectations
+**Primary Risk**: Railway deployment system dependencies
+**Primary Success Factor**: Secure, reliable production deployment
 
 ---
 
-**Document Status**: Updated for Phase 5
-**Last Updated**: 2025-11-28
+**Document Status**: Updated for Phase 6
+**Last Updated**: 2025-12-01
