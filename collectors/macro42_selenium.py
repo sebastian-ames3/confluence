@@ -6,11 +6,14 @@ Bypasses CloudFront WAF protection by using a real Chrome browser.
 
 Cookie Persistence: Saves cookies after successful login to avoid WAF red flags
 from repeated logins. Only re-authenticates when cookies expire.
+
+Security (PRD-015):
+- Cookies stored as JSON instead of pickle to prevent arbitrary code execution
 """
 
 import logging
 import re
-import pickle
+import json
 import random
 from pathlib import Path
 from datetime import datetime
@@ -51,7 +54,7 @@ class Macro42Collector(BaseCollector):
 
     BASE_URL = "https://app.42macro.com"
     LOGIN_URL = f"{BASE_URL}/login"
-    COOKIES_FILE = "temp/42macro_cookies.pkl"  # Cookie persistence file
+    COOKIES_FILE = "temp/42macro_cookies.json"  # Cookie persistence file (JSON for security)
 
     def __init__(self, email: str, password: str, headless: bool = True):
         """
@@ -242,29 +245,40 @@ class Macro42Collector(BaseCollector):
             return False
 
     def _save_cookies(self):
-        """Save current browser cookies to file."""
+        """Save current browser cookies to JSON file (PRD-015 security fix)."""
         try:
             cookies = self.driver.get_cookies()
-            with open(self.COOKIES_FILE, 'wb') as f:
-                pickle.dump(cookies, f)
+
+            # Remove non-serializable fields that can cause issues
+            for cookie in cookies:
+                # expiry is sometimes a float that JSON can handle, but remove if problematic
+                if 'expiry' in cookie and not isinstance(cookie['expiry'], (int, float)):
+                    del cookie['expiry']
+                # sameSite can cause issues when loading
+                cookie.pop('sameSite', None)
+
+            with open(self.COOKIES_FILE, 'w') as f:
+                json.dump(cookies, f, indent=2)
             logger.info(f"Saved {len(cookies)} cookies to {self.COOKIES_FILE}")
         except Exception as e:
             logger.error(f"Failed to save cookies: {e}")
 
     def _load_cookies(self):
-        """Load cookies from file into browser."""
+        """Load cookies from JSON file into browser (PRD-015 security fix)."""
         try:
             # Must navigate to domain first before adding cookies
             self.driver.get(self.BASE_URL)
 
-            with open(self.COOKIES_FILE, 'rb') as f:
-                cookies = pickle.load(f)
+            with open(self.COOKIES_FILE, 'r') as f:
+                cookies = json.load(f)
 
             for cookie in cookies:
-                # Remove 'expiry' if it's in the past to avoid errors
-                if 'expiry' in cookie:
-                    del cookie['expiry']
-                self.driver.add_cookie(cookie)
+                # Remove 'expiry' if present to avoid errors with expired cookies
+                cookie.pop('expiry', None)
+                try:
+                    self.driver.add_cookie(cookie)
+                except Exception as e:
+                    logger.debug(f"Could not add cookie {cookie.get('name', 'unknown')}: {e}")
 
             logger.info(f"Loaded {len(cookies)} cookies from {self.COOKIES_FILE}")
         except Exception as e:

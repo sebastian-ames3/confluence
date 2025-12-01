@@ -237,6 +237,28 @@ pytest tests/test_integration/
 
 ## 🔐 Security
 
+### Security Hardening (PRD-015)
+This project implements several security measures:
+
+**Authentication**
+- HTTP Basic Auth on all API endpoints (except /health)
+- Set `AUTH_USERNAME` and `AUTH_PASSWORD` in production
+- Dev mode allows unauthenticated access if `AUTH_PASSWORD` is not set
+
+**Rate Limiting**
+- All endpoints protected with rate limiting using slowapi
+- Configurable limits via environment variables:
+  - `RATE_LIMIT_DEFAULT`: 100/minute (general endpoints)
+  - `RATE_LIMIT_SYNTHESIS`: 10/hour (expensive Claude API calls)
+  - `RATE_LIMIT_TRIGGER`: 5/hour (collection triggers)
+  - `RATE_LIMIT_SEARCH`: 60/minute (database queries)
+
+**Data Security**
+- Cookie storage uses JSON instead of pickle (prevents code execution)
+- Discord channel config can be passed via env var (no config files in production)
+- Railway URLs loaded from environment (no hardcoded URLs)
+- Frontend uses XSS sanitization for user-facing content
+
 ### Credentials Management
 - Never commit credentials to git
 - Use environment variables for sensitive data

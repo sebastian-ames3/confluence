@@ -6,11 +6,16 @@ FastAPI application providing REST endpoints for:
 - AI-powered content analysis
 - Confluence scoring and tracking
 - Dashboard data queries
+
+Security features (PRD-015):
+- HTTP Basic Auth on all API routes (except /health)
+- Rate limiting to prevent API abuse
 """
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from slowapi.errors import RateLimitExceeded
 import os
 from pathlib import Path
 from dotenv import load_dotenv
@@ -19,12 +24,21 @@ from dotenv import load_dotenv
 project_root = Path(__file__).parent.parent
 load_dotenv(project_root / ".env")
 
+# Import rate limiter
+from backend.utils.rate_limiter import limiter, rate_limit_exceeded_handler
+
 # Initialize FastAPI app
 app = FastAPI(
     title="Macro Confluence Hub API",
     description="Investment research aggregation and confluence analysis system",
-    version="0.1.0",
+    version="1.0.0",
 )
+
+# Add rate limiter to app state
+app.state.limiter = limiter
+
+# Register rate limit exceeded handler
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 
 # Configure CORS for frontend

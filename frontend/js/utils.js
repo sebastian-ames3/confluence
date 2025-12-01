@@ -1,7 +1,29 @@
 /**
  * Utility Functions
  * Common helpers for formatting, dates, etc.
+ *
+ * Security (PRD-015):
+ * - sanitizeHTML() function for XSS prevention
+ * - Use textContent for text-only fields
  */
+
+/**
+ * Sanitize HTML to prevent XSS attacks (PRD-015)
+ *
+ * Escapes HTML special characters to prevent script injection.
+ * Use this when inserting untrusted content into innerHTML.
+ *
+ * @param {string} str - String to sanitize
+ * @returns {string} - HTML-escaped string
+ */
+function sanitizeHTML(str) {
+    if (str === null || str === undefined) return '';
+    if (typeof str !== 'string') str = String(str);
+
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
 
 /**
  * Format ISO date string to readable format
@@ -185,13 +207,13 @@ function getPillarColor(score) {
 }
 
 /**
- * Format tickers as badges
+ * Format tickers as badges (with XSS protection)
  */
 function formatTickers(tickers) {
     if (!tickers || tickers.length === 0) return '';
 
     return tickers.map(ticker =>
-        `<span class="badge badge-info">${ticker}</span>`
+        `<span class="badge badge-info">${sanitizeHTML(ticker)}</span>`
     ).join(' ');
 }
 
@@ -215,22 +237,22 @@ function showLoading(elementId) {
 }
 
 /**
- * Show error message
+ * Show error message (with XSS protection)
  */
 function showError(elementId, message) {
     const el = document.getElementById(elementId);
     if (el) {
-        el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠</div><p>${message}</p></div>`;
+        el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠</div><p>${sanitizeHTML(message)}</p></div>`;
     }
 }
 
 /**
- * Show empty state
+ * Show empty state (with XSS protection)
  */
 function showEmpty(elementId, message = 'No data available') {
     const el = document.getElementById(elementId);
     if (el) {
-        el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📊</div><p>${message}</p></div>`;
+        el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📊</div><p>${sanitizeHTML(message)}</p></div>`;
     }
 }
 

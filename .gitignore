@@ -12,11 +12,14 @@ ENV/
 *.db
 *.sqlite3
 
-# Credentials
+# Credentials and Security Files (PRD-015)
 config/credentials.json
+config/discord_channels.json
 .env
 *.key
 *.pem
+temp/*_cookies.json
+temp/*_cookies.pkl
 
 # IDE
 .vscode/

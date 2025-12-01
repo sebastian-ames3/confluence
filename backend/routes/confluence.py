@@ -3,9 +3,13 @@ Confluence Routes
 
 API endpoints for confluence scoring, theme tracking, and cross-reference analysis.
 Provides the core investment research synthesis functionality.
+
+Security (PRD-015):
+- All endpoints require HTTP Basic Auth
+- Rate limited to prevent abuse
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, func
 from typing import List, Optional
@@ -23,6 +27,8 @@ from backend.models import (
     Source,
     RawContent
 )
+from backend.utils.auth import verify_credentials
+from backend.utils.rate_limiter import limiter, RATE_LIMITS
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -33,14 +39,17 @@ router = APIRouter()
 # ============================================================================
 
 @router.get("/scores")
+@limiter.limit(RATE_LIMITS["search"])
 async def list_confluence_scores(
+    request: Request,
     db: Session = Depends(get_db),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     min_score: Optional[int] = Query(None, ge=0, le=14),
     meets_threshold: Optional[bool] = None,
     source: Optional[str] = None,
-    days: Optional[int] = Query(None, ge=1, le=365)
+    days: Optional[int] = Query(None, ge=1, le=365),
+    user: str = Depends(verify_credentials)
 ):
     """
     List confluence scores with filtering options.
@@ -135,9 +144,12 @@ async def list_confluence_scores(
 
 
 @router.get("/scores/{score_id}")
+@limiter.limit(RATE_LIMITS["default"])
 async def get_confluence_score(
+    request: Request,
     score_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: str = Depends(verify_credentials)
 ):
     """
     Get detailed confluence score by ID.
@@ -221,10 +233,13 @@ async def get_confluence_score(
 
 
 @router.post("/score/{analyzed_content_id}")
+@limiter.limit(RATE_LIMITS["synthesis"])
 async def score_content(
+    request: Request,
     analyzed_content_id: int,
     background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: str = Depends(verify_credentials)
 ):
     """
     Score analyzed content using the confluence scorer agent.
@@ -333,12 +348,15 @@ async def score_content(
 # ============================================================================
 
 @router.get("/themes")
+@limiter.limit(RATE_LIMITS["default"])
 async def list_themes(
+    request: Request,
     db: Session = Depends(get_db),
     status: Optional[str] = Query(None, regex="^(active|acted_upon|invalidated|archived)$"),
     min_conviction: Optional[float] = Query(None, ge=0.0, le=1.0),
     limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0)
+    offset: int = Query(0, ge=0),
+    user: str = Depends(verify_credentials)
 ):
     """
     List investment themes with filtering.
@@ -406,9 +424,12 @@ async def list_themes(
 
 
 @router.get("/themes/{theme_id}")
+@limiter.limit(RATE_LIMITS["default"])
 async def get_theme(
+    request: Request,
     theme_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: str = Depends(verify_credentials)
 ):
     """
     Get detailed theme information with evidence and Bayesian history.
@@ -498,10 +519,13 @@ async def get_theme(
 
 
 @router.patch("/themes/{theme_id}/status")
+@limiter.limit(RATE_LIMITS["default"])
 async def update_theme_status(
+    request: Request,
     theme_id: int,
     status: str = Query(..., regex="^(active|acted_upon|invalidated|archived)$"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: str = Depends(verify_credentials)
 ):
     """
     Update theme status.
@@ -539,10 +563,13 @@ async def update_theme_status(
 # ============================================================================
 
 @router.post("/cross-reference")
+@limiter.limit(RATE_LIMITS["synthesis"])
 async def run_cross_reference(
+    request: Request,
     db: Session = Depends(get_db),
     time_window_days: int = Query(7, ge=1, le=90),
-    min_sources: int = Query(2, ge=1, le=6)
+    min_sources: int = Query(2, ge=1, le=6),
+    user: str = Depends(verify_credentials)
 ):
     """
     Run cross-reference analysis on recent confluence scores.
@@ -652,11 +679,14 @@ async def run_cross_reference(
 
 
 @router.get("/high-conviction")
+@limiter.limit(RATE_LIMITS["default"])
 async def get_high_conviction_ideas(
+    request: Request,
     db: Session = Depends(get_db),
     min_conviction: float = Query(0.75, ge=0.0, le=1.0),
     min_sources: int = Query(2, ge=1, le=6),
-    limit: int = Query(10, ge=1, le=50)
+    limit: int = Query(10, ge=1, le=50),
+    user: str = Depends(verify_credentials)
 ):
     """
     Get high-conviction investment ideas.
@@ -744,9 +774,12 @@ async def get_high_conviction_ideas(
 # ============================================================================
 
 @router.get("/stats")
+@limiter.limit(RATE_LIMITS["default"])
 async def get_confluence_stats(
+    request: Request,
     db: Session = Depends(get_db),
-    days: int = Query(30, ge=1, le=365)
+    days: int = Query(30, ge=1, le=365),
+    user: str = Depends(verify_credentials)
 ):
     """
     Get confluence scoring statistics.

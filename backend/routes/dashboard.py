@@ -3,9 +3,13 @@ Dashboard Routes
 
 API endpoints for web dashboard pages.
 Provides data for Today's View, Theme Tracker, Source Browser, Confluence Matrix, and Historical View.
+
+Security (PRD-015):
+- All endpoints require HTTP Basic Auth
+- Rate limited to prevent abuse
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, func
 from typing import List, Optional
@@ -22,6 +26,8 @@ from backend.models import (
     Source,
     RawContent
 )
+from backend.utils.auth import verify_credentials
+from backend.utils.rate_limiter import limiter, RATE_LIMITS
 
 router = APIRouter()
 
@@ -31,7 +37,12 @@ router = APIRouter()
 # ============================================================================
 
 @router.get("/today")
-async def get_today_view(db: Session = Depends(get_db)):
+@limiter.limit(RATE_LIMITS["default"])
+async def get_today_view(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: str = Depends(verify_credentials)
+):
     """
     Get data for Today's View dashboard page.
 
@@ -125,10 +136,13 @@ async def get_today_view(db: Session = Depends(get_db)):
 # ============================================================================
 
 @router.get("/themes")
+@limiter.limit(RATE_LIMITS["default"])
 async def get_all_themes(
+    request: Request,
     status: Optional[str] = Query(None, description="Filter by status: active, acted_upon, invalidated"),
     min_conviction: Optional[float] = Query(None, description="Minimum conviction threshold"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: str = Depends(verify_credentials)
 ):
     """
     Get all themes with optional filters.
@@ -184,7 +198,13 @@ async def get_all_themes(
 
 
 @router.get("/themes/{theme_id}")
-async def get_theme_detail(theme_id: int, db: Session = Depends(get_db)):
+@limiter.limit(RATE_LIMITS["default"])
+async def get_theme_detail(
+    request: Request,
+    theme_id: int,
+    db: Session = Depends(get_db),
+    user: str = Depends(verify_credentials)
+):
     """
     Get detailed information about a specific theme.
 
@@ -257,10 +277,13 @@ async def get_theme_detail(theme_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/themes/{theme_id}/status")
+@limiter.limit(RATE_LIMITS["default"])
 async def update_theme_status(
+    request: Request,
     theme_id: int,
     status: str = Query(..., description="New status: active, acted_upon, invalidated, archived"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: str = Depends(verify_credentials)
 ):
     """
     Update theme status (e.g., mark as acted upon or invalidated).
@@ -290,7 +313,12 @@ async def update_theme_status(
 # ============================================================================
 
 @router.get("/sources")
-async def get_all_sources(db: Session = Depends(get_db)):
+@limiter.limit(RATE_LIMITS["default"])
+async def get_all_sources(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: str = Depends(verify_credentials)
+):
     """Get list of all sources with recent activity stats."""
     sources = db.query(Source).all()
 
@@ -324,11 +352,14 @@ async def get_all_sources(db: Session = Depends(get_db)):
 
 
 @router.get("/sources/{source_name}")
+@limiter.limit(RATE_LIMITS["search"])
 async def get_source_content(
+    request: Request,
     source_name: str,
     limit: int = Query(50, description="Number of items to return"),
     offset: int = Query(0, description="Offset for pagination"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: str = Depends(verify_credentials)
 ):
     """
     Get content from a specific source with pagination.
@@ -406,10 +437,13 @@ async def get_source_content(
 # ============================================================================
 
 @router.get("/matrix")
+@limiter.limit(RATE_LIMITS["search"])
 async def get_confluence_matrix(
+    request: Request,
     days: int = Query(30, description="Number of days to include"),
     min_score: int = Query(4, description="Minimum total score to include"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: str = Depends(verify_credentials)
 ):
     """
     Get confluence matrix data (heatmap of pillar scores).
@@ -482,7 +516,13 @@ async def get_confluence_matrix(
 # ============================================================================
 
 @router.get("/historical/{theme_id}")
-async def get_historical_data(theme_id: int, db: Session = Depends(get_db)):
+@limiter.limit(RATE_LIMITS["search"])
+async def get_historical_data(
+    request: Request,
+    theme_id: int,
+    db: Session = Depends(get_db),
+    user: str = Depends(verify_credentials)
+):
     """
     Get historical data for a specific theme.
 
@@ -572,7 +612,12 @@ async def get_historical_data(theme_id: int, db: Session = Depends(get_db)):
 # ============================================================================
 
 @router.get("/stats")
-async def get_dashboard_stats(db: Session = Depends(get_db)):
+@limiter.limit(RATE_LIMITS["default"])
+async def get_dashboard_stats(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: str = Depends(verify_credentials)
+):
     """Get overall dashboard statistics."""
     return {
         "sources": {
