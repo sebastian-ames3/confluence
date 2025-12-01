@@ -1,0 +1,544 @@
+"""
+Trigger Routes
+
+Protected API endpoints for triggering collection and analysis.
+Used by GitHub Actions scheduler and manual API calls.
+
+Part of PRD-014: Deployment & Infrastructure Fixes.
+"""
+
+from fastapi import APIRouter, HTTPException, Depends, Header, BackgroundTasks
+from sqlalchemy.orm import Session
+from typing import Optional, List
+from datetime import datetime, timedelta
+from pydantic import BaseModel
+import json
+import logging
+import os
+import asyncio
+
+from backend.models import get_db, CollectionRun, RawContent, Source
+
+logger = logging.getLogger(__name__)
+router = APIRouter()
+
+
+# ============================================================================
+# API Key Authentication
+# ============================================================================
+
+def verify_api_key(x_api_key: str = Header(None, alias="X-API-Key")) -> str:
+    """
+    Verify the API key from request header.
+
+    Raises HTTPException 401 if key is missing or invalid.
+    """
+    expected_key = os.getenv("TRIGGER_API_KEY")
+
+    if not expected_key:
+        # If no key configured, allow requests (development mode)
+        logger.warning("TRIGGER_API_KEY not configured - allowing unauthenticated access")
+        return "development"
+
+    if not x_api_key:
+        raise HTTPException(
+            status_code=401,
+            detail="Missing API key. Provide X-API-Key header."
+        )
+
+    if x_api_key != expected_key:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid API key"
+        )
+
+    return x_api_key
+
+
+# ============================================================================
+# Request/Response Models
+# ============================================================================
+
+class CollectRequest(BaseModel):
+    """Request model for collection trigger"""
+    sources: Optional[List[str]] = None  # None = all sources
+    run_type: str = "manual"  # "manual", "scheduled_6am", "scheduled_6pm"
+
+
+class AnalyzeRequest(BaseModel):
+    """Request model for analysis trigger"""
+    time_window: str = "24h"
+    focus_topic: Optional[str] = None
+
+
+class TriggerResponse(BaseModel):
+    """Response model for trigger endpoints"""
+    status: str
+    job_id: int
+    message: str
+
+
+# ============================================================================
+# Collection Trigger
+# ============================================================================
+
+@router.post("/collect")
+async def trigger_collection(
+    request: CollectRequest = CollectRequest(),
+    background_tasks: BackgroundTasks = None,
+    db: Session = Depends(get_db),
+    api_key: str = Depends(verify_api_key)
+):
+    """
+    Trigger data collection from specified sources.
+
+    Protected endpoint - requires X-API-Key header.
+    Called by GitHub Actions scheduler or manually.
+
+    Args:
+        request: Collection request with optional source filter
+        background_tasks: FastAPI background tasks
+        db: Database session
+        api_key: Validated API key
+
+    Returns:
+        Job ID and status for tracking
+    """
+    # Determine sources to collect from
+    all_sources = ["youtube", "substack", "42macro"]  # Discord handled separately
+
+    if request.sources:
+        sources_to_collect = [s for s in request.sources if s in all_sources]
+        if not sources_to_collect:
+            raise HTTPException(
+                status_code=400,
+                detail=f"No valid sources specified. Available: {all_sources}"
+            )
+    else:
+        sources_to_collect = all_sources
+
+    # Create collection run record
+    collection_run = CollectionRun(
+        run_type=request.run_type,
+        started_at=datetime.utcnow(),
+        status="running",
+        source_results=json.dumps({}),
+        errors=json.dumps([])
+    )
+    db.add(collection_run)
+    db.commit()
+    db.refresh(collection_run)
+
+    job_id = collection_run.id
+    logger.info(f"Started collection job {job_id} for sources: {sources_to_collect}")
+
+    # Run collection in background
+    if background_tasks:
+        background_tasks.add_task(
+            _run_collection_job,
+            job_id=job_id,
+            sources=sources_to_collect
+        )
+    else:
+        # Run synchronously if no background tasks available
+        await _run_collection_job(job_id, sources_to_collect)
+
+    return {
+        "status": "accepted",
+        "job_id": job_id,
+        "message": f"Collection started for sources: {sources_to_collect}",
+        "sources": sources_to_collect,
+        "run_type": request.run_type
+    }
+
+
+async def _run_collection_job(job_id: int, sources: List[str]):
+    """
+    Execute collection job in background.
+
+    Args:
+        job_id: CollectionRun ID
+        sources: List of sources to collect from
+    """
+    from backend.models import SessionLocal
+
+    db = SessionLocal()
+    results = {}
+    errors = []
+    total_items = 0
+    successful = 0
+    failed = 0
+
+    try:
+        for source_name in sources:
+            try:
+                logger.info(f"Job {job_id}: Collecting from {source_name}")
+                items = await _collect_from_source(db, source_name)
+                results[source_name] = {
+                    "status": "success",
+                    "items_collected": len(items)
+                }
+                total_items += len(items)
+                successful += 1
+                logger.info(f"Job {job_id}: Collected {len(items)} items from {source_name}")
+
+            except Exception as e:
+                error_msg = f"Collection from {source_name} failed: {str(e)}"
+                logger.error(f"Job {job_id}: {error_msg}")
+                results[source_name] = {
+                    "status": "failed",
+                    "error": str(e)
+                }
+                errors.append(error_msg)
+                failed += 1
+
+        # Update collection run record
+        collection_run = db.query(CollectionRun).filter(CollectionRun.id == job_id).first()
+        if collection_run:
+            collection_run.completed_at = datetime.utcnow()
+            collection_run.status = "completed" if failed == 0 else "completed_with_errors"
+            collection_run.source_results = json.dumps(results)
+            collection_run.errors = json.dumps(errors)
+            collection_run.total_items_collected = total_items
+            collection_run.successful_sources = successful
+            collection_run.failed_sources = failed
+            db.commit()
+
+        logger.info(f"Job {job_id}: Collection completed. Total: {total_items} items, {successful} successful, {failed} failed")
+
+    except Exception as e:
+        logger.error(f"Job {job_id}: Fatal error: {e}")
+        # Mark as failed
+        collection_run = db.query(CollectionRun).filter(CollectionRun.id == job_id).first()
+        if collection_run:
+            collection_run.completed_at = datetime.utcnow()
+            collection_run.status = "failed"
+            collection_run.errors = json.dumps([str(e)])
+            db.commit()
+    finally:
+        db.close()
+
+
+async def _collect_from_source(db: Session, source_name: str) -> list:
+    """
+    Collect from a single source.
+
+    Args:
+        db: Database session
+        source_name: Source to collect from
+
+    Returns:
+        List of collected items
+    """
+    if source_name == "youtube":
+        from collectors.youtube_api import YouTubeCollector
+
+        api_key = os.getenv("YOUTUBE_API_KEY")
+        if not api_key:
+            raise ValueError("YOUTUBE_API_KEY not configured")
+
+        collector = YouTubeCollector(api_key=api_key)
+        items = await collector.collect()
+
+    elif source_name == "substack":
+        from collectors.substack_rss import SubstackCollector
+
+        collector = SubstackCollector()
+        items = await collector.collect()
+
+    elif source_name == "42macro":
+        from collectors.macro42_selenium import Macro42Collector
+
+        email = os.getenv("MACRO42_EMAIL")
+        password = os.getenv("MACRO42_PASSWORD")
+        if not email or not password:
+            raise ValueError("MACRO42_EMAIL and MACRO42_PASSWORD not configured")
+
+        collector = Macro42Collector(email=email, password=password, headless=True)
+        items = await collector.collect()
+
+    else:
+        raise ValueError(f"Unknown source: {source_name}")
+
+    # Save items to database
+    if items:
+        await _save_collected_items(db, source_name, items)
+
+    return items
+
+
+async def _save_collected_items(db: Session, source_name: str, items: list):
+    """Save collected items to database."""
+    # Get or create source
+    source = db.query(Source).filter(Source.name == source_name).first()
+    if not source:
+        source = Source(
+            name=source_name,
+            type=source_name,
+            active=True,
+            last_collected_at=datetime.utcnow()
+        )
+        db.add(source)
+        db.commit()
+        db.refresh(source)
+    else:
+        source.last_collected_at = datetime.utcnow()
+
+    # Save each item
+    for item in items:
+        raw_content = RawContent(
+            source_id=source.id,
+            content_type=item.get("content_type", "text"),
+            content_text=item.get("content_text"),
+            file_path=item.get("file_path"),
+            url=item.get("url"),
+            json_metadata=json.dumps(item.get("metadata", {})),
+            collected_at=item.get("collected_at", datetime.utcnow()),
+            processed=False
+        )
+        db.add(raw_content)
+
+    db.commit()
+
+
+# ============================================================================
+# Analysis Trigger
+# ============================================================================
+
+@router.post("/analyze")
+async def trigger_analysis(
+    request: AnalyzeRequest = AnalyzeRequest(),
+    background_tasks: BackgroundTasks = None,
+    db: Session = Depends(get_db),
+    api_key: str = Depends(verify_api_key)
+):
+    """
+    Trigger analysis and synthesis generation.
+
+    Protected endpoint - requires X-API-Key header.
+    Called by GitHub Actions scheduler after collection completes.
+
+    Args:
+        request: Analysis request with time window
+        background_tasks: FastAPI background tasks
+        db: Database session
+        api_key: Validated API key
+
+    Returns:
+        Job status and synthesis info
+    """
+    # Validate time window
+    valid_windows = ["24h", "7d", "30d"]
+    if request.time_window not in valid_windows:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid time_window. Use: {valid_windows}"
+        )
+
+    try:
+        # Import synthesis generation logic
+        from agents.synthesis_agent import SynthesisAgent
+        from backend.models import Synthesis, AnalyzedContent
+
+        # Get time cutoff
+        time_deltas = {
+            "24h": timedelta(hours=24),
+            "7d": timedelta(days=7),
+            "30d": timedelta(days=30)
+        }
+        cutoff = datetime.utcnow() - time_deltas[request.time_window]
+
+        # Get analyzed content
+        content_items = _get_content_for_synthesis(db, cutoff, request.focus_topic)
+
+        if not content_items:
+            return {
+                "status": "no_content",
+                "message": f"No analyzed content found in the past {request.time_window}",
+                "content_count": 0
+            }
+
+        # Generate synthesis
+        agent = SynthesisAgent()
+        result = agent.analyze(
+            content_items=content_items,
+            time_window=request.time_window,
+            focus_topic=request.focus_topic
+        )
+
+        # Save synthesis
+        synthesis = Synthesis(
+            synthesis=result.get("synthesis", ""),
+            key_themes=json.dumps(result.get("key_themes", [])),
+            high_conviction_ideas=json.dumps(result.get("high_conviction_ideas", [])),
+            contradictions=json.dumps(result.get("contradictions", [])),
+            market_regime=result.get("market_regime"),
+            catalysts=json.dumps(result.get("catalysts", [])),
+            time_window=request.time_window,
+            content_count=result.get("content_count", len(content_items)),
+            sources_included=json.dumps(result.get("sources_included", [])),
+            focus_topic=request.focus_topic,
+            generated_at=datetime.utcnow()
+        )
+        db.add(synthesis)
+        db.commit()
+        db.refresh(synthesis)
+
+        logger.info(f"Generated synthesis {synthesis.id} with {len(content_items)} content items")
+
+        return {
+            "status": "success",
+            "synthesis_id": synthesis.id,
+            "content_count": len(content_items),
+            "time_window": request.time_window,
+            "market_regime": result.get("market_regime"),
+            "key_themes": result.get("key_themes", [])[:5],  # Top 5
+            "generated_at": synthesis.generated_at.isoformat()
+        }
+
+    except ImportError as e:
+        logger.error(f"Missing module for analysis: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Analysis module not available: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"Analysis failed: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Analysis failed: {str(e)}"
+        )
+
+
+def _get_content_for_synthesis(db: Session, cutoff: datetime, focus_topic: Optional[str] = None) -> list:
+    """Get analyzed content for synthesis generation."""
+    from backend.models import AnalyzedContent, RawContent, Source
+    from sqlalchemy import desc
+
+    # Query analyzed content with source info
+    query = db.query(AnalyzedContent, RawContent, Source).join(
+        RawContent, AnalyzedContent.raw_content_id == RawContent.id
+    ).join(
+        Source, RawContent.source_id == Source.id
+    ).filter(
+        AnalyzedContent.analyzed_at >= cutoff
+    )
+
+    # Filter by topic if provided
+    if focus_topic:
+        topic_lower = focus_topic.lower()
+        query = query.filter(
+            (AnalyzedContent.key_themes.ilike(f"%{topic_lower}%")) |
+            (AnalyzedContent.tickers_mentioned.ilike(f"%{topic_lower}%"))
+        )
+
+    results = query.order_by(desc(AnalyzedContent.analyzed_at)).all()
+
+    content_items = []
+    for analyzed, raw, source in results:
+        # Parse analysis result
+        try:
+            analysis_data = json.loads(analyzed.analysis_result) if analyzed.analysis_result else {}
+        except json.JSONDecodeError:
+            analysis_data = {}
+
+        # Parse metadata
+        try:
+            metadata = json.loads(raw.json_metadata) if raw.json_metadata else {}
+        except json.JSONDecodeError:
+            metadata = {}
+
+        content_items.append({
+            "source": source.name,
+            "type": raw.content_type,
+            "title": metadata.get("title", f"{source.name} content"),
+            "timestamp": raw.collected_at.isoformat() if raw.collected_at else None,
+            "summary": analysis_data.get("summary", analyzed.analysis_result[:500] if analyzed.analysis_result else ""),
+            "themes": analyzed.key_themes.split(",") if analyzed.key_themes else [],
+            "tickers": analyzed.tickers_mentioned.split(",") if analyzed.tickers_mentioned else [],
+            "sentiment": analyzed.sentiment,
+            "conviction": analyzed.conviction,
+            "content_text": raw.content_text[:1000] if raw.content_text else ""
+        })
+
+    return content_items
+
+
+# ============================================================================
+# Job Status
+# ============================================================================
+
+@router.get("/status/{job_id}")
+async def get_job_status(
+    job_id: int,
+    db: Session = Depends(get_db),
+    api_key: str = Depends(verify_api_key)
+):
+    """
+    Check status of a triggered collection job.
+
+    Args:
+        job_id: CollectionRun ID
+        db: Database session
+        api_key: Validated API key
+
+    Returns:
+        Job status and results
+    """
+    collection_run = db.query(CollectionRun).filter(CollectionRun.id == job_id).first()
+
+    if not collection_run:
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+
+    return {
+        "job_id": job_id,
+        "status": collection_run.status,
+        "run_type": collection_run.run_type,
+        "started_at": collection_run.started_at.isoformat() if collection_run.started_at else None,
+        "completed_at": collection_run.completed_at.isoformat() if collection_run.completed_at else None,
+        "total_items_collected": collection_run.total_items_collected,
+        "successful_sources": collection_run.successful_sources,
+        "failed_sources": collection_run.failed_sources,
+        "source_results": json.loads(collection_run.source_results) if collection_run.source_results else {},
+        "errors": json.loads(collection_run.errors) if collection_run.errors else []
+    }
+
+
+@router.get("/status")
+async def get_latest_jobs(
+    limit: int = 5,
+    db: Session = Depends(get_db),
+    api_key: str = Depends(verify_api_key)
+):
+    """
+    Get status of recent collection jobs.
+
+    Args:
+        limit: Number of jobs to return
+        db: Database session
+        api_key: Validated API key
+
+    Returns:
+        List of recent job statuses
+    """
+    from sqlalchemy import desc
+
+    runs = db.query(CollectionRun).order_by(
+        desc(CollectionRun.started_at)
+    ).limit(limit).all()
+
+    return {
+        "jobs": [
+            {
+                "job_id": run.id,
+                "status": run.status,
+                "run_type": run.run_type,
+                "started_at": run.started_at.isoformat() if run.started_at else None,
+                "completed_at": run.completed_at.isoformat() if run.completed_at else None,
+                "total_items_collected": run.total_items_collected,
+                "successful_sources": run.successful_sources,
+                "failed_sources": run.failed_sources
+            }
+            for run in runs
+        ]
+    }
