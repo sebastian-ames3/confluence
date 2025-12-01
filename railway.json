@@ -2,10 +2,11 @@
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
     "builder": "NIXPACKS",
-    "buildCommand": "pip install -r requirements.txt"
+    "buildCommand": "pip install -r requirements.txt",
+    "nixPackages": ["ffmpeg", "chromium", "chromedriver"]
   },
   "deploy": {
-    "startCommand": "uvicorn backend.app:app --host 0.0.0.0 --port $PORT",
+    "startCommand": "python scripts/run_migrations.py --auto && uvicorn backend.app:app --host 0.0.0.0 --port $PORT",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10,
     "healthcheckPath": "/health",

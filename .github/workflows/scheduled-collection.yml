@@ -1,0 +1,168 @@
+name: Scheduled Collection
+
+# Trigger collection and analysis at 6am and 6pm EST
+# Since Railway Hobby plan doesn't support cron, we use GitHub Actions
+
+on:
+  schedule:
+    # 6am EST = 11:00 UTC (standard time) / 10:00 UTC (during DST)
+    # Using 11:00 UTC for EST
+    - cron: '0 11 * * *'
+    # 6pm EST = 23:00 UTC (standard time) / 22:00 UTC (during DST)
+    # Using 23:00 UTC for EST
+    - cron: '0 23 * * *'
+
+  # Allow manual trigger from GitHub UI
+  workflow_dispatch:
+    inputs:
+      run_type:
+        description: 'Type of collection run'
+        required: false
+        default: 'manual'
+        type: choice
+        options:
+          - manual
+          - scheduled_6am
+          - scheduled_6pm
+      time_window:
+        description: 'Analysis time window'
+        required: false
+        default: '24h'
+        type: choice
+        options:
+          - 24h
+          - 7d
+          - 30d
+
+env:
+  RAILWAY_API_URL: ${{ secrets.RAILWAY_API_URL }}
+  TRIGGER_API_KEY: ${{ secrets.TRIGGER_API_KEY }}
+
+jobs:
+  trigger-collection:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Determine Run Type
+        id: run_type
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "run_type=${{ github.event.inputs.run_type || 'manual' }}" >> $GITHUB_OUTPUT
+          else
+            # Determine based on schedule time
+            hour=$(date -u +%H)
+            if [ "$hour" = "11" ] || [ "$hour" = "10" ]; then
+              echo "run_type=scheduled_6am" >> $GITHUB_OUTPUT
+            else
+              echo "run_type=scheduled_6pm" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Check Configuration
+        run: |
+          if [ -z "$RAILWAY_API_URL" ]; then
+            echo "::error::RAILWAY_API_URL secret is not configured"
+            exit 1
+          fi
+          if [ -z "$TRIGGER_API_KEY" ]; then
+            echo "::error::TRIGGER_API_KEY secret is not configured"
+            exit 1
+          fi
+          echo "Configuration validated"
+          echo "API URL: ${RAILWAY_API_URL%/*}/..."
+
+      - name: Trigger Collection
+        id: collect
+        run: |
+          echo "Triggering collection (run_type: ${{ steps.run_type.outputs.run_type }})"
+
+          response=$(curl -s -w "\n%{http_code}" -X POST \
+            "${RAILWAY_API_URL}/api/trigger/collect" \
+            -H "X-API-Key: ${TRIGGER_API_KEY}" \
+            -H "Content-Type: application/json" \
+            -d "{\"run_type\": \"${{ steps.run_type.outputs.run_type }}\"}" \
+            --max-time 60)
+
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | head -n-1)
+
+          echo "HTTP Code: $http_code"
+          echo "Response: $body"
+
+          if [ "$http_code" -ne 200 ] && [ "$http_code" -ne 202 ]; then
+            echo "::error::Collection trigger failed with HTTP $http_code"
+            exit 1
+          fi
+
+          # Extract job_id from response
+          job_id=$(echo "$body" | jq -r '.job_id // empty')
+          echo "job_id=$job_id" >> $GITHUB_OUTPUT
+          echo "Collection job started: $job_id"
+
+      - name: Wait for Collection
+        run: |
+          echo "Waiting 3 minutes for collection to complete..."
+          sleep 180
+
+      - name: Check Collection Status
+        run: |
+          job_id="${{ steps.collect.outputs.job_id }}"
+
+          if [ -n "$job_id" ]; then
+            echo "Checking status for job $job_id"
+
+            response=$(curl -s -X GET \
+              "${RAILWAY_API_URL}/api/trigger/status/${job_id}" \
+              -H "X-API-Key: ${TRIGGER_API_KEY}" \
+              --max-time 30)
+
+            echo "Job Status: $response"
+
+            status=$(echo "$response" | jq -r '.status // "unknown"')
+            items=$(echo "$response" | jq -r '.total_items_collected // 0')
+
+            echo "Status: $status"
+            echo "Items collected: $items"
+          else
+            echo "No job ID available, skipping status check"
+          fi
+
+      - name: Trigger Analysis
+        run: |
+          time_window="${{ github.event.inputs.time_window || '24h' }}"
+          echo "Triggering analysis (time_window: $time_window)"
+
+          response=$(curl -s -w "\n%{http_code}" -X POST \
+            "${RAILWAY_API_URL}/api/trigger/analyze" \
+            -H "X-API-Key: ${TRIGGER_API_KEY}" \
+            -H "Content-Type: application/json" \
+            -d "{\"time_window\": \"$time_window\"}" \
+            --max-time 120)
+
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | head -n-1)
+
+          echo "HTTP Code: $http_code"
+          echo "Response: $body"
+
+          if [ "$http_code" -ne 200 ]; then
+            # Analysis might fail if no content - that's okay
+            if echo "$body" | grep -q "no_content"; then
+              echo "::warning::No content available for analysis"
+            else
+              echo "::warning::Analysis trigger returned HTTP $http_code"
+            fi
+          else
+            synthesis_id=$(echo "$body" | jq -r '.synthesis_id // empty')
+            content_count=$(echo "$body" | jq -r '.content_count // 0')
+            echo "Synthesis generated: ID=$synthesis_id, Content count=$content_count"
+          fi
+
+      - name: Summary
+        run: |
+          echo "## Collection Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Run Type**: ${{ steps.run_type.outputs.run_type }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Job ID**: ${{ steps.collect.outputs.job_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Timestamp**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
