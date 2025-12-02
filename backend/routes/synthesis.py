@@ -3,9 +3,13 @@ Synthesis Routes
 
 API endpoints for research synthesis generation and retrieval.
 Part of PRD-012: Dashboard Simplification.
+
+Security (PRD-015):
+- All endpoints require HTTP Basic Auth
+- Rate limited to prevent abuse (especially synthesis generation)
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, func
 from typing import Optional
@@ -22,6 +26,8 @@ from backend.models import (
     RawContent,
     Source
 )
+from backend.utils.auth import verify_credentials
+from backend.utils.rate_limiter import limiter, RATE_LIMITS
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -67,10 +73,13 @@ class StatusResponse(BaseModel):
 # ============================================================================
 
 @router.post("/generate")
+@limiter.limit(RATE_LIMITS["synthesis"])
 async def generate_synthesis(
+    http_request: Request,
     request: SynthesisGenerateRequest,
     background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: str = Depends(verify_credentials)
 ):
     """
     Generate a new research synthesis.
@@ -145,9 +154,12 @@ async def generate_synthesis(
 
 
 @router.get("/latest")
+@limiter.limit(RATE_LIMITS["default"])
 async def get_latest_synthesis(
+    request: Request,
     time_window: Optional[str] = Query(None, description="Filter by time window"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: str = Depends(verify_credentials)
 ):
     """
     Get the most recent synthesis.
@@ -184,10 +196,13 @@ async def get_latest_synthesis(
 
 
 @router.get("/history")
+@limiter.limit(RATE_LIMITS["default"])
 async def get_synthesis_history(
+    request: Request,
     limit: int = Query(10, ge=1, le=50),
     offset: int = Query(0, ge=0),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: str = Depends(verify_credentials)
 ):
     """
     Get synthesis history.
@@ -220,9 +235,12 @@ async def get_synthesis_history(
 
 
 @router.get("/{synthesis_id}")
+@limiter.limit(RATE_LIMITS["default"])
 async def get_synthesis_by_id(
+    request: Request,
     synthesis_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: str = Depends(verify_credentials)
 ):
     """
     Get a specific synthesis by ID.
@@ -253,7 +271,12 @@ async def get_synthesis_by_id(
 # ============================================================================
 
 @router.get("/status/overview")
-async def get_status_overview(db: Session = Depends(get_db)):
+@limiter.limit(RATE_LIMITS["default"])
+async def get_status_overview(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: str = Depends(verify_credentials)
+):
     """
     Get collection status overview for dashboard.
 
@@ -343,9 +366,12 @@ async def get_status_overview(db: Session = Depends(get_db)):
 
 
 @router.get("/status/collections")
+@limiter.limit(RATE_LIMITS["default"])
 async def get_collection_history(
+    request: Request,
     limit: int = Query(10, ge=1, le=50),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: str = Depends(verify_credentials)
 ):
     """
     Get recent collection runs.

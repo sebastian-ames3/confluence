@@ -4,6 +4,11 @@ Discord Collector (Local Script)
 Collects content from Discord channels using Sebastian's logged-in session.
 Uses discord.py-self (not a bot) to access channels.
 Runs on local laptop, saves data to database or posts to Railway API.
+
+Security (PRD-015):
+- Discord channel config loaded from DISCORD_CHANNELS env var (production)
+- Falls back to config file for local development
+- Railway URLs loaded from RAILWAY_API_URL env var
 """
 
 import discord
@@ -12,6 +17,7 @@ import json
 import aiohttp
 import re
 import logging
+import os
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
@@ -19,6 +25,9 @@ from typing import List, Dict, Any, Optional
 from collectors.base_collector import BaseCollector
 
 logger = logging.getLogger(__name__)
+
+# Railway API URL from environment (PRD-015)
+RAILWAY_API_URL = os.getenv("RAILWAY_API_URL", "http://localhost:8000")
 
 
 class DiscordSelfCollector(BaseCollector):
@@ -54,19 +63,46 @@ class DiscordSelfCollector(BaseCollector):
         logger.info(f"Initialized DiscordSelfCollector with config from {config_path}")
 
     def _load_config(self) -> Dict[str, Any]:
-        """Load channel configuration from JSON file."""
-        try:
-            with open(self.config_path, 'r') as f:
-                config = json.load(f)
-            logger.info(f"Loaded {len(config['channels_to_monitor'])} channels from config")
-            return config
-        except FileNotFoundError:
-            logger.error(f"Config file not found: {self.config_path}")
-            logger.info("Please copy config/discord_channels.json.template to config/discord_channels.json")
-            raise
-        except json.JSONDecodeError as e:
-            logger.error(f"Invalid JSON in config file: {e}")
-            raise
+        """
+        Load Discord channel configuration.
+
+        Priority:
+        1. DISCORD_CHANNELS environment variable (production)
+        2. Config file at config_path (local development)
+
+        Returns:
+            Channel configuration dictionary
+        """
+        # Check environment variable first (PRD-015)
+        env_config = os.getenv("DISCORD_CHANNELS")
+        if env_config:
+            try:
+                config = json.loads(env_config)
+                channel_count = len(config.get('channels_to_monitor', []))
+                logger.info(f"Loaded {channel_count} channels from DISCORD_CHANNELS env var")
+                return config
+            except json.JSONDecodeError as e:
+                logger.error(f"Invalid JSON in DISCORD_CHANNELS env var: {e}")
+                raise ValueError(f"Invalid DISCORD_CHANNELS environment variable: {e}")
+
+        # Fall back to config file for local development
+        config_path = Path(self.config_path)
+        if config_path.exists():
+            try:
+                with open(config_path, 'r') as f:
+                    config = json.load(f)
+                channel_count = len(config.get('channels_to_monitor', []))
+                logger.info(f"Loaded {channel_count} channels from {self.config_path}")
+                return config
+            except json.JSONDecodeError as e:
+                logger.error(f"Invalid JSON in config file: {e}")
+                raise
+
+        # No config found
+        raise ValueError(
+            "Discord configuration not found. "
+            "Set DISCORD_CHANNELS env var or create config/discord_channels.json"
+        )
 
     async def collect(self) -> List[Dict[str, Any]]:
         """
@@ -684,7 +720,7 @@ class DiscordSelfCollector(BaseCollector):
         Returns:
             True if upload successful
         """
-        railway_url = "https://confluence-production.up.railway.app/api/collect/discord"
+        railway_url = f"{RAILWAY_API_URL}/api/collect/discord"
 
         try:
             async with aiohttp.ClientSession() as session:
@@ -771,8 +807,8 @@ class DiscordSelfCollector(BaseCollector):
 
         This is critical for monitoring - if heartbeats stop, dashboard shows alert.
         """
-        # Determine Railway URL - adjust if running locally vs in production
-        railway_url = "https://confluence-production.up.railway.app/api/heartbeat/discord"
+        # Use Railway URL from environment (PRD-015)
+        railway_url = f"{RAILWAY_API_URL}/api/heartbeat/discord"
 
         try:
             async with aiohttp.ClientSession() as session:
