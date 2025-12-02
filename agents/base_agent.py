@@ -3,6 +3,9 @@ Base Agent Class
 
 Foundation for all AI sub-agents.
 Provides common functionality for Claude API integration.
+
+PRD-017: Removed logging.basicConfig() call to avoid conflicts with uvicorn's
+logging configuration. App-wide logging should be configured centrally in app.py.
 """
 
 import os
@@ -13,8 +16,7 @@ from typing import Dict, Any, Optional
 from anthropic import Anthropic
 from dotenv import load_dotenv
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+# Get logger (don't configure here - let app.py handle logging config)
 logger = logging.getLogger(__name__)
 
 # Load environment variables from project root

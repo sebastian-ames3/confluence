@@ -74,7 +74,7 @@ async def root():
     """API root endpoint."""
     return {
         "message": "Macro Confluence Hub API",
-        "version": "0.1.0",
+        "version": "1.0.0",
         "status": "operational",
         "docs": "/docs",
     }
@@ -84,12 +84,13 @@ async def root():
 async def health_check():
     """Health check endpoint for Railway."""
     from backend.models import SessionLocal
+    from sqlalchemy import text
 
     db_status = "connected"
     try:
-        # Actually verify database connectivity
+        # Actually verify database connectivity (SQLAlchemy 2.0 compatible)
         db = SessionLocal()
-        db.execute("SELECT 1")
+        db.execute(text("SELECT 1"))
         db.close()
     except Exception as e:
         db_status = f"error: {str(e)}"

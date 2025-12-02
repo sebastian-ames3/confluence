@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.0] - 2025-12-02
+
+### Added
+- **PRD-017: Polish & Reliability** - Production hardening
+  - Database backup script (`scripts/backup_db.py`) with rotation support
+  - Basic agent tests with mocked Claude responses (`tests/test_agents/`)
+  - Selenium atexit cleanup handler to prevent orphaned Chrome processes
+
+### Fixed
+- **Version consistency** - All version strings now show 1.0.0
+- **SQLAlchemy 2.0 compatibility** - Health check uses `text("SELECT 1")`
+- **UsageLimiter timezone** - Now uses explicit UTC for consistent daily resets
+- **Frontend trigger buttons** - Actually call `/api/trigger/collect` and `/api/synthesis/generate`
+
+### Changed
+- **Dashboard navigation unified** - All pages now have consistent nav including Synthesis link
+- **Dependencies updated** - `anthropic>=0.40.0,<1.0.0`, removed duplicate `mcp>=1.0.0`
+- **Logging centralized** - Removed `basicConfig()` from base_agent.py to avoid uvicorn conflicts
+
+### Removed
+- **Unused stub file** - `backend/utils/claude_api.py` deleted (agents use their own Claude client)
+
+---
+
 ## [1.0.0] - 2025-11-30
 
 ### Added
