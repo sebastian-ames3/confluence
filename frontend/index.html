@@ -19,6 +19,7 @@
             </button>
             <nav class="nav" id="main-nav">
                 <a href="index.html" class="active">Today</a>
+                <a href="simple.html">Synthesis</a>
                 <a href="themes.html">Themes</a>
                 <a href="sources.html">Sources</a>
                 <a href="matrix.html">Matrix</a>
@@ -274,6 +275,7 @@
 
         /**
          * Run manual collection
+         * PRD-017: Implemented trigger button to call /api/trigger/collect
          */
         async function runCollection() {
             const btn = document.getElementById('btn-collect');
@@ -285,14 +287,27 @@
             status.style.color = 'var(--primary)';
 
             try {
-                // TODO: Implement collection trigger endpoint
-                await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate
+                const response = await fetch('/api/trigger/collect', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        run_type: 'manual'
+                    })
+                });
 
-                status.textContent = 'Collection triggered successfully! Data will be updated shortly.';
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Collection trigger failed');
+                }
+
+                const result = await response.json();
+                status.textContent = `Collection started! Job ID: ${result.job_id}. ${result.message}`;
                 status.style.color = 'var(--success)';
 
-                // Refresh data after 3 seconds
-                setTimeout(refreshData, 3000);
+                // Refresh data after 5 seconds to allow collection to complete
+                setTimeout(refreshData, 5000);
 
             } catch (error) {
                 status.textContent = 'Collection failed: ' + error.message;
@@ -304,7 +319,8 @@
         }
 
         /**
-         * Force re-analysis
+         * Force re-analysis (generate synthesis)
+         * PRD-017: Implemented trigger button to call /api/synthesis/generate
          */
         async function forceAnalysis() {
             const btn = document.getElementById('btn-analyze');
@@ -312,15 +328,36 @@
 
             btn.disabled = true;
             btn.textContent = 'Running...';
-            status.textContent = 'Triggering analysis...';
+            status.textContent = 'Generating synthesis...';
             status.style.color = 'var(--primary)';
 
             try {
-                // TODO: Implement analysis trigger endpoint
-                await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate
+                const response = await fetch('/api/synthesis/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        time_window: '24h'
+                    })
+                });
 
-                status.textContent = 'Analysis triggered successfully! Results will be available shortly.';
-                status.style.color = 'var(--success)';
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Synthesis generation failed');
+                }
+
+                const result = await response.json();
+                if (result.status === 'success') {
+                    status.textContent = 'Synthesis generated successfully!';
+                    status.style.color = 'var(--success)';
+                } else if (result.status === 'no_content') {
+                    status.textContent = result.message || 'No content available for synthesis';
+                    status.style.color = 'var(--warning)';
+                } else {
+                    status.textContent = 'Synthesis completed';
+                    status.style.color = 'var(--success)';
+                }
 
                 // Refresh data after 3 seconds
                 setTimeout(refreshData, 3000);

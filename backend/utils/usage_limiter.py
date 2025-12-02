@@ -3,9 +3,15 @@ API Usage Limiter - Prevents Cost Explosions
 
 Simple counter-based budget caps to protect against runaway API costs.
 Does not query external billing APIs - just tracks analyses performed.
+
+Timezone Note (PRD-017):
+All dates use UTC for consistency. This means:
+- Daily limits reset at midnight UTC (not local time)
+- On Railway (UTC), limits reset at midnight server time
+- Locally, limits reset at midnight UTC regardless of your timezone
 """
 import logging
-from datetime import datetime, date
+from datetime import datetime, timezone
 from typing import Dict, Optional, Tuple
 from backend.utils.db import get_db
 
@@ -70,14 +76,24 @@ class UsageLimiter:
                 conn.executescript(migration_sql)
             logger.info("api_usage table created successfully")
 
+    def _get_today_utc(self) -> str:
+        """
+        Get today's date in UTC (YYYY-MM-DD).
+
+        Using UTC ensures consistent behavior across:
+        - Railway deployment (always UTC)
+        - Local development (regardless of local timezone)
+        """
+        return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
     def get_today_usage(self) -> Dict[str, int]:
         """
-        Get current usage for today.
+        Get current usage for today (UTC).
 
         Returns:
             Dict with keys: vision_analyses, transcript_analyses, text_analyses, estimated_cost_usd
         """
-        today = date.today().isoformat()
+        today = self._get_today_utc()
 
         row = self.db.execute_query(
             "SELECT * FROM api_usage WHERE date = ?",
@@ -171,7 +187,7 @@ class UsageLimiter:
 
     def _increment_usage(self, field: str, count: int, cost_per_unit: float, notes: Optional[str] = None):
         """
-        Increment usage counter for today.
+        Increment usage counter for today (UTC).
 
         Args:
             field: 'vision_analyses', 'transcript_analyses', or 'text_analyses'
@@ -179,7 +195,7 @@ class UsageLimiter:
             cost_per_unit: Estimated cost per unit
             notes: Optional notes about this usage
         """
-        today = date.today().isoformat()
+        today = self._get_today_utc()
 
         # Get or create today's record
         row = self.db.execute_query(
@@ -201,7 +217,7 @@ class UsageLimiter:
 
             if notes:
                 existing_notes = row["notes"] or ""
-                update_data["notes"] = f"{existing_notes}\n{datetime.now().strftime('%H:%M:%S')}: {notes}"
+                update_data["notes"] = f"{existing_notes}\n{datetime.now(timezone.utc).strftime('%H:%M:%S')} UTC: {notes}"
 
             self.db.update("api_usage", row["id"], update_data)
 
@@ -221,7 +237,7 @@ class UsageLimiter:
 
     def get_budget_status(self) -> Dict:
         """
-        Get comprehensive budget status for today.
+        Get comprehensive budget status for today (UTC).
 
         Returns:
             Dict with usage stats, limits, and warnings
@@ -239,7 +255,8 @@ class UsageLimiter:
         )
 
         return {
-            "date": date.today().isoformat(),
+            "date": self._get_today_utc(),
+            "timezone": "UTC",
             "usage": usage,
             "limits": {
                 "vision": self.MAX_VISION_DAILY,

@@ -9,12 +9,17 @@ from repeated logins. Only re-authenticates when cookies expire.
 
 Security (PRD-015):
 - Cookies stored as JSON instead of pickle to prevent arbitrary code execution
+
+PRD-017:
+- Added atexit handler to ensure Chrome processes are cleaned up on crash
 """
 
 import logging
 import re
 import json
 import random
+import atexit
+import signal
 from pathlib import Path
 from datetime import datetime
 from typing import List, Dict, Any, Optional
@@ -29,6 +34,30 @@ from webdriver_manager.chrome import ChromeDriverManager
 from collectors.base_collector import BaseCollector
 
 logger = logging.getLogger(__name__)
+
+# Global reference for cleanup handler
+_active_driver = None
+
+
+def _cleanup_chrome():
+    """
+    Cleanup handler for Chrome WebDriver.
+
+    Called on program exit to ensure Chrome processes don't become orphaned.
+    PRD-017: Selenium process cleanup.
+    """
+    global _active_driver
+    if _active_driver:
+        try:
+            _active_driver.quit()
+            logger.info("Chrome WebDriver cleaned up via atexit handler")
+        except Exception as e:
+            logger.debug(f"Chrome cleanup error (may already be closed): {e}")
+        _active_driver = None
+
+
+# Register cleanup handler
+atexit.register(_cleanup_chrome)
 
 # Pool of real browser User-Agents for rotation (reduces fingerprinting)
 USER_AGENTS = [
@@ -118,6 +147,8 @@ class Macro42Collector(BaseCollector):
 
     def _init_driver(self):
         """Initialize Chrome WebDriver with options and random User-Agent."""
+        global _active_driver
+
         chrome_options = Options()
 
         if self.headless:
@@ -145,6 +176,9 @@ class Macro42Collector(BaseCollector):
         # Initialize driver with webdriver-manager
         service = Service(ChromeDriverManager().install())
         self.driver = webdriver.Chrome(service=service, options=chrome_options)
+
+        # Store reference for atexit cleanup handler (PRD-017)
+        _active_driver = self.driver
 
         logger.info(f"Chrome WebDriver initialized, downloads to: {self.download_dir}")
 
