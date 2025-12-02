@@ -101,12 +101,13 @@ async def health_check():
 
 
 # Import and include route modules
-from backend.routes import dashboard, websocket, heartbeat, confluence, synthesis, trigger
+from backend.routes import dashboard, websocket, heartbeat, confluence, synthesis, trigger, search
 
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["dashboard"])
 app.include_router(confluence.router, prefix="/api/confluence", tags=["confluence"])
 app.include_router(synthesis.router, prefix="/api/synthesis", tags=["synthesis"])
 app.include_router(trigger.router, prefix="/api/trigger", tags=["trigger"])
+app.include_router(search.router, prefix="/api/search", tags=["search"])  # PRD-016
 app.include_router(websocket.router, tags=["websocket"])
 app.include_router(heartbeat.router, prefix="/api", tags=["heartbeat"])
 
