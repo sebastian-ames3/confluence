@@ -3,7 +3,7 @@
 ## Overview
 Personal investment research aggregation system. Collects macro analysis from 5 premium sources, applies AI analysis via 10 agents, scores confluence across 7 investment pillars, and provides a web dashboard + Claude Desktop integration.
 
-**Status**: v1.0.0 MVP Complete (2025-11-30) | ~15,000 lines production code
+**Status**: v1.1.0 (2025-12-02) | ~16,000 lines production code
 
 ---
 
@@ -53,6 +53,8 @@ Personal investment research aggregation system. Collects macro analysis from 5 
 
 ## MCP Server (Claude Desktop)
 
+v1.1.0 uses **API proxy pattern** - fetches data via HTTP API instead of direct database access.
+
 5 tools for natural language queries:
 - `search_content` - Search by keyword
 - `get_synthesis` - AI-generated summaries
@@ -68,7 +70,11 @@ Personal investment research aggregation system. Collects macro analysis from 5 
       "command": "python",
       "args": ["-m", "mcp_server.server"],
       "cwd": "C:/path/to/confluence",
-      "env": {"DATABASE_PATH": "C:/path/to/confluence/database/confluence.db"}
+      "env": {
+        "RAILWAY_API_URL": "https://confluence-production.up.railway.app",
+        "AUTH_USERNAME": "admin",
+        "AUTH_PASSWORD": "your-password-here"
+      }
     }
   }
 }
@@ -142,4 +148,4 @@ confluence/
 
 ---
 
-**Last Updated**: 2025-11-30
+**Last Updated**: 2025-12-02

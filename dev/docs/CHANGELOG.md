@@ -5,7 +5,45 @@ All notable changes to the Macro Confluence Hub project will be documented in th
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - 2025-11-28
+## [1.1.0] - 2025-12-02
+
+### Added
+- **[PRD-016] MCP Server API Proxy Refactor**
+  - MCP server now fetches data via HTTP API instead of direct SQLite
+  - New `api_client.py` module with authenticated HTTP client
+  - Enables Claude Desktop (local) to access production data (Railway)
+  - All 5 MCP tools refactored to use API proxy pattern
+  - New search API endpoints:
+    - GET `/api/search/content` - Search research content
+    - GET `/api/search/sources/{source}/view` - Source view on topic
+    - GET `/api/search/themes/aggregated` - Aggregated themes
+    - GET `/api/search/recent/{source}` - Recent content by source
+  - Graceful error handling for network failures
+  - Environment variable configuration for API credentials
+  - Updated MCP README with production/development setup
+
+- **[PRD-015] Security Hardening**
+  - HTTP Basic Auth on all API routes (except /health)
+  - Rate limiting with slowapi (prevents API abuse)
+  - Timing-attack safe credential verification
+  - Discord channel IDs moved to environment variables
+  - Hardcoded Railway URLs replaced with environment variables
+  - Pickle replaced with JSON for cookie storage (security fix)
+  - Frontend XSS mitigation (innerHTML → textContent)
+
+### Changed
+- MCP Server version bumped to 1.1.0
+- Database module marked as deprecated (use api_client instead)
+- Backend app version remains 1.0.0
+
+### Security
+- All protected endpoints require `AUTH_USERNAME` and `AUTH_PASSWORD`
+- Rate limits: 10/hour for synthesis, 60/minute for search
+- Health check endpoint remains public for Railway monitoring
+
+---
+
+## [1.0.0] - 2025-11-30
 
 ### Added
 - **[PRD-013] MCP Server for Claude Desktop** - Model Context Protocol integration
@@ -19,6 +57,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Read-only database access for safe querying
   - Claude Desktop configuration instructions
   - Comprehensive README with setup guide
+
+- **[PRD-014] Deployment & Infrastructure Fixes**
+  - Railway deployment configuration
+  - Environment variable management
+  - Database persistence configuration
 
 - **Confluence Routes API** - Complete REST endpoints for confluence scoring
   - GET /confluence/scores - List all confluence scores with filtering
