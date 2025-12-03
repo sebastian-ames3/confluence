@@ -417,10 +417,27 @@ async def _save_collected_items(
     else:
         source.last_collected_at = datetime.utcnow()
 
-    # Save each item
+    # Save each item with duplicate detection
     saved_count = 0
+    skipped_duplicates = 0
     for item in items:
         try:
+            # Check for duplicates by URL or video_id
+            metadata = item.get("metadata", {})
+            url = item.get("url")
+            video_id = metadata.get("video_id")
+
+            if check_duplicate(db, source.id, url=url, video_id=video_id):
+                skipped_duplicates += 1
+                logger.debug(f"Skipping duplicate {source_name} item: {url or video_id}")
+                continue
+
+            # Parse collected_at if it's a string
+            collected_at = item.get("collected_at", datetime.utcnow())
+            if isinstance(collected_at, str):
+                from dateutil.parser import parse as parse_datetime
+                collected_at = parse_datetime(collected_at)
+
             raw_content = RawContent(
                 source_id=source.id,
                 content_type=item.get("content_type", "text"),
@@ -428,7 +445,7 @@ async def _save_collected_items(
                 file_path=item.get("file_path"),
                 url=item.get("url"),
                 json_metadata=json.dumps(item.get("metadata", {})),
-                collected_at=item.get("collected_at", datetime.utcnow()),
+                collected_at=collected_at,
                 processed=False
             )
             db.add(raw_content)
@@ -438,7 +455,10 @@ async def _save_collected_items(
             continue
 
     db.commit()
-    logger.info(f"Saved {saved_count}/{len(items)} items from {source_name}")
+    if skipped_duplicates > 0:
+        logger.info(f"Saved {saved_count}/{len(items)} items from {source_name} (skipped {skipped_duplicates} duplicates)")
+    else:
+        logger.info(f"Saved {saved_count}/{len(items)} items from {source_name}")
 
     return saved_count
 
