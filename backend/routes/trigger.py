@@ -103,8 +103,10 @@ async def trigger_collection(
         Job ID and status for tracking
     """
     # Determine sources to collect from
-    # Discord handled separately via local Task Scheduler
-    all_sources = ["youtube", "substack", "42macro"]
+    # NOTE: Discord and 42macro are collected locally via Task Scheduler on Sebastian's laptop
+    # - Discord: Requires Discord self-bot token (local only)
+    # - 42macro: Requires Chrome/Selenium (not available on Railway Nixpacks)
+    all_sources = ["youtube", "substack"]
 
     if request.sources:
         sources_to_collect = [s for s in request.sources if s in all_sources]
