@@ -545,3 +545,76 @@ async def get_latest_jobs(
             for run in runs
         ]
     }
+
+
+@router.get("/debug/chrome")
+async def debug_chrome_environment(
+    api_key: str = Depends(verify_api_key)
+):
+    """
+    Debug endpoint to check Chrome/Chromium environment on Railway.
+
+    Returns information about available Chrome binaries and environment.
+    """
+    import shutil
+    import subprocess
+
+    result = {
+        "environment": {
+            "RAILWAY_ENVIRONMENT": os.getenv("RAILWAY_ENVIRONMENT"),
+            "HOME": os.getenv("HOME"),
+            "PATH": os.getenv("PATH", "")[:500] + "...",  # Truncate long PATH
+        },
+        "chrome_binaries": {},
+        "chromedriver": {},
+        "version_checks": {}
+    }
+
+    # Check for Chrome/Chromium binaries
+    for binary in ["chromium", "chromium-browser", "google-chrome", "chrome"]:
+        path = shutil.which(binary)
+        result["chrome_binaries"][binary] = path
+
+    # Check for chromedriver
+    chromedriver_path = shutil.which("chromedriver")
+    result["chromedriver"]["path"] = chromedriver_path
+
+    # Try to get versions
+    try:
+        chromium_path = result["chrome_binaries"].get("chromium") or result["chrome_binaries"].get("chromium-browser")
+        if chromium_path:
+            version_output = subprocess.run(
+                [chromium_path, "--version"],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+            result["version_checks"]["chromium"] = version_output.stdout.strip()
+    except Exception as e:
+        result["version_checks"]["chromium_error"] = str(e)
+
+    try:
+        if chromedriver_path:
+            version_output = subprocess.run(
+                [chromedriver_path, "--version"],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+            result["version_checks"]["chromedriver"] = version_output.stdout.strip()
+    except Exception as e:
+        result["version_checks"]["chromedriver_error"] = str(e)
+
+    # Check /nix/store for chromium
+    try:
+        nix_check = subprocess.run(
+            ["find", "/nix/store", "-maxdepth", "2", "-name", "chromium*", "-type", "d"],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        result["nix_store_chromium"] = nix_check.stdout.strip().split("\n")[:5] if nix_check.stdout else []
+    except Exception as e:
+        result["nix_store_chromium_error"] = str(e)
+
+    return result
