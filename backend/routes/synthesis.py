@@ -99,20 +99,22 @@ async def generate_synthesis(
 
     cutoff = datetime.utcnow() - time_deltas[request.time_window]
 
-    # Get analyzed content within time window
-    content_items = _get_content_for_synthesis(db, cutoff, request.focus_topic)
-
-    if not content_items:
-        return {
-            "status": "no_content",
-            "message": f"No analyzed content found in the past {request.time_window}",
-            "content_count": 0
-        }
-
-    # Generate synthesis synchronously for now (can be moved to background for large datasets)
+    # Wrap everything in try/except to capture any errors
+    import traceback
     try:
+        # Get analyzed content within time window
+        content_items = _get_content_for_synthesis(db, cutoff, request.focus_topic)
+        logger.info(f"Found {len(content_items)} content items for synthesis")
+
+        if not content_items:
+            return {
+                "status": "no_content",
+                "message": f"No analyzed content found in the past {request.time_window}",
+                "content_count": 0
+            }
+
+        # Generate synthesis
         from agents.synthesis_agent import SynthesisAgent
-        import traceback
 
         logger.info(f"Creating SynthesisAgent for {len(content_items)} items...")
         agent = SynthesisAgent()
@@ -154,9 +156,9 @@ async def generate_synthesis(
         }
 
     except Exception as e:
-        error_tb = traceback.format_exc()
-        logger.error(f"Synthesis generation failed: {e}\n{error_tb}")
-        raise HTTPException(status_code=500, detail=f"Synthesis generation failed: {str(e)}")
+        error_msg = f"Synthesis generation failed: {str(e)}\n{traceback.format_exc()}"
+        logger.error(error_msg)
+        raise HTTPException(status_code=500, detail=error_msg)
 
 
 @router.get("/latest")
