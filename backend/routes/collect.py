@@ -2,7 +2,9 @@
 Collection Routes
 
 API endpoints for triggering data collection from research sources.
-Includes endpoint for receiving Discord data from local laptop script.
+Includes endpoints for receiving data from local laptop scripts:
+- Discord: dev/scripts/discord_local.py
+- 42macro: dev/scripts/macro42_local.py
 """
 
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
@@ -126,6 +128,116 @@ async def ingest_discord_data(
     except Exception as e:
         db.rollback()
         logger.error(f"Discord ingestion failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/42macro")
+async def ingest_42macro_data(
+    items: List[Dict[str, Any]],
+    db: Session = Depends(get_db)
+):
+    """
+    Receive 42 Macro content from local laptop collector script.
+
+    This endpoint is called by dev/scripts/macro42_local.py running on Sebastian's laptop.
+    42macro requires Selenium/Chrome which isn't available on Railway.
+
+    Args:
+        items: List of PDFs and videos with metadata
+        db: Database session
+
+    Returns:
+        Ingestion result with count of saved items
+    """
+    if not items:
+        return {
+            "status": "success",
+            "message": "No items to ingest",
+            "saved": 0
+        }
+
+    try:
+        # Get or create 42macro source
+        source = db.query(Source).filter(Source.name == "42macro").first()
+        if not source:
+            source = Source(
+                name="42macro",
+                type="42macro",
+                active=True,
+                last_collected_at=datetime.utcnow()
+            )
+            db.add(source)
+            db.commit()
+            db.refresh(source)
+        else:
+            # Update last collected time
+            source.last_collected_at = datetime.utcnow()
+
+        # Save each item as raw content
+        saved_count = 0
+        errors = []
+        for idx, item_data in enumerate(items):
+            try:
+                # Validate required fields
+                if "content_type" not in item_data:
+                    error_msg = f"Item {idx}: Missing content_type"
+                    logger.warning(error_msg)
+                    errors.append(error_msg)
+                    continue
+
+                # Parse collected_at if it's a string
+                collected_at = item_data.get("collected_at", datetime.utcnow())
+                if isinstance(collected_at, str):
+                    from dateutil.parser import parse as parse_datetime
+                    collected_at = parse_datetime(collected_at)
+
+                raw_content = RawContent(
+                    source_id=source.id,
+                    content_type=item_data["content_type"],
+                    content_text=item_data.get("content_text"),
+                    file_path=item_data.get("file_path"),
+                    url=item_data.get("url"),
+                    json_metadata=json.dumps(item_data.get("metadata", {})),
+                    collected_at=collected_at,
+                    processed=False
+                )
+
+                db.add(raw_content)
+                saved_count += 1
+                logger.info(f"Added 42macro item {idx}: {item_data.get('content_type')}")
+
+            except Exception as e:
+                import traceback
+                error_msg = f"Item {idx}: {str(e)}\n{traceback.format_exc()}"
+                logger.error(f"Error saving 42macro item: {error_msg}")
+                errors.append(error_msg)
+                continue
+
+        # Commit all changes
+        db.commit()
+        logger.info(f"Committed {saved_count}/{len(items)} 42macro items to database")
+
+        # Verify the commit worked
+        count_after = db.query(RawContent).filter(RawContent.source_id == source.id).count()
+        logger.info(f"Total RawContent for 42macro after commit: {count_after}")
+
+        response = {
+            "status": "success",
+            "message": f"Ingested {saved_count} 42macro items",
+            "saved": saved_count,
+            "received": len(items),
+            "total_in_db": count_after,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
+        if errors:
+            response["errors"] = errors
+
+        return response
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"42macro ingestion failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
