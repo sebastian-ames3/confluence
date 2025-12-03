@@ -71,7 +71,7 @@ async def classify_content(raw_content_id: int, db: Session = Depends(get_db)):
             sentiment=None,  # Classifier doesn't determine sentiment
             conviction=None,  # Classifier doesn't score conviction
             time_horizon=None,
-            analyzed_at=None  # Will use default
+            # analyzed_at uses default from model
         )
 
         db.add(analyzed_content)

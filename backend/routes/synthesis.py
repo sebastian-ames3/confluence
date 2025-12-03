@@ -112,13 +112,18 @@ async def generate_synthesis(
     # Generate synthesis synchronously for now (can be moved to background for large datasets)
     try:
         from agents.synthesis_agent import SynthesisAgent
+        import traceback
 
+        logger.info(f"Creating SynthesisAgent for {len(content_items)} items...")
         agent = SynthesisAgent()
+
+        logger.info("Calling agent.analyze()...")
         result = agent.analyze(
             content_items=content_items,
             time_window=request.time_window,
             focus_topic=request.focus_topic
         )
+        logger.info(f"Analysis complete, got result with keys: {list(result.keys())}")
 
         # Save to database
         synthesis = Synthesis(
@@ -149,7 +154,8 @@ async def generate_synthesis(
         }
 
     except Exception as e:
-        logger.error(f"Synthesis generation failed: {e}")
+        error_tb = traceback.format_exc()
+        logger.error(f"Synthesis generation failed: {e}\n{error_tb}")
         raise HTTPException(status_code=500, detail=f"Synthesis generation failed: {str(e)}")
 
 
