@@ -266,6 +266,8 @@ async def _collect_from_source(db: Session, source_name: str) -> list:
 
 async def _save_collected_items(db: Session, source_name: str, items: list):
     """Save collected items to database."""
+    from dateutil.parser import parse as parse_datetime
+
     # Get or create source
     source = db.query(Source).filter(Source.name == source_name).first()
     if not source:
@@ -283,6 +285,11 @@ async def _save_collected_items(db: Session, source_name: str, items: list):
 
     # Save each item
     for item in items:
+        # Parse collected_at if it's a string
+        collected_at = item.get("collected_at", datetime.utcnow())
+        if isinstance(collected_at, str):
+            collected_at = parse_datetime(collected_at)
+
         raw_content = RawContent(
             source_id=source.id,
             content_type=item.get("content_type", "text"),
@@ -290,7 +297,7 @@ async def _save_collected_items(db: Session, source_name: str, items: list):
             file_path=item.get("file_path"),
             url=item.get("url"),
             json_metadata=json.dumps(item.get("metadata", {})),
-            collected_at=item.get("collected_at", datetime.utcnow()),
+            collected_at=collected_at,
             processed=False
         )
         db.add(raw_content)
@@ -305,7 +312,6 @@ async def _save_collected_items(db: Session, source_name: str, items: list):
 @router.post("/analyze")
 async def trigger_analysis(
     request: AnalyzeRequest = AnalyzeRequest(),
-    background_tasks: BackgroundTasks = None,
     db: Session = Depends(get_db),
     api_key: str = Depends(verify_api_key)
 ):
@@ -317,7 +323,6 @@ async def trigger_analysis(
 
     Args:
         request: Analysis request with time window
-        background_tasks: FastAPI background tasks
         db: Database session
         api_key: Validated API key
 
