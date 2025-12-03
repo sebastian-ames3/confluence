@@ -10,6 +10,8 @@ FastAPI application providing REST endpoints for:
 Security features (PRD-015):
 - HTTP Basic Auth on all API routes (except /health)
 - Rate limiting to prevent API abuse
+
+Version: 1.0.1 - Force redeploy after trigger fix
 """
 
 from fastapi import FastAPI, Request
