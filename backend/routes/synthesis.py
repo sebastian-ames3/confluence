@@ -72,6 +72,88 @@ class StatusResponse(BaseModel):
 # Synthesis Endpoints
 # ============================================================================
 
+@router.get("/debug")
+@limiter.limit(RATE_LIMITS["default"])
+async def debug_synthesis(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: str = Depends(verify_credentials)
+):
+    """
+    Debug endpoint to test synthesis pipeline step by step.
+    Returns diagnostic information without actually calling Claude.
+    """
+    import os
+    import traceback
+
+    debug_info = {
+        "steps": [],
+        "errors": []
+    }
+
+    # Step 1: Check environment
+    try:
+        claude_key = os.getenv("CLAUDE_API_KEY")
+        debug_info["steps"].append({
+            "step": "check_env",
+            "claude_api_key_exists": bool(claude_key),
+            "claude_api_key_prefix": claude_key[:10] + "..." if claude_key else None
+        })
+    except Exception as e:
+        debug_info["errors"].append(f"env check: {str(e)}")
+
+    # Step 2: Check database connection
+    try:
+        from sqlalchemy import text
+        result = db.execute(text("SELECT 1")).fetchone()
+        debug_info["steps"].append({
+            "step": "db_check",
+            "status": "connected"
+        })
+    except Exception as e:
+        debug_info["errors"].append(f"db check: {str(e)}")
+
+    # Step 3: Check analyzed content
+    try:
+        from sqlalchemy import or_
+        cutoff = datetime.utcnow() - timedelta(days=7)
+        count = db.query(AnalyzedContent).filter(
+            or_(
+                AnalyzedContent.analyzed_at >= cutoff,
+                AnalyzedContent.analyzed_at.is_(None)
+            )
+        ).count()
+        debug_info["steps"].append({
+            "step": "content_check",
+            "analyzed_content_count": count
+        })
+    except Exception as e:
+        debug_info["errors"].append(f"content check: {str(e)}\n{traceback.format_exc()}")
+
+    # Step 4: Try importing synthesis agent
+    try:
+        from agents.synthesis_agent import SynthesisAgent
+        debug_info["steps"].append({
+            "step": "import_agent",
+            "status": "success"
+        })
+    except Exception as e:
+        debug_info["errors"].append(f"import agent: {str(e)}\n{traceback.format_exc()}")
+
+    # Step 5: Try creating synthesis agent
+    try:
+        agent = SynthesisAgent()
+        debug_info["steps"].append({
+            "step": "create_agent",
+            "status": "success",
+            "model": agent.model
+        })
+    except Exception as e:
+        debug_info["errors"].append(f"create agent: {str(e)}\n{traceback.format_exc()}")
+
+    return debug_info
+
+
 @router.post("/generate")
 @limiter.limit(RATE_LIMITS["synthesis"])
 async def generate_synthesis(
