@@ -15,6 +15,7 @@ PRD-017:
 """
 
 import logging
+import os
 import re
 import json
 import random
@@ -113,34 +114,68 @@ class Macro42Collector(BaseCollector):
         Returns:
             List of collected content items
         """
-        collected_items = []
+        import asyncio
+        from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
+
+        # Run Selenium in a thread with timeout (Selenium is blocking/sync)
+        def _sync_collect():
+            collected_items = []
+            try:
+                # Initialize browser
+                logger.info("Initializing Chrome WebDriver...")
+                self._init_driver()
+                logger.info("Chrome WebDriver initialized successfully")
+
+                # Try to load cookies first, only login if cookies don't work
+                if not self._try_load_session():
+                    # Fresh login required
+                    logger.info("Attempting fresh login...")
+                    if not self._login():
+                        raise Exception("Login failed")
+
+                # Collect PDFs
+                logger.info("Collecting PDFs from 42 Macro...")
+                pdfs = self._collect_pdfs()
+                collected_items.extend(pdfs)
+                logger.info(f"Collected {len(pdfs)} PDFs")
+
+                # Collect videos
+                logger.info("Collecting videos from 42 Macro...")
+                videos = self._collect_videos()
+                collected_items.extend(videos)
+                logger.info(f"Collected {len(videos)} videos")
+
+            except Exception as e:
+                logger.error(f"42macro collection error: {e}")
+                raise
+            finally:
+                # Always close browser
+                if self.driver:
+                    try:
+                        self.driver.quit()
+                        logger.info("Chrome WebDriver closed")
+                    except Exception as e:
+                        logger.warning(f"Error closing driver: {e}")
+
+            return collected_items
+
+        # Execute with 3 minute timeout
+        TIMEOUT_SECONDS = 180
+        loop = asyncio.get_event_loop()
 
         try:
-            # Initialize browser
-            self._init_driver()
-
-            # Try to load cookies first, only login if cookies don't work
-            if not self._try_load_session():
-                # Fresh login required
-                if not self._login():
-                    raise Exception("Login failed")
-
-            # Collect PDFs
-            logger.info("Collecting PDFs from 42 Macro...")
-            pdfs = self._collect_pdfs()
-            collected_items.extend(pdfs)
-            logger.info(f"Collected {len(pdfs)} PDFs")
-
-            # Collect videos
-            logger.info("Collecting videos from 42 Macro...")
-            videos = self._collect_videos()
-            collected_items.extend(videos)
-            logger.info(f"Collected {len(videos)} videos")
-
-        finally:
-            # Always close browser
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                future = loop.run_in_executor(executor, _sync_collect)
+                collected_items = await asyncio.wait_for(future, timeout=TIMEOUT_SECONDS)
+        except asyncio.TimeoutError:
+            logger.error(f"42macro collection timed out after {TIMEOUT_SECONDS} seconds")
+            # Try to cleanup
             if self.driver:
-                self.driver.quit()
+                try:
+                    self.driver.quit()
+                except:
+                    pass
+            raise Exception(f"Collection timed out after {TIMEOUT_SECONDS} seconds")
 
         logger.info(f"Total items collected from 42 Macro: {len(collected_items)}")
         return collected_items
@@ -148,6 +183,7 @@ class Macro42Collector(BaseCollector):
     def _init_driver(self):
         """Initialize Chrome WebDriver with options and random User-Agent."""
         global _active_driver
+        import shutil
 
         chrome_options = Options()
 
@@ -168,14 +204,39 @@ class Macro42Collector(BaseCollector):
         chrome_options.add_argument(f"--user-agent={user_agent}")
         logger.info(f"Using User-Agent: {user_agent[:50]}...")
 
-        # Additional options for better compatibility
+        # Additional options for better compatibility (especially containers)
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-software-rasterizer")
         chrome_options.add_argument("--window-size=1920,1080")
 
-        # Initialize driver with webdriver-manager
-        service = Service(ChromeDriverManager().install())
+        # Detect Railway/container environment and use system Chrome/ChromeDriver
+        is_railway = os.getenv("RAILWAY_ENVIRONMENT") is not None
+        chromium_path = shutil.which("chromium") or shutil.which("chromium-browser") or shutil.which("google-chrome")
+        chromedriver_path = shutil.which("chromedriver")
+
+        logger.info(f"Environment: Railway={is_railway}, Chromium={chromium_path}, ChromeDriver={chromedriver_path}")
+
+        if chromium_path:
+            # Use system-installed Chromium (Railway/Linux)
+            chrome_options.binary_location = chromium_path
+            logger.info(f"Using system Chromium: {chromium_path}")
+
+        if chromedriver_path:
+            # Use system-installed chromedriver (Railway/Linux)
+            service = Service(executable_path=chromedriver_path)
+            logger.info(f"Using system ChromeDriver: {chromedriver_path}")
+        else:
+            # Fall back to webdriver-manager (local development)
+            logger.info("Using webdriver-manager to get ChromeDriver")
+            service = Service(ChromeDriverManager().install())
+
+        # Set page load timeout
         self.driver = webdriver.Chrome(service=service, options=chrome_options)
+        self.driver.set_page_load_timeout(30)  # 30 second timeout for page loads
+        self.driver.implicitly_wait(10)  # 10 second implicit wait
 
         # Store reference for atexit cleanup handler (PRD-017)
         _active_driver = self.driver
