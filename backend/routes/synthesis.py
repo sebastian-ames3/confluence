@@ -174,8 +174,8 @@ async def debug_synthesis(
 @router.post("/generate")
 @limiter.limit(RATE_LIMITS["synthesis"])
 async def generate_synthesis(
-    http_request: Request,
-    request: SynthesisGenerateRequest,
+    request: Request,
+    synthesis_request: SynthesisGenerateRequest,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     user: str = Depends(verify_credentials)
@@ -193,22 +193,22 @@ async def generate_synthesis(
         "30d": timedelta(days=30)
     }
 
-    if request.time_window not in time_deltas:
+    if synthesis_request.time_window not in time_deltas:
         raise HTTPException(status_code=400, detail=f"Invalid time_window. Use: {list(time_deltas.keys())}")
 
-    cutoff = datetime.utcnow() - time_deltas[request.time_window]
+    cutoff = datetime.utcnow() - time_deltas[synthesis_request.time_window]
 
     # Wrap everything in try/except to capture any errors
     import traceback
     try:
         # Get analyzed content within time window
-        content_items = _get_content_for_synthesis(db, cutoff, request.focus_topic)
+        content_items = _get_content_for_synthesis(db, cutoff, synthesis_request.focus_topic)
         logger.info(f"Found {len(content_items)} content items for synthesis")
 
         if not content_items:
             return {
                 "status": "no_content",
-                "message": f"No analyzed content found in the past {request.time_window}",
+                "message": f"No analyzed content found in the past {synthesis_request.time_window}",
                 "content_count": 0
             }
 
@@ -221,8 +221,8 @@ async def generate_synthesis(
         logger.info("Calling agent.analyze()...")
         result = agent.analyze(
             content_items=content_items,
-            time_window=request.time_window,
-            focus_topic=request.focus_topic
+            time_window=synthesis_request.time_window,
+            focus_topic=synthesis_request.focus_topic
         )
         logger.info(f"Analysis complete, got result with keys: {list(result.keys())}")
 
@@ -234,10 +234,10 @@ async def generate_synthesis(
             contradictions=json.dumps(result.get("contradictions", [])),
             market_regime=result.get("market_regime"),
             catalysts=json.dumps(result.get("catalysts", [])),
-            time_window=request.time_window,
+            time_window=synthesis_request.time_window,
             content_count=result.get("content_count", len(content_items)),
             sources_included=json.dumps(result.get("sources_included", [])),
-            focus_topic=request.focus_topic,
+            focus_topic=synthesis_request.focus_topic,
             generated_at=datetime.utcnow()
         )
         db.add(synthesis)
