@@ -523,11 +523,15 @@ class Macro42Collector(BaseCollector):
 
     def _collect_videos(self) -> List[Dict[str, Any]]:
         """
-        Collect video URLs and metadata.
+        Collect video URLs and metadata from Vimeo embeds.
+
+        42macro hosts videos on Vimeo. We extract the Vimeo URLs
+        which can then be processed by yt-dlp for transcription.
 
         Returns:
             List of video content items
         """
+        import time
         videos = []
 
         try:
@@ -535,39 +539,82 @@ class Macro42Collector(BaseCollector):
             videos_url = f"{self.BASE_URL}/videos"
             self.driver.get(videos_url)
 
-            # Wait for page to load
-            wait = WebDriverWait(self.driver, 10)
+            # Wait for page to load - Vimeo embeds may take time
+            wait = WebDriverWait(self.driver, 15)
             wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+            time.sleep(3)  # Extra time for dynamic content
 
-            # Find video elements
-            # Look for YouTube embeds
-            youtube_iframes = self.driver.find_elements(By.XPATH, "//iframe[contains(@src, 'youtube.com')]")
+            # Find Vimeo iframes
+            vimeo_iframes = self.driver.find_elements(By.XPATH, "//iframe[contains(@src, 'vimeo.com')]")
+            logger.info(f"Found {len(vimeo_iframes)} Vimeo iframes")
 
-            for iframe in youtube_iframes[:10]:  # Limit to most recent 10
+            # Also try to find video cards/containers that might have titles
+            video_cards = self.driver.find_elements(By.CSS_SELECTOR, ".cursor-pointer.bg-card")
+
+            for idx, iframe in enumerate(vimeo_iframes[:10]):  # Limit to most recent 10
                 try:
                     src = iframe.get_attribute('src')
+                    logger.info(f"Processing Vimeo iframe {idx}: {src[:80]}...")
 
-                    # Extract video ID from YouTube URL
-                    video_id_match = re.search(r'youtube\.com/embed/([^?]+)', src)
+                    # Extract video ID from Vimeo URL
+                    # Vimeo embed URLs: https://player.vimeo.com/video/123456789
+                    video_id_match = re.search(r'vimeo\.com/video/(\d+)', src)
                     if video_id_match:
                         video_id = video_id_match.group(1)
-                        video_url = f"https://www.youtube.com/watch?v={video_id}"
+                        video_url = f"https://vimeo.com/{video_id}"
+
+                        # Try to get title from nearby elements or page
+                        title = "42 Macro Video"
+                        try:
+                            # Look for title in parent elements
+                            parent = iframe.find_element(By.XPATH, "./..")
+                            title_elem = parent.find_element(By.XPATH, ".//h1 | .//h2 | .//h3 | ./preceding-sibling::*[contains(@class, 'title')]")
+                            if title_elem:
+                                title = title_elem.text.strip() or title
+                        except:
+                            pass
 
                         videos.append({
                             "content_type": "video",
                             "url": video_url,
-                            "content_text": "42 Macro Video",
+                            "content_text": title,
                             "collected_at": datetime.utcnow().isoformat(),
                             "metadata": {
-                                "title": "42 Macro Video",
-                                "platform": "youtube",
-                                "video_id": video_id
+                                "title": title,
+                                "platform": "vimeo",
+                                "video_id": video_id,
+                                "embed_url": src
                             }
                         })
+                        logger.info(f"Added Vimeo video: {video_id} - {title}")
 
                 except Exception as e:
-                    logger.warning(f"Error processing video: {e}")
+                    logger.warning(f"Error processing Vimeo iframe {idx}: {e}")
                     continue
+
+            # If no iframes found, try looking for Vimeo links directly
+            if not videos:
+                logger.info("No Vimeo iframes found, looking for direct links...")
+                vimeo_links = self.driver.find_elements(By.XPATH, "//a[contains(@href, 'vimeo.com')]")
+                for link in vimeo_links[:10]:
+                    try:
+                        href = link.get_attribute('href')
+                        video_id_match = re.search(r'vimeo\.com/(\d+)', href)
+                        if video_id_match:
+                            video_id = video_id_match.group(1)
+                            videos.append({
+                                "content_type": "video",
+                                "url": f"https://vimeo.com/{video_id}",
+                                "content_text": link.text.strip() or "42 Macro Video",
+                                "collected_at": datetime.utcnow().isoformat(),
+                                "metadata": {
+                                    "title": link.text.strip() or "42 Macro Video",
+                                    "platform": "vimeo",
+                                    "video_id": video_id
+                                }
+                            })
+                    except Exception as e:
+                        logger.warning(f"Error processing Vimeo link: {e}")
 
         except Exception as e:
             logger.warning(f"Error collecting videos: {e}")
