@@ -21,8 +21,8 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
-# Add project root to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# Add project root to path (dev/scripts -> dev -> project root)
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from collectors.discord_self import DiscordSelfCollector
 from dotenv import load_dotenv

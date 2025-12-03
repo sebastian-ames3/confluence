@@ -18,6 +18,8 @@ import aiohttp
 import re
 import logging
 import os
+import subprocess
+import tempfile
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
@@ -371,6 +373,7 @@ class DiscordSelfCollector(BaseCollector):
 
         # Extract video links (Zoom, Webex, YouTube)
         video_links = []
+        video_transcripts = []
         if "video_links" in channel_config["collect_types"]:
             video_links = self._extract_video_links(message.content)
 
@@ -378,6 +381,9 @@ class DiscordSelfCollector(BaseCollector):
             if video_links:
                 content_type = "video"
                 url = video_links[0]["url"]
+
+                # Download and transcribe Zoom/Webex recordings
+                video_transcripts = await self._process_video_links(video_links)
 
         # Extract mentions
         mentions_data = self._extract_mentions(message)
@@ -407,6 +413,7 @@ class DiscordSelfCollector(BaseCollector):
                 "is_edited": message.edited_at is not None,
                 "attachments": attachments_data,
                 "video_links": video_links,
+                "video_transcripts": video_transcripts,
                 "mentions": mentions_data,
                 "reactions": reactions_data,
                 "thread_info": thread_data,
@@ -563,6 +570,186 @@ class DiscordSelfCollector(BaseCollector):
                 })
 
         return found_links
+
+    async def _extract_and_transcribe_audio(self, video_url: str, platform: str) -> Optional[Dict[str, Any]]:
+        """
+        Extract audio from Zoom/Webex recording using yt-dlp and transcribe with Whisper.
+
+        Args:
+            video_url: URL to the video recording
+            platform: 'zoom' or 'webex'
+
+        Returns:
+            Dictionary with transcript and metadata, or None if failed
+        """
+        # Skip YouTube - handled by separate collector
+        if platform == "youtube":
+            return None
+
+        audio_dir = self.download_dir / "audio"
+        audio_dir.mkdir(parents=True, exist_ok=True)
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        # yt-dlp adds extension automatically, so we specify without .mp3
+        audio_base = audio_dir / f"{timestamp}_{platform}_audio"
+        audio_path = audio_dir / f"{timestamp}_{platform}_audio.mp3"
+
+        try:
+            # Extract audio using yt-dlp
+            logger.info(f"Extracting audio from {platform} recording using yt-dlp...")
+
+            # Find ffmpeg location (winget installs to this path)
+            ffmpeg_path = Path.home() / "AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.0.1-full_build/bin"
+
+            yt_dlp_cmd = [
+                "yt-dlp",
+                "-x",                          # Extract audio only
+                "--audio-format", "mp3",       # Convert to MP3
+                "-o", str(audio_base) + ".%(ext)s",  # Output path template
+                "--no-playlist",               # Single video only
+                "--quiet",                     # Suppress output
+                "--no-warnings",               # Suppress warnings
+            ]
+
+            # Add ffmpeg location if it exists
+            if ffmpeg_path.exists():
+                yt_dlp_cmd.extend(["--ffmpeg-location", str(ffmpeg_path)])
+
+            yt_dlp_cmd.append(video_url)
+
+            result = subprocess.run(yt_dlp_cmd, capture_output=True, text=True, timeout=300)
+
+            if result.returncode != 0:
+                logger.warning(f"yt-dlp failed for {video_url[:50]}...: {result.stderr}")
+                return None
+
+            # Check if file was created
+            if not audio_path.exists():
+                # yt-dlp might have used a different extension, check for any audio file
+                possible_files = list(audio_dir.glob(f"{timestamp}_{platform}_audio.*"))
+                if possible_files:
+                    audio_path = possible_files[0]
+                else:
+                    logger.warning(f"yt-dlp did not create audio file for {video_url[:50]}...")
+                    return None
+
+            file_size_mb = audio_path.stat().st_size / (1024 * 1024)
+            logger.info(f"Extracted audio: {file_size_mb:.1f} MB")
+
+            # Transcribe using Whisper
+            transcript_result = await self._transcribe_audio(audio_path)
+
+            if transcript_result:
+                transcript_result["platform"] = platform
+                transcript_result["url"] = video_url
+                transcript_result["transcribed_at"] = datetime.utcnow().isoformat()
+
+            # Delete audio file after transcription (success or failure)
+            if audio_path.exists():
+                audio_path.unlink()
+                logger.info(f"Deleted audio file: {audio_path}")
+
+            return transcript_result
+
+        except subprocess.TimeoutExpired:
+            logger.error(f"yt-dlp timed out (>5 min) for {video_url[:50]}...")
+            return None
+        except Exception as e:
+            logger.error(f"Failed to extract/transcribe audio: {e}")
+            # Clean up any partial file
+            if audio_path.exists():
+                audio_path.unlink()
+            return None
+
+    async def _transcribe_audio(self, audio_path: Path) -> Optional[Dict[str, Any]]:
+        """
+        Transcribe an audio file using Whisper.
+
+        Runs transcription in a thread pool to avoid blocking the Discord gateway.
+
+        Args:
+            audio_path: Path to the audio file
+
+        Returns:
+            Dictionary with transcript text and duration, or None if failed
+        """
+        try:
+            import whisper
+            import concurrent.futures
+
+            logger.info(f"Transcribing audio with Whisper (base model, English)...")
+
+            # Add ffmpeg to PATH if not already there (winget installation location)
+            ffmpeg_bin = Path.home() / "AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.0.1-full_build/bin"
+            if ffmpeg_bin.exists() and str(ffmpeg_bin) not in os.environ.get("PATH", ""):
+                os.environ["PATH"] = str(ffmpeg_bin) + os.pathsep + os.environ.get("PATH", "")
+
+            def run_whisper():
+                """Run Whisper transcription in a separate thread."""
+                # Load model (cached after first load)
+                model = whisper.load_model("base")
+
+                # Transcribe with forced English
+                return model.transcribe(
+                    str(audio_path),
+                    language="en",
+                    fp16=False  # Use fp32 for CPU compatibility
+                )
+
+            # Run in thread pool to avoid blocking the event loop
+            loop = asyncio.get_event_loop()
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                result = await loop.run_in_executor(executor, run_whisper)
+
+            transcript_text = result.get("text", "").strip()
+
+            if not transcript_text:
+                logger.warning("Whisper returned empty transcript")
+                return None
+
+            # Get duration from segments
+            segments = result.get("segments", [])
+            duration_seconds = 0
+            if segments:
+                duration_seconds = int(segments[-1].get("end", 0))
+
+            logger.info(f"Transcription complete: {len(transcript_text)} chars, {duration_seconds}s duration")
+
+            return {
+                "transcript": transcript_text,
+                "duration_seconds": duration_seconds
+            }
+
+        except ImportError:
+            logger.error("Whisper not installed. Run: pip install openai-whisper")
+            return None
+        except Exception as e:
+            logger.error(f"Transcription failed: {e}")
+            return None
+
+    async def _process_video_links(self, video_links: List[Dict[str, str]]) -> List[Dict[str, Any]]:
+        """
+        Process video links to extract audio and transcribe Zoom/Webex recordings.
+
+        Args:
+            video_links: List of video link dictionaries with 'platform' and 'url'
+
+        Returns:
+            List of transcription results
+        """
+        transcripts = []
+
+        for link in video_links:
+            platform = link.get("platform", "")
+            url = link.get("url", "")
+
+            # Only transcribe Zoom and Webex recordings
+            if platform in ("zoom", "webex"):
+                result = await self._extract_and_transcribe_audio(url, platform)
+                if result:
+                    transcripts.append(result)
+
+        return transcripts
 
     def _extract_mentions(self, message: discord.Message) -> Dict[str, Any]:
         """
