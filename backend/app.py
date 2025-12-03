@@ -41,6 +41,25 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 
+# Global exception handler to catch all unhandled errors and return JSON
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    import traceback
+    from fastapi.responses import JSONResponse
+
+    error_detail = f"{type(exc).__name__}: {str(exc)}\n{traceback.format_exc()}"
+    print(f"GLOBAL ERROR HANDLER: {error_detail}")  # Log to stdout for Railway logs
+
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": error_detail,
+            "error_type": type(exc).__name__,
+            "error_message": str(exc)
+        }
+    )
+
+
 # Configure CORS for frontend
 def get_allowed_origins():
     """Get allowed CORS origins based on environment."""
