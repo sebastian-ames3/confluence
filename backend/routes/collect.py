@@ -17,6 +17,7 @@ import asyncio
 from datetime import datetime
 
 from backend.models import get_db, RawContent, Source
+from backend.utils.deduplication import check_duplicate
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/collect", tags=["collect"])
@@ -65,6 +66,7 @@ async def ingest_discord_data(
 
         # Save each message as raw content
         saved_count = 0
+        skipped_duplicates = 0
         errors = []
         for idx, message_data in enumerate(messages):
             try:
@@ -73,6 +75,16 @@ async def ingest_discord_data(
                     error_msg = f"Message {idx}: Missing content_type"
                     logger.warning(error_msg)
                     errors.append(error_msg)
+                    continue
+
+                # Check for duplicates by message_id or URL
+                metadata = message_data.get("metadata", {})
+                message_id = metadata.get("message_id")
+                url = message_data.get("url")
+
+                if check_duplicate(db, source.id, url=url, message_id=message_id):
+                    skipped_duplicates += 1
+                    logger.debug(f"Skipping duplicate message: {message_id or url}")
                     continue
 
                 # Parse collected_at if it's a string
@@ -105,7 +117,7 @@ async def ingest_discord_data(
 
         # Commit all changes
         db.commit()
-        logger.info(f"Committed {saved_count}/{len(messages)} Discord messages to database")
+        logger.info(f"Committed {saved_count}/{len(messages)} Discord messages to database (skipped {skipped_duplicates} duplicates)")
 
         # Verify the commit worked
         count_after = db.query(RawContent).filter(RawContent.source_id == source.id).count()
@@ -116,6 +128,7 @@ async def ingest_discord_data(
             "message": f"Ingested {saved_count} Discord messages",
             "saved": saved_count,
             "received": len(messages),
+            "skipped_duplicates": skipped_duplicates,
             "total_in_db": count_after,
             "timestamp": datetime.utcnow().isoformat()
         }
@@ -175,6 +188,7 @@ async def ingest_42macro_data(
 
         # Save each item as raw content
         saved_count = 0
+        skipped_duplicates = 0
         errors = []
         for idx, item_data in enumerate(items):
             try:
@@ -183,6 +197,24 @@ async def ingest_42macro_data(
                     error_msg = f"Item {idx}: Missing content_type"
                     logger.warning(error_msg)
                     errors.append(error_msg)
+                    continue
+
+                # Check for duplicates by URL, video_id, or report_type+date
+                metadata = item_data.get("metadata", {})
+                url = item_data.get("url")
+                video_id = metadata.get("video_id")
+                report_type = metadata.get("report_type")
+                date = metadata.get("date")
+
+                if check_duplicate(
+                    db, source.id,
+                    url=url,
+                    video_id=video_id,
+                    report_type=report_type,
+                    date=date
+                ):
+                    skipped_duplicates += 1
+                    logger.debug(f"Skipping duplicate 42macro item: {url or video_id or f'{report_type} - {date}'}")
                     continue
 
                 # Parse collected_at if it's a string
@@ -215,7 +247,7 @@ async def ingest_42macro_data(
 
         # Commit all changes
         db.commit()
-        logger.info(f"Committed {saved_count}/{len(items)} 42macro items to database")
+        logger.info(f"Committed {saved_count}/{len(items)} 42macro items to database (skipped {skipped_duplicates} duplicates)")
 
         # Verify the commit worked
         count_after = db.query(RawContent).filter(RawContent.source_id == source.id).count()
@@ -226,6 +258,7 @@ async def ingest_42macro_data(
             "message": f"Ingested {saved_count} 42macro items",
             "saved": saved_count,
             "received": len(items),
+            "skipped_duplicates": skipped_duplicates,
             "total_in_db": count_after,
             "timestamp": datetime.utcnow().isoformat()
         }

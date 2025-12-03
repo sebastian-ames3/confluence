@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.3.0] - 2025-12-03
+
+### Added
+- **[PRD-019] Duplicate Detection** - Complete
+  - Created `backend/utils/deduplication.py` with `check_duplicate()` utility
+  - All collection endpoints now check for duplicates before saving
+  - Added database indexes for efficient duplicate lookups
+  - API responses include `skipped_duplicates` count
+
+- **42 Macro Video Collection**
+  - Fixed video menu item detection on `/video/around_the_horn_weekly`
+  - Scrolls through ATH menu items to capture all videos
+  - Extracts Vimeo video IDs for transcription pipeline
+
+### Changed
+- `/api/collect/discord` - Now skips duplicate messages (by message_id)
+- `/api/collect/42macro` - Now skips duplicate items (by URL, video_id, or report_type+date)
+- `_save_collected_items()` in trigger.py - Returns save/skip counts
+- RawContent model - Added composite indexes on (source_id, url) and (source_id, content_type)
+
+### Fixed
+- Unicode emoji logging errors on Windows (replaced with ASCII text)
+
+---
+
 ## [1.2.0] - 2025-12-03
 
 ### Added
@@ -66,6 +91,7 @@
 | 016 | Complete |
 | 017 | Complete |
 | 018 | Not started |
+| 019 | Complete |
 
 ---
 

@@ -3,7 +3,7 @@
 ## Overview
 Personal investment research aggregation system. Collects macro analysis from 5 sources, applies AI analysis, and provides web dashboard + Claude Desktop integration.
 
-**Status**: v1.2.0 (2025-12-03) | Full pipeline operational
+**Status**: v1.3.0 (2025-12-03) | Full pipeline operational with duplicate detection
 
 ---
 
@@ -12,12 +12,14 @@ Personal investment research aggregation system. Collects macro analysis from 5 
 | Component | Status |
 |-----------|--------|
 | Discord Collection | Working - uploads to Railway via `--railway-api` |
+| 42 Macro Collection | Working - PDFs and videos via `macro42_local.py` |
 | Content Analysis | Working - `/api/analyze/classify-batch` |
 | Synthesis Generation | Working - `/api/synthesis/generate` |
 | Web Dashboard | Deployed at Railway |
 | MCP Server | Ready for Claude Desktop |
+| Duplicate Detection | Enabled - all collectors check before saving |
 
-**Next Session**: Set up Windows Task Scheduler for automated Discord collection (6am/6pm).
+**Next Session**: Set up Windows Task Scheduler for 42 Macro collection (after Discord).
 
 ---
 
@@ -33,6 +35,7 @@ Personal investment research aggregation system. Collects macro analysis from 5 
 | 016 | MCP API Proxy Refactor | Complete |
 | 017 | Polish & Reliability | Complete |
 | 018 | Video Transcription | Not started |
+| 019 | Duplicate Detection | Complete |
 
 ---
 
@@ -42,6 +45,12 @@ Personal investment research aggregation system. Collects macro analysis from 5 
 ```bash
 cd "C:\Users\14102\Documents\Sebastian Ames\Projects\Confluence"
 python dev/scripts/discord_local.py --railway-api
+```
+
+**42 Macro Collection (run locally)**:
+```bash
+cd "C:\Users\14102\Documents\Sebastian Ames\Projects\Confluence"
+python dev/scripts/macro42_local.py --railway-api
 ```
 
 **Trigger Analysis**:
@@ -91,9 +100,11 @@ curl -X POST -u sames3:Spotswood1 -H "Content-Type: application/json" -d '{"time
 ```
 confluence/
 ├── dev/scripts/discord_local.py  # Discord collector (run locally)
+├── dev/scripts/macro42_local.py  # 42 Macro collector (run locally)
 ├── backend/routes/synthesis.py   # Synthesis API
 ├── backend/routes/analyze.py     # Analysis API
-├── backend/routes/collect.py     # Collection API
+├── backend/routes/collect.py     # Collection API (with duplicate detection)
+├── backend/utils/deduplication.py # Duplicate detection utility
 ├── agents/synthesis_agent.py     # AI synthesis
 └── mcp_server/                   # Claude Desktop integration
 ```

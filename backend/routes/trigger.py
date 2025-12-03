@@ -18,6 +18,7 @@ import os
 import asyncio
 
 from backend.models import get_db, CollectionRun, RawContent, Source
+from backend.utils.deduplication import check_duplicate
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -267,8 +268,8 @@ async def _collect_from_source(db: Session, source_name: str) -> list:
     return items
 
 
-async def _save_collected_items(db: Session, source_name: str, items: list):
-    """Save collected items to database."""
+async def _save_collected_items(db: Session, source_name: str, items: list) -> dict:
+    """Save collected items to database with duplicate detection."""
     from dateutil.parser import parse as parse_datetime
 
     # Get or create source
@@ -286,8 +287,21 @@ async def _save_collected_items(db: Session, source_name: str, items: list):
     else:
         source.last_collected_at = datetime.utcnow()
 
-    # Save each item
+    # Save each item with duplicate detection
+    saved_count = 0
+    skipped_duplicates = 0
+
     for item in items:
+        # Check for duplicates by URL or video_id
+        metadata = item.get("metadata", {})
+        url = item.get("url")
+        video_id = metadata.get("video_id")
+
+        if check_duplicate(db, source.id, url=url, video_id=video_id):
+            skipped_duplicates += 1
+            logger.debug(f"Skipping duplicate {source_name} item: {url or video_id}")
+            continue
+
         # Parse collected_at if it's a string
         collected_at = item.get("collected_at", datetime.utcnow())
         if isinstance(collected_at, str):
@@ -304,8 +318,14 @@ async def _save_collected_items(db: Session, source_name: str, items: list):
             processed=False
         )
         db.add(raw_content)
+        saved_count += 1
 
     db.commit()
+
+    if skipped_duplicates > 0:
+        logger.info(f"Saved {saved_count} items, skipped {skipped_duplicates} duplicates for {source_name}")
+
+    return {"saved": saved_count, "skipped_duplicates": skipped_duplicates}
 
 
 # ============================================================================

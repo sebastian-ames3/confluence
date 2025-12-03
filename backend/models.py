@@ -4,7 +4,7 @@ Database Models
 SQLAlchemy ORM models for the Macro Confluence Hub database.
 """
 
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Text, ForeignKey, Boolean, CheckConstraint
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Text, ForeignKey, Boolean, CheckConstraint, Index
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from datetime import datetime
@@ -54,7 +54,7 @@ class RawContent(Base):
     content_type = Column(String, nullable=False)  # "text", "pdf", "video", "image"
     content_text = Column(Text)
     file_path = Column(String)
-    url = Column(String)
+    url = Column(String, index=True)  # Indexed for duplicate detection
     json_metadata = Column(Text)  # JSON metadata
     collected_at = Column(DateTime, default=datetime.utcnow)
     processed = Column(Boolean, default=False)
@@ -62,6 +62,12 @@ class RawContent(Base):
     # Relationships
     source = relationship("Source", back_populates="raw_content_items")
     analyzed_items = relationship("AnalyzedContent", back_populates="raw_content", cascade="all, delete-orphan")
+
+    # Indexes for efficient duplicate detection (PRD-019)
+    __table_args__ = (
+        Index('idx_source_url', 'source_id', 'url'),
+        Index('idx_source_content_type', 'source_id', 'content_type'),
+    )
 
     def __repr__(self):
         return f"<RawContent(id={self.id}, type='{self.content_type}', source_id={self.source_id})>"
