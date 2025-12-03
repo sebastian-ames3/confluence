@@ -77,14 +77,14 @@ async def upload_to_railway(collected_data: list) -> bool:
             async with session.post(railway_url, json=collected_data) as response:
                 if response.status == 200:
                     result = await response.json()
-                    logger.info(f"✅ Uploaded to Railway: {result}")
+                    logger.info(f"[SUCCESS] Uploaded to Railway: {result}")
                     return True
                 else:
                     error_text = await response.text()
-                    logger.error(f"❌ Upload failed: {response.status} - {error_text}")
+                    logger.error(f"[FAILED] Upload failed: {response.status} - {error_text}")
                     return False
     except Exception as e:
-        logger.error(f"❌ Upload error: {e}")
+        logger.error(f"[ERROR] Upload error: {e}")
         return False
 
 

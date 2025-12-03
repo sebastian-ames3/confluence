@@ -10,8 +10,8 @@ if exist ".venv\Scripts\activate.bat" (
     call .venv\Scripts\activate.bat
 )
 
-REM Run the Discord collection script
-python dev\scripts\discord_local.py --local-db
+REM Run the Discord collection script (uploads to Railway web tool)
+python dev\scripts\discord_local.py --railway-api
 
 REM Capture exit code
 set EXIT_CODE=%ERRORLEVEL%

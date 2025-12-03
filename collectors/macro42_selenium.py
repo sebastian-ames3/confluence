@@ -523,94 +523,134 @@ class Macro42Collector(BaseCollector):
 
     def _collect_videos(self) -> List[Dict[str, Any]]:
         """
-        Collect video URLs by clicking on research cards and finding Vimeo embeds.
+        Collect video URLs from the Around The Horn video page.
 
-        Each Around The Horn report has an associated video. We click on each
-        unlocked card to open the detail view and extract the Vimeo URL.
+        42macro has a dedicated video page at /video/around_the_horn_weekly
+        with all videos accessible in a scrollable menu on the right.
+        Menu items are labeled "ATH" (Around The Horn) or "MM" (Macro Minute).
 
         Returns:
             List of video content items
         """
         import time
-        from selenium.webdriver.common.keys import Keys
 
         videos = []
         collected_video_ids = set()  # Track to avoid duplicates
 
         try:
-            # Navigate to research page
-            research_url = f"{self.BASE_URL}/research"
-            self.driver.get(research_url)
+            # Navigate directly to the Around The Horn video page
+            video_page_url = f"{self.BASE_URL}/video/around_the_horn_weekly"
+            self.driver.get(video_page_url)
 
-            # Wait for React app to render content
-            wait = WebDriverWait(self.driver, 10)
+            # Wait for page to load
+            wait = WebDriverWait(self.driver, 15)
+            wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+            time.sleep(3)  # Extra time for video player and menu to load
+
+            # Find the scrollable menu container
+            scroll_container = None
             try:
-                wait.until(EC.presence_of_element_located(
-                    (By.CSS_SELECTOR, ".cursor-pointer.bg-card")
-                ))
+                scroll_containers = self.driver.find_elements(By.CSS_SELECTOR, "[class*='overflow-y-scroll']")
+                if scroll_containers:
+                    scroll_container = scroll_containers[0]
+                    logger.info("Found scrollable video menu")
+            except Exception as e:
+                logger.debug(f"Could not find scroll container: {e}")
+
+            # First, get the currently playing video (main Vimeo iframe)
+            vimeo_iframes = self.driver.find_elements(By.XPATH, "//iframe[contains(@src, 'vimeo.com')]")
+            logger.info(f"Found {len(vimeo_iframes)} Vimeo iframes on video page")
+
+            # Get current video's date from the page title element
+            current_date = ""
+            try:
+                date_elem = self.driver.find_element(By.CSS_SELECTOR, ".text-select.font-bold")
+                current_date = date_elem.text.strip()
             except:
-                logger.warning("Research cards not found for video collection")
-                return videos
+                pass
 
-            time.sleep(1)
-
-            # Get card info first (before clicking changes DOM)
-            cards_info = []
-            cards = self.driver.find_elements(By.CSS_SELECTOR, ".cursor-pointer.bg-card.p-2.rounded-xl")
-
-            for card in cards[:10]:
+            for iframe in vimeo_iframes:
                 try:
-                    type_elem = card.find_element(By.CSS_SELECTOR, ".capitalize")
-                    report_type = type_elem.text.strip()
+                    src = iframe.get_attribute('src')
+                    video_id_match = re.search(r'vimeo\.com/video/(\d+)', src)
+                    if video_id_match:
+                        video_id = video_id_match.group(1)
+                        if video_id not in collected_video_ids:
+                            collected_video_ids.add(video_id)
+                            videos.append({
+                                "content_type": "video",
+                                "url": f"https://vimeo.com/{video_id}",
+                                "content_text": f"Around The Horn - {current_date}" if current_date else "Around The Horn",
+                                "collected_at": datetime.utcnow().isoformat(),
+                                "metadata": {
+                                    "title": f"Around The Horn - {current_date}" if current_date else "Around The Horn",
+                                    "platform": "vimeo",
+                                    "video_id": video_id,
+                                    "report_type": "Around The Horn",
+                                    "date": current_date,
+                                    "embed_url": src
+                                }
+                            })
+                            logger.info(f"Added current video: {video_id} ({current_date})")
+                except Exception as e:
+                    logger.debug(f"Error extracting current video: {e}")
 
-                    date_elem = card.find_element(By.CSS_SELECTOR, ".text-select.font-bold")
-                    date_text = date_elem.text.strip()
+            # Find ATH (Around The Horn) menu items in the scrollable list
+            # These are clickable items that contain "ATH" text
+            ath_items = self.driver.find_elements(
+                By.XPATH,
+                "//*[contains(text(), 'ATH')]/ancestor::*[contains(@class, 'cursor-pointer')]"
+            )
 
-                    # Check if locked
-                    is_locked = False
-                    try:
-                        card.find_element(By.CSS_SELECTOR, "svg.text-white.absolute")
-                        is_locked = True
-                    except:
-                        pass
+            # If that didn't work, try finding items in the scroll container
+            if not ath_items and scroll_container:
+                # Find all clickable items in the menu
+                ath_items = scroll_container.find_elements(
+                    By.XPATH,
+                    ".//*[contains(text(), 'ATH')]/parent::*"
+                )
 
-                    if not is_locked:
-                        cards_info.append({
-                            "report_type": report_type,
-                            "date_text": date_text,
-                            "title": f"{report_type} - {date_text}"
-                        })
-                except:
-                    pass
+            logger.info(f"Found {len(ath_items)} ATH menu items")
 
-            logger.info(f"Found {len(cards_info)} unlocked cards for video extraction")
+            # Scroll down the menu to load more items if needed
+            if scroll_container:
+                # Scroll to load all items
+                for _ in range(3):
+                    self.driver.execute_script(
+                        "arguments[0].scrollTop = arguments[0].scrollHeight",
+                        scroll_container
+                    )
+                    time.sleep(0.5)
 
-            # Now click each card by index
-            for idx, info in enumerate(cards_info):
+                # Re-find ATH items after scrolling
+                ath_items = self.driver.find_elements(
+                    By.XPATH,
+                    "//*[contains(text(), 'ATH')]/ancestor::*[contains(@class, 'cursor-pointer')]"
+                )
+                logger.info(f"After scroll, found {len(ath_items)} ATH menu items")
+
+            # Click each ATH item to get its video
+            for idx, item in enumerate(ath_items[:10]):  # Limit to recent 10
                 try:
-                    # Re-find cards (DOM may have changed)
-                    cards = self.driver.find_elements(By.CSS_SELECTOR, ".cursor-pointer.bg-card.p-2.rounded-xl")
-
-                    # Find the matching card
-                    target_card = None
-                    for card in cards:
-                        try:
-                            type_elem = card.find_element(By.CSS_SELECTOR, ".capitalize")
-                            date_elem = card.find_element(By.CSS_SELECTOR, ".text-select.font-bold")
-                            if type_elem.text.strip() == info["report_type"] and date_elem.text.strip() == info["date_text"]:
-                                target_card = card
-                                break
-                        except:
-                            continue
-
-                    if not target_card:
+                    # Get the date text from the item (format: "ATH" on one line, "Sat, Nov 29" below)
+                    item_text = item.text.strip()
+                    if not item_text or 'ATH' not in item_text:
                         continue
 
-                    # Click on the card
-                    self.driver.execute_script("arguments[0].click();", target_card)
-                    time.sleep(1.5)  # Wait for modal
+                    # Extract the date part (e.g., "Sat, Nov 29" from "ATH\nSat, Nov 29")
+                    date_part = item_text.replace('ATH', '').strip()
+                    if not date_part:
+                        date_part = f"Item {idx}"
 
-                    # Look for Vimeo iframe
+                    logger.info(f"Clicking ATH item {idx}: {date_part}...")
+
+                    # Scroll item into view and click
+                    self.driver.execute_script("arguments[0].scrollIntoView(true);", item)
+                    time.sleep(0.3)
+                    self.driver.execute_script("arguments[0].click();", item)
+                    time.sleep(2)  # Wait for video to load
+
+                    # Check for new Vimeo iframe
                     vimeo_iframes = self.driver.find_elements(By.XPATH, "//iframe[contains(@src, 'vimeo.com')]")
 
                     for iframe in vimeo_iframes:
@@ -619,43 +659,43 @@ class Macro42Collector(BaseCollector):
                             video_id_match = re.search(r'vimeo\.com/video/(\d+)', src)
                             if video_id_match:
                                 video_id = video_id_match.group(1)
-
                                 if video_id not in collected_video_ids:
                                     collected_video_ids.add(video_id)
+
+                                    # Get full date if visible
+                                    full_date = date_part
+                                    try:
+                                        date_elem = self.driver.find_element(By.CSS_SELECTOR, ".text-select.font-bold")
+                                        full_date = date_elem.text.strip()
+                                    except:
+                                        pass
+
                                     videos.append({
                                         "content_type": "video",
                                         "url": f"https://vimeo.com/{video_id}",
-                                        "content_text": info["title"],
+                                        "content_text": f"Around The Horn - {full_date}",
                                         "collected_at": datetime.utcnow().isoformat(),
                                         "metadata": {
-                                            "title": info["title"],
+                                            "title": f"Around The Horn - {full_date}",
                                             "platform": "vimeo",
                                             "video_id": video_id,
-                                            "report_type": info["report_type"],
-                                            "date": info["date_text"],
+                                            "report_type": "Around The Horn",
+                                            "date": full_date,
                                             "embed_url": src
                                         }
                                     })
-                                    logger.info(f"Added Vimeo video: {video_id} - {info['title']}")
+                                    logger.info(f"Added video: {video_id} - {full_date}")
                         except Exception as e:
                             logger.debug(f"Error extracting video: {e}")
 
-                    # Close modal with Escape
-                    try:
-                        self.driver.find_element(By.TAG_NAME, "body").send_keys(Keys.ESCAPE)
-                        time.sleep(0.5)
-                    except:
-                        self.driver.get(research_url)
-                        time.sleep(1)
-
                 except Exception as e:
-                    logger.warning(f"Error on card {idx}: {e}")
-                    self.driver.get(research_url)
-                    time.sleep(1)
+                    logger.debug(f"Error clicking ATH item {idx}: {e}")
+                    continue
 
         except Exception as e:
             logger.warning(f"Error collecting videos: {e}")
 
+        logger.info(f"Collected {len(videos)} unique videos")
         return videos
 
     def _download_pdf(self, url: str, title: str) -> Optional[Path]:
