@@ -151,6 +151,23 @@ async def debug_synthesis(
     except Exception as e:
         debug_info["errors"].append(f"create agent: {str(e)}\n{traceback.format_exc()}")
 
+    # Step 6: Try a simple Claude call
+    try:
+        from anthropic import Anthropic
+        client = Anthropic(api_key=os.getenv("CLAUDE_API_KEY"))
+        response = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=50,
+            messages=[{"role": "user", "content": "Say 'test successful' in exactly 2 words."}]
+        )
+        debug_info["steps"].append({
+            "step": "claude_api_call",
+            "status": "success",
+            "response_preview": response.content[0].text[:50] if response.content else "no content"
+        })
+    except Exception as e:
+        debug_info["errors"].append(f"claude api call: {str(e)}\n{traceback.format_exc()}")
+
     return debug_info
 
 
