@@ -289,7 +289,7 @@ async def trigger_collection(
     Returns:
         Collection trigger confirmation
     """
-    valid_sources = ["42macro", "discord", "twitter", "youtube", "substack"]
+    valid_sources = ["42macro", "discord", "twitter", "youtube", "substack", "kt_technical"]
 
     if source_name not in valid_sources:
         raise HTTPException(
