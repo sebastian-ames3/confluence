@@ -523,98 +523,134 @@ class Macro42Collector(BaseCollector):
 
     def _collect_videos(self) -> List[Dict[str, Any]]:
         """
-        Collect video URLs and metadata from Vimeo embeds.
+        Collect video URLs by clicking on research cards and finding Vimeo embeds.
 
-        42macro hosts videos on Vimeo. We extract the Vimeo URLs
-        which can then be processed by yt-dlp for transcription.
+        Each Around The Horn report has an associated video. We click on each
+        unlocked card to open the detail view and extract the Vimeo URL.
 
         Returns:
             List of video content items
         """
         import time
         videos = []
+        collected_video_ids = set()  # Track to avoid duplicates
 
         try:
-            # Navigate to videos page
-            videos_url = f"{self.BASE_URL}/videos"
-            self.driver.get(videos_url)
+            # Navigate to research page
+            research_url = f"{self.BASE_URL}/research"
+            self.driver.get(research_url)
 
-            # Wait for page to load - Vimeo embeds may take time
+            # Wait for React app to render content
             wait = WebDriverWait(self.driver, 15)
-            wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
-            time.sleep(3)  # Extra time for dynamic content
+            try:
+                wait.until(EC.presence_of_element_located(
+                    (By.CSS_SELECTOR, ".cursor-pointer.bg-card")
+                ))
+            except:
+                logger.warning("Research cards not found for video collection")
+                return videos
 
-            # Find Vimeo iframes
-            vimeo_iframes = self.driver.find_elements(By.XPATH, "//iframe[contains(@src, 'vimeo.com')]")
-            logger.info(f"Found {len(vimeo_iframes)} Vimeo iframes")
+            time.sleep(2)
 
-            # Also try to find video cards/containers that might have titles
-            video_cards = self.driver.find_elements(By.CSS_SELECTOR, ".cursor-pointer.bg-card")
+            # Find all research card elements
+            cards = self.driver.find_elements(By.CSS_SELECTOR, ".cursor-pointer.bg-card.p-2.rounded-xl")
+            logger.info(f"Found {len(cards)} research cards for video extraction")
 
-            for idx, iframe in enumerate(vimeo_iframes[:10]):  # Limit to most recent 10
+            for idx, card in enumerate(cards[:10]):  # Limit to most recent 10
                 try:
-                    src = iframe.get_attribute('src')
-                    logger.info(f"Processing Vimeo iframe {idx}: {src[:80]}...")
+                    # Extract report type and date for title
+                    type_elem = card.find_element(By.CSS_SELECTOR, ".capitalize")
+                    report_type = type_elem.text.strip()
 
-                    # Extract video ID from Vimeo URL
-                    # Vimeo embed URLs: https://player.vimeo.com/video/123456789
-                    video_id_match = re.search(r'vimeo\.com/video/(\d+)', src)
-                    if video_id_match:
-                        video_id = video_id_match.group(1)
-                        video_url = f"https://vimeo.com/{video_id}"
+                    date_elem = card.find_element(By.CSS_SELECTOR, ".text-select.font-bold")
+                    date_text = date_elem.text.strip()
 
-                        # Try to get title from nearby elements or page
-                        title = "42 Macro Video"
+                    # Check if locked
+                    is_locked = False
+                    try:
+                        card.find_element(By.CSS_SELECTOR, "svg.text-white.absolute")
+                        is_locked = True
+                    except:
+                        pass
+
+                    if is_locked:
+                        continue
+
+                    title = f"{report_type} - {date_text}"
+
+                    # Click on the card to open detail view
+                    self.driver.execute_script("arguments[0].scrollIntoView(true);", card)
+                    time.sleep(0.3)
+                    card.click()
+
+                    # Wait for detail view to load with potential Vimeo iframe
+                    time.sleep(2)
+
+                    # Look for Vimeo iframe in the modal/detail view
+                    vimeo_iframes = self.driver.find_elements(By.XPATH, "//iframe[contains(@src, 'vimeo.com')]")
+
+                    for iframe in vimeo_iframes:
                         try:
-                            # Look for title in parent elements
-                            parent = iframe.find_element(By.XPATH, "./..")
-                            title_elem = parent.find_element(By.XPATH, ".//h1 | .//h2 | .//h3 | ./preceding-sibling::*[contains(@class, 'title')]")
-                            if title_elem:
-                                title = title_elem.text.strip() or title
-                        except:
-                            pass
+                            src = iframe.get_attribute('src')
+                            video_id_match = re.search(r'vimeo\.com/video/(\d+)', src)
+                            if video_id_match:
+                                video_id = video_id_match.group(1)
 
-                        videos.append({
-                            "content_type": "video",
-                            "url": video_url,
-                            "content_text": title,
-                            "collected_at": datetime.utcnow().isoformat(),
-                            "metadata": {
-                                "title": title,
-                                "platform": "vimeo",
-                                "video_id": video_id,
-                                "embed_url": src
-                            }
-                        })
-                        logger.info(f"Added Vimeo video: {video_id} - {title}")
+                                # Skip if we already have this video
+                                if video_id in collected_video_ids:
+                                    continue
+
+                                collected_video_ids.add(video_id)
+                                video_url = f"https://vimeo.com/{video_id}"
+
+                                videos.append({
+                                    "content_type": "video",
+                                    "url": video_url,
+                                    "content_text": title,
+                                    "collected_at": datetime.utcnow().isoformat(),
+                                    "metadata": {
+                                        "title": title,
+                                        "platform": "vimeo",
+                                        "video_id": video_id,
+                                        "report_type": report_type,
+                                        "date": date_text,
+                                        "embed_url": src
+                                    }
+                                })
+                                logger.info(f"Added Vimeo video: {video_id} - {title}")
+
+                        except Exception as e:
+                            logger.warning(f"Error extracting Vimeo from iframe: {e}")
+
+                    # Close the detail view by pressing Escape or clicking outside
+                    try:
+                        # Try pressing Escape to close modal
+                        from selenium.webdriver.common.keys import Keys
+                        self.driver.find_element(By.TAG_NAME, "body").send_keys(Keys.ESCAPE)
+                        time.sleep(0.5)
+                    except:
+                        # Try clicking a close button or navigating back
+                        try:
+                            close_btn = self.driver.find_element(By.CSS_SELECTOR, "[aria-label='Close'], .close-button, button[type='button']")
+                            close_btn.click()
+                            time.sleep(0.5)
+                        except:
+                            # Navigate back to research page
+                            self.driver.get(research_url)
+                            time.sleep(1)
+                            # Re-find cards after navigation
+                            cards = self.driver.find_elements(By.CSS_SELECTOR, ".cursor-pointer.bg-card.p-2.rounded-xl")
 
                 except Exception as e:
-                    logger.warning(f"Error processing Vimeo iframe {idx}: {e}")
-                    continue
-
-            # If no iframes found, try looking for Vimeo links directly
-            if not videos:
-                logger.info("No Vimeo iframes found, looking for direct links...")
-                vimeo_links = self.driver.find_elements(By.XPATH, "//a[contains(@href, 'vimeo.com')]")
-                for link in vimeo_links[:10]:
+                    logger.warning(f"Error processing card {idx} for video: {e}")
+                    # Try to recover by going back to research page
                     try:
-                        href = link.get_attribute('href')
-                        video_id_match = re.search(r'vimeo\.com/(\d+)', href)
-                        if video_id_match:
-                            video_id = video_id_match.group(1)
-                            videos.append({
-                                "content_type": "video",
-                                "url": f"https://vimeo.com/{video_id}",
-                                "content_text": link.text.strip() or "42 Macro Video",
-                                "collected_at": datetime.utcnow().isoformat(),
-                                "metadata": {
-                                    "title": link.text.strip() or "42 Macro Video",
-                                    "platform": "vimeo",
-                                    "video_id": video_id
-                                }
-                            })
-                    except Exception as e:
-                        logger.warning(f"Error processing Vimeo link: {e}")
+                        self.driver.get(research_url)
+                        time.sleep(1)
+                        cards = self.driver.find_elements(By.CSS_SELECTOR, ".cursor-pointer.bg-card.p-2.rounded-xl")
+                    except:
+                        pass
+                    continue
 
         except Exception as e:
             logger.warning(f"Error collecting videos: {e}")
