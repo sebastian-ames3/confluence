@@ -63,11 +63,14 @@ async def ingest_discord_data(
 
         # Save each message as raw content
         saved_count = 0
-        for message_data in messages:
+        errors = []
+        for idx, message_data in enumerate(messages):
             try:
                 # Validate required fields
                 if "content_type" not in message_data:
-                    logger.warning(f"Skipping message without content_type")
+                    error_msg = f"Message {idx}: Missing content_type"
+                    logger.warning(error_msg)
+                    errors.append(error_msg)
                     continue
 
                 # Parse collected_at if it's a string
@@ -89,23 +92,36 @@ async def ingest_discord_data(
 
                 db.add(raw_content)
                 saved_count += 1
+                logger.info(f"Added message {idx} to session: {message_data.get('content_type')}")
 
             except Exception as e:
-                logger.error(f"Error saving Discord message: {e}")
+                import traceback
+                error_msg = f"Message {idx}: {str(e)}\n{traceback.format_exc()}"
+                logger.error(f"Error saving Discord message: {error_msg}")
+                errors.append(error_msg)
                 continue
 
         # Commit all changes
         db.commit()
+        logger.info(f"Committed {saved_count}/{len(messages)} Discord messages to database")
 
-        logger.info(f"Saved {saved_count}/{len(messages)} Discord messages to database")
+        # Verify the commit worked
+        count_after = db.query(RawContent).filter(RawContent.source_id == source.id).count()
+        logger.info(f"Total RawContent for source {source.id} after commit: {count_after}")
 
-        return {
+        response = {
             "status": "success",
             "message": f"Ingested {saved_count} Discord messages",
             "saved": saved_count,
             "received": len(messages),
+            "total_in_db": count_after,
             "timestamp": datetime.utcnow().isoformat()
         }
+
+        if errors:
+            response["errors"] = errors
+
+        return response
 
     except Exception as e:
         db.rollback()
