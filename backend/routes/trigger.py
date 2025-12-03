@@ -103,7 +103,8 @@ async def trigger_collection(
         Job ID and status for tracking
     """
     # Determine sources to collect from
-    all_sources = ["youtube", "substack", "42macro"]  # Discord handled separately
+    # Note: 42macro disabled - Selenium collector hangs on Railway (needs Chrome debugging)
+    all_sources = ["youtube", "substack"]  # Discord handled separately via local Task Scheduler
 
     if request.sources:
         sources_to_collect = [s for s in request.sources if s in all_sources]
