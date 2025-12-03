@@ -136,12 +136,37 @@ class BaseCollector(ABC):
                 db.refresh(source)
 
             # Save each content item
+            skipped_duplicates = 0
             for content in content_items:
                 if not self.validate_content(content):
                     logger.warning(f"Skipping invalid content: {content.get('content_text', '')[:50]}")
                     continue
 
                 prepared = self.prepare_for_database(content)
+                metadata = prepared.get("metadata", {})
+
+                # Check for duplicate by message_id (Discord) or url (other sources)
+                message_id = metadata.get("message_id")
+                url = prepared.get("url")
+
+                if message_id:
+                    # Check if this message_id already exists for this source
+                    existing = db.query(RawContent).filter(
+                        RawContent.source_id == source.id,
+                        RawContent.json_metadata.contains(f'"message_id": "{message_id}"')
+                    ).first()
+                    if existing:
+                        skipped_duplicates += 1
+                        continue
+                elif url:
+                    # Check if this URL already exists for this source
+                    existing = db.query(RawContent).filter(
+                        RawContent.source_id == source.id,
+                        RawContent.url == url
+                    ).first()
+                    if existing:
+                        skipped_duplicates += 1
+                        continue
 
                 raw_content = RawContent(
                     source_id=source.id,
@@ -149,12 +174,20 @@ class BaseCollector(ABC):
                     content_text=prepared.get("content_text"),
                     file_path=prepared.get("file_path"),
                     url=prepared.get("url"),
-                    json_metadata=json.dumps(prepared.get("metadata", {})),
+                    json_metadata=json.dumps(metadata),
                     processed=False
                 )
 
                 db.add(raw_content)
                 saved_count += 1
+
+            if skipped_duplicates > 0:
+                logger.info(f"Skipped {skipped_duplicates} duplicate items")
+
+            # Update last_collected_at to prevent duplicate collection
+            if saved_count > 0:
+                from datetime import datetime
+                source.last_collected_at = datetime.utcnow()
 
             db.commit()
             logger.info(f"Saved {saved_count} items to database")
