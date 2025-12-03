@@ -22,13 +22,14 @@ from datetime import datetime
 from pathlib import Path
 
 # Add project root to path (dev/scripts -> dev -> project root)
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(project_root))
+
+# Load environment variables BEFORE importing collectors
+from dotenv import load_dotenv
+load_dotenv(project_root / ".env")
 
 from collectors.discord_self import DiscordSelfCollector
-from dotenv import load_dotenv
-
-# Load environment variables
-load_dotenv()
 
 # Configure logging
 logging.basicConfig(

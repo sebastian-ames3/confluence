@@ -28,8 +28,9 @@ from collectors.base_collector import BaseCollector
 
 logger = logging.getLogger(__name__)
 
-# Railway API URL from environment (PRD-015)
-RAILWAY_API_URL = os.getenv("RAILWAY_API_URL", "http://localhost:8000")
+def get_railway_api_url():
+    """Get Railway API URL from environment (read at runtime, not module load)."""
+    return os.getenv("RAILWAY_API_URL", "http://localhost:8000")
 
 
 class DiscordSelfCollector(BaseCollector):
@@ -907,7 +908,7 @@ class DiscordSelfCollector(BaseCollector):
         Returns:
             True if upload successful
         """
-        railway_url = f"{RAILWAY_API_URL}/api/collect/discord"
+        railway_url = f"{get_railway_api_url()}/api/collect/discord"
 
         try:
             async with aiohttp.ClientSession() as session:
@@ -995,7 +996,7 @@ class DiscordSelfCollector(BaseCollector):
         This is critical for monitoring - if heartbeats stop, dashboard shows alert.
         """
         # Use Railway URL from environment (PRD-015)
-        railway_url = f"{RAILWAY_API_URL}/api/heartbeat/discord"
+        railway_url = f"{get_railway_api_url()}/api/heartbeat/discord"
 
         try:
             async with aiohttp.ClientSession() as session:
