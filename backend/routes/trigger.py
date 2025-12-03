@@ -130,9 +130,9 @@ async def trigger_collection(
     job_id = collection_run.id
     logger.info(f"Started collection job {job_id} for sources: {sources_to_collect}")
 
-    # Run collection as a fire-and-forget task using asyncio.create_task
-    # This runs in the same event loop but doesn't block the response
-    asyncio.create_task(_run_collection_job(job_id, sources_to_collect))
+    # Run collection synchronously - GitHub Actions waits for completion anyway
+    # This ensures proper error handling and job status updates
+    await _run_collection_job(job_id, sources_to_collect)
 
     return {
         "status": "accepted",
