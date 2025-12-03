@@ -132,16 +132,17 @@ async def trigger_collection(
     job_id = collection_run.id
     logger.info(f"Started collection job {job_id} for sources: {sources_to_collect}")
 
-    # Run collection in background
+    # Run collection in background thread
+    # Using sync wrapper with asyncio.run() to properly handle async collectors
     if background_tasks:
         background_tasks.add_task(
-            _run_collection_job,
+            _run_collection_job_sync,
             job_id=job_id,
             sources=sources_to_collect
         )
     else:
         # Run synchronously if no background tasks available
-        await _run_collection_job(job_id, sources_to_collect)
+        _run_collection_job_sync(job_id, sources_to_collect)
 
     return {
         "status": "accepted",
@@ -152,71 +153,85 @@ async def trigger_collection(
     }
 
 
-async def _run_collection_job(job_id: int, sources: List[str]):
+def _run_collection_job_sync(job_id: int, sources: List[str]):
     """
-    Execute collection job in background.
+    Execute collection job synchronously in background thread.
+
+    Uses asyncio.run() to properly handle async collectors.
 
     Args:
         job_id: CollectionRun ID
         sources: List of sources to collect from
     """
-    from backend.models import SessionLocal
+    import traceback
 
-    db = SessionLocal()
-    results = {}
-    errors = []
-    total_items = 0
-    successful = 0
-    failed = 0
+    async def _async_collect():
+        from backend.models import SessionLocal
 
-    try:
-        for source_name in sources:
+        db = SessionLocal()
+        results = {}
+        errors = []
+        total_items = 0
+        successful = 0
+        failed = 0
+
+        try:
+            for source_name in sources:
+                try:
+                    logger.info(f"Job {job_id}: Collecting from {source_name}")
+                    items = await _collect_from_source(db, source_name)
+                    results[source_name] = {
+                        "status": "success",
+                        "items_collected": len(items)
+                    }
+                    total_items += len(items)
+                    successful += 1
+                    logger.info(f"Job {job_id}: Collected {len(items)} items from {source_name}")
+
+                except Exception as e:
+                    error_msg = f"Collection from {source_name} failed: {str(e)}\n{traceback.format_exc()}"
+                    logger.error(f"Job {job_id}: {error_msg}")
+                    results[source_name] = {
+                        "status": "failed",
+                        "error": str(e)
+                    }
+                    errors.append(error_msg)
+                    failed += 1
+
+            # Update collection run record
+            collection_run = db.query(CollectionRun).filter(CollectionRun.id == job_id).first()
+            if collection_run:
+                collection_run.completed_at = datetime.utcnow()
+                collection_run.status = "completed" if failed == 0 else "completed_with_errors"
+                collection_run.source_results = json.dumps(results)
+                collection_run.errors = json.dumps(errors)
+                collection_run.total_items_collected = total_items
+                collection_run.successful_sources = successful
+                collection_run.failed_sources = failed
+                db.commit()
+
+            logger.info(f"Job {job_id}: Collection completed. Total: {total_items} items, {successful} successful, {failed} failed")
+
+        except Exception as e:
+            logger.error(f"Job {job_id}: Fatal error: {e}\n{traceback.format_exc()}")
+            # Mark as failed
             try:
-                logger.info(f"Job {job_id}: Collecting from {source_name}")
-                items = await _collect_from_source(db, source_name)
-                results[source_name] = {
-                    "status": "success",
-                    "items_collected": len(items)
-                }
-                total_items += len(items)
-                successful += 1
-                logger.info(f"Job {job_id}: Collected {len(items)} items from {source_name}")
+                collection_run = db.query(CollectionRun).filter(CollectionRun.id == job_id).first()
+                if collection_run:
+                    collection_run.completed_at = datetime.utcnow()
+                    collection_run.status = "failed"
+                    collection_run.errors = json.dumps([f"{str(e)}\n{traceback.format_exc()}"])
+                    db.commit()
+            except Exception as db_error:
+                logger.error(f"Job {job_id}: Failed to update status: {db_error}")
+        finally:
+            db.close()
 
-            except Exception as e:
-                error_msg = f"Collection from {source_name} failed: {str(e)}"
-                logger.error(f"Job {job_id}: {error_msg}")
-                results[source_name] = {
-                    "status": "failed",
-                    "error": str(e)
-                }
-                errors.append(error_msg)
-                failed += 1
-
-        # Update collection run record
-        collection_run = db.query(CollectionRun).filter(CollectionRun.id == job_id).first()
-        if collection_run:
-            collection_run.completed_at = datetime.utcnow()
-            collection_run.status = "completed" if failed == 0 else "completed_with_errors"
-            collection_run.source_results = json.dumps(results)
-            collection_run.errors = json.dumps(errors)
-            collection_run.total_items_collected = total_items
-            collection_run.successful_sources = successful
-            collection_run.failed_sources = failed
-            db.commit()
-
-        logger.info(f"Job {job_id}: Collection completed. Total: {total_items} items, {successful} successful, {failed} failed")
-
+    # Run the async function in a new event loop
+    try:
+        asyncio.run(_async_collect())
     except Exception as e:
-        logger.error(f"Job {job_id}: Fatal error: {e}")
-        # Mark as failed
-        collection_run = db.query(CollectionRun).filter(CollectionRun.id == job_id).first()
-        if collection_run:
-            collection_run.completed_at = datetime.utcnow()
-            collection_run.status = "failed"
-            collection_run.errors = json.dumps([str(e)])
-            db.commit()
-    finally:
-        db.close()
+        logger.error(f"Job {job_id}: asyncio.run failed: {e}\n{traceback.format_exc()}")
 
 
 async def _collect_from_source(db: Session, source_name: str) -> list:
