@@ -70,6 +70,12 @@ async def ingest_discord_data(
                     logger.warning(f"Skipping message without content_type")
                     continue
 
+                # Parse collected_at if it's a string
+                collected_at = message_data.get("collected_at", datetime.utcnow())
+                if isinstance(collected_at, str):
+                    from dateutil.parser import parse as parse_datetime
+                    collected_at = parse_datetime(collected_at)
+
                 raw_content = RawContent(
                     source_id=source.id,
                     content_type=message_data["content_type"],
@@ -77,7 +83,7 @@ async def ingest_discord_data(
                     file_path=message_data.get("file_path"),
                     url=message_data.get("url"),
                     json_metadata=json.dumps(message_data.get("metadata", {})),
-                    collected_at=message_data.get("collected_at", datetime.utcnow()),
+                    collected_at=collected_at,
                     processed=False
                 )
 
