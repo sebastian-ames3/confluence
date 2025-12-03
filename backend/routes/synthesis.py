@@ -420,12 +420,17 @@ def _get_content_for_synthesis(
     Returns list of dicts with content info for the synthesis agent.
     """
     # Query analyzed content with source info
+    # Include items with NULL analyzed_at (for backwards compatibility)
+    from sqlalchemy import or_
     query = db.query(AnalyzedContent, RawContent, Source).join(
         RawContent, AnalyzedContent.raw_content_id == RawContent.id
     ).join(
         Source, RawContent.source_id == Source.id
     ).filter(
-        AnalyzedContent.analyzed_at >= cutoff
+        or_(
+            AnalyzedContent.analyzed_at >= cutoff,
+            AnalyzedContent.analyzed_at.is_(None)
+        )
     )
 
     # Filter by topic if provided
