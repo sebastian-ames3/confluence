@@ -73,6 +73,48 @@ class StatusResponse(BaseModel):
 # Synthesis Endpoints
 # ============================================================================
 
+@router.post("/migrate-v2")
+@limiter.limit(RATE_LIMITS["default"])
+async def migrate_synthesis_v2(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: str = Depends(verify_credentials)
+):
+    """
+    Migrate database schema for v2 synthesis (PRD-020).
+    Adds schema_version and synthesis_json columns if they don't exist.
+    """
+    from sqlalchemy import text
+
+    migrations = []
+
+    # Check and add schema_version column
+    try:
+        db.execute(text("SELECT schema_version FROM syntheses LIMIT 1"))
+        migrations.append({"column": "schema_version", "status": "exists"})
+    except Exception:
+        try:
+            db.execute(text("ALTER TABLE syntheses ADD COLUMN schema_version VARCHAR(10) DEFAULT '1.0'"))
+            db.commit()
+            migrations.append({"column": "schema_version", "status": "added"})
+        except Exception as e:
+            migrations.append({"column": "schema_version", "status": "error", "error": str(e)})
+
+    # Check and add synthesis_json column
+    try:
+        db.execute(text("SELECT synthesis_json FROM syntheses LIMIT 1"))
+        migrations.append({"column": "synthesis_json", "status": "exists"})
+    except Exception:
+        try:
+            db.execute(text("ALTER TABLE syntheses ADD COLUMN synthesis_json TEXT"))
+            db.commit()
+            migrations.append({"column": "synthesis_json", "status": "added"})
+        except Exception as e:
+            migrations.append({"column": "synthesis_json", "status": "error", "error": str(e)})
+
+    return {"migrations": migrations, "status": "complete"}
+
+
 @router.get("/debug")
 @limiter.limit(RATE_LIMITS["default"])
 async def debug_synthesis(
