@@ -444,12 +444,12 @@
             to { transform: rotate(360deg); }
         }
 
-        /* V3 Research Consumption Hub Styles (PRD-021) */
+        /* V3 Research Consumption Hub Styles (PRD-021) - Clean Design */
         .v3-executive-summary {
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(59, 130, 246, 0.05) 100%);
-            border-left: 4px solid var(--primary);
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
             padding: var(--spacing-lg);
-            border-radius: 0 var(--radius-md) var(--radius-md) 0;
+            border-radius: var(--radius-md);
             margin-bottom: var(--spacing-lg);
         }
 
@@ -468,28 +468,33 @@
 
         .v3-tone-badge {
             padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.8rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
             font-weight: 500;
-            text-transform: capitalize;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
         }
 
-        .tone-cautious { background: var(--warning); color: black; }
-        .tone-constructive { background: var(--success); color: white; }
-        .tone-mixed { background: #8b5cf6; color: white; }
-        .tone-uncertain { background: var(--text-muted); color: white; }
+        .tone-cautious { border-color: rgba(251, 191, 36, 0.5); color: #fbbf24; }
+        .tone-constructive { border-color: rgba(34, 197, 94, 0.5); color: #22c55e; }
+        .tone-mixed { border-color: rgba(139, 92, 246, 0.5); color: #a78bfa; }
+        .tone-uncertain { border-color: var(--border-color); }
 
         .v3-dominant-theme {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.05);
             padding: 4px 12px;
-            border-radius: 20px;
+            border-radius: 4px;
             font-size: 0.8rem;
+            color: var(--text-secondary);
         }
 
         .confluence-zone {
-            background: rgba(34, 197, 94, 0.08);
-            border-left: 4px solid var(--success);
-            border-radius: 0 var(--radius-md) var(--radius-md) 0;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
             padding: var(--spacing-md);
             margin-bottom: var(--spacing-md);
         }
@@ -513,7 +518,10 @@
             align-items: center;
             gap: var(--spacing-xs);
             font-size: 0.8rem;
-            color: var(--success);
+            color: var(--text-muted);
+            background: rgba(255, 255, 255, 0.05);
+            padding: 2px 10px;
+            border-radius: 4px;
         }
 
         .confluence-sources {
@@ -534,25 +542,27 @@
 
         .confluence-source-name {
             font-weight: 500;
-            color: var(--primary);
+            color: var(--text-secondary);
             min-width: 100px;
         }
 
         .confluence-source-view {
-            color: var(--text-secondary);
+            color: var(--text-muted);
         }
 
         .confluence-contrary {
             margin-top: var(--spacing-sm);
             padding-top: var(--spacing-sm);
-            border-top: 1px dashed var(--danger);
+            border-top: 1px dashed rgba(255, 255, 255, 0.1);
         }
 
         .confluence-contrary-label {
-            color: var(--danger);
+            color: var(--text-muted);
             font-size: 0.75rem;
             font-weight: 500;
             margin-bottom: var(--spacing-xs);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .confluence-meta {
@@ -571,22 +581,25 @@
             display: flex;
             gap: var(--spacing-md);
             padding: var(--spacing-md);
-            background: rgba(251, 191, 36, 0.1);
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-color);
             border-radius: var(--radius-md);
             margin-bottom: var(--spacing-sm);
             align-items: flex-start;
         }
 
         .priority-rank {
-            width: 32px;
-            height: 32px;
-            background: var(--warning);
-            color: black;
+            width: 28px;
+            height: 28px;
+            background: transparent;
+            color: var(--text-muted);
+            border: 2px solid var(--border-color);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-weight: 700;
+            font-weight: 600;
+            font-size: 0.85rem;
             flex-shrink: 0;
         }
 
@@ -600,7 +613,7 @@
         }
 
         .priority-why {
-            color: var(--text-secondary);
+            color: var(--text-muted);
             font-size: 0.9rem;
             margin-top: var(--spacing-xs);
         }
@@ -613,20 +626,25 @@
         }
 
         .priority-sensitivity {
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             padding: 2px 8px;
-            border-radius: 4px;
+            border-radius: 3px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
         }
 
-        .sensitivity-immediate { background: var(--danger); color: white; }
-        .sensitivity-high { background: var(--warning); color: black; }
-        .sensitivity-medium { background: var(--primary); color: white; }
-        .sensitivity-low { background: var(--text-muted); color: white; }
+        .sensitivity-immediate { border-color: rgba(239, 68, 68, 0.5); color: #f87171; }
+        .sensitivity-high { border-color: rgba(251, 191, 36, 0.5); color: #fbbf24; }
+        .sensitivity-medium { border-color: rgba(59, 130, 246, 0.5); color: #60a5fa; }
+        .sensitivity-low { border-color: var(--border-color); }
 
         .re-review-item {
-            background: rgba(139, 92, 246, 0.1);
-            border-left: 4px solid #8b5cf6;
-            border-radius: 0 var(--radius-md) var(--radius-md) 0;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
             padding: var(--spacing-md);
             margin-bottom: var(--spacing-md);
         }
@@ -646,11 +664,11 @@
 
         .re-review-source {
             font-size: 0.8rem;
-            color: #8b5cf6;
+            color: var(--text-muted);
         }
 
         .re-review-why {
-            color: var(--text-secondary);
+            color: var(--text-muted);
             font-size: 0.9rem;
             margin-top: var(--spacing-sm);
             line-height: 1.5;
@@ -659,15 +677,18 @@
         .re-review-trigger {
             display: inline-block;
             margin-top: var(--spacing-sm);
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             padding: 2px 8px;
-            background: rgba(139, 92, 246, 0.2);
-            border-radius: 4px;
-            color: #a78bfa;
+            background: transparent;
+            border: 1px solid var(--border-color);
+            border-radius: 3px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .source-stance-card {
-            background: var(--bg-card);
+            background: rgba(255, 255, 255, 0.02);
             border: 1px solid var(--border-color);
             border-radius: var(--radius-md);
             padding: var(--spacing-md);
@@ -692,21 +713,23 @@
         }
 
         .source-stance-narrative {
-            color: var(--text-secondary);
+            color: var(--text-muted);
             font-size: 0.9rem;
-            line-height: 1.5;
+            line-height: 1.6;
         }
 
         .source-stance-bias {
             margin-top: var(--spacing-sm);
-            font-size: 0.8rem;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
-        .bias-bullish { color: var(--success); }
-        .bias-bearish { color: var(--danger); }
-        .bias-cautious { color: var(--warning); }
+        .bias-bullish { color: #4ade80; }
+        .bias-bearish { color: #f87171; }
+        .bias-cautious { color: #fbbf24; }
         .bias-neutral { color: var(--text-muted); }
-        .bias-mixed { color: #8b5cf6; }
+        .bias-mixed { color: #a78bfa; }
 
         .v3-catalyst-table {
             width: 100%;
@@ -717,8 +740,12 @@
         .v3-catalyst-table th {
             text-align: left;
             padding: var(--spacing-sm);
-            background: rgba(0, 0, 0, 0.2);
-            color: var(--text-secondary);
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--text-muted);
+            font-weight: 500;
+            text-transform: uppercase;
+            font-size: 0.7rem;
+            letter-spacing: 0.5px;
         }
 
         .v3-catalyst-table td {
@@ -729,7 +756,7 @@
 
         .catalyst-perspectives {
             font-size: 0.8rem;
-            color: var(--text-secondary);
+            color: var(--text-muted);
         }
 
         .catalyst-perspective {
@@ -738,8 +765,24 @@
 
         .catalyst-perspective-source {
             font-weight: 500;
-            color: var(--primary);
+            color: var(--text-secondary);
         }
+
+        .catalyst-impact {
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 0.7rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+        }
+
+        .impact-high { border-color: rgba(239, 68, 68, 0.5); color: #f87171; }
+        .impact-medium { border-color: rgba(251, 191, 36, 0.5); color: #fbbf24; }
+        .impact-low { border-color: var(--border-color); }
 
         /* Simple header for this view */
         .simple-header {
