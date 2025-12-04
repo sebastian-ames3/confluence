@@ -3,7 +3,7 @@
 ## Overview
 Personal investment research aggregation system. Collects macro analysis from 5 sources, applies AI analysis, and provides web dashboard + Claude Desktop integration.
 
-**Status**: v1.3.0 (2025-12-03) | Full pipeline operational with duplicate detection
+**Status**: v1.4.0 (2025-12-03) | Full pipeline operational with video transcription
 
 ---
 
@@ -34,7 +34,7 @@ Personal investment research aggregation system. Collects macro analysis from 5 
 | 015 | Security Hardening | Complete |
 | 016 | MCP API Proxy Refactor | Complete |
 | 017 | Polish & Reliability | Complete |
-| 018 | Video Transcription | Not started |
+| 018 | Video Transcription | Complete |
 | 019 | Duplicate Detection | Complete |
 
 ---

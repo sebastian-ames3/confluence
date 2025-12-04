@@ -165,7 +165,7 @@ Extract high-level themes and key insights."""
             logger.info(f"Downloading video from: {video_url}")
 
             # Download video using yt-dlp
-            # yt-dlp handles YouTube, Zoom, Webex, Twitter, and many other platforms
+            # yt-dlp handles YouTube, Zoom, Webex, Twitter, Vimeo and many other platforms
             cmd = [
                 "yt-dlp",
                 "-f", "bestaudio/best",  # Get best audio quality
@@ -173,6 +173,16 @@ Extract high-level themes and key insights."""
                 "--audio-format", "mp3",  # Convert to MP3
                 "--audio-quality", "0",  # Best quality
                 "-o", str(video_path),  # Output template
+                "--no-playlist",  # Don't download playlists
+                "--no-warnings",  # Suppress warnings
+                # Use Android client for YouTube to avoid 403 errors
+                "--extractor-args", "youtube:player_client=android",
+                # Anti-bot measures for YouTube/Vimeo
+                "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "--referer", "https://www.google.com/",
+                # Retry on failure
+                "--retries", "3",
+                "--fragment-retries", "3",
                 video_url
             ]
 

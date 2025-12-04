@@ -5,22 +5,170 @@ API endpoints for triggering data collection from research sources.
 Includes endpoints for receiving data from local laptop scripts:
 - Discord: dev/scripts/discord_local.py
 - 42macro: dev/scripts/macro42_local.py
+
+PRD-018: Added video transcription integration with TranscriptHarvesterAgent.
+Videos from Discord and 42macro are automatically transcribed after collection.
 """
 
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from sqlalchemy.orm import Session
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import logging
 import json
 import os
 import asyncio
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor
 
-from backend.models import get_db, RawContent, Source
+from backend.models import get_db, RawContent, Source, SessionLocal
 from backend.utils.deduplication import check_duplicate
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/collect", tags=["collect"])
+
+# Thread pool for async video transcription (PRD-018)
+# Limited to 2 workers to avoid overwhelming the system
+transcription_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="transcribe_")
+
+
+def _transcribe_video_sync(
+    raw_content_id: int,
+    video_url: str,
+    source: str,
+    title: Optional[str] = None
+) -> bool:
+    """
+    Transcribe a video and update the database record.
+
+    This runs synchronously in a thread pool worker.
+    PRD-018: Video transcription for all sources.
+
+    Args:
+        raw_content_id: ID of the RawContent record to update
+        video_url: URL of the video to transcribe
+        source: Source name (discord, 42macro, youtube)
+        title: Optional title for metadata
+
+    Returns:
+        True if transcription succeeded, False otherwise
+    """
+    db = None
+    try:
+        from agents.transcript_harvester import TranscriptHarvesterAgent
+
+        logger.info(f"Starting transcription for raw_content_id={raw_content_id}, url={video_url[:50]}...")
+
+        # Initialize the harvester agent
+        harvester = TranscriptHarvesterAgent()
+
+        # Determine priority based on source
+        if source in ("discord", "42macro"):
+            priority = "high"  # Tier 1 - Imran's videos, Darius Dale
+        else:
+            priority = "standard"  # Tier 3 - YouTube, etc.
+
+        # Build metadata
+        metadata = {
+            "title": title or f"Video from {source}",
+            "source": source,
+        }
+
+        # Run the harvest pipeline (download -> transcribe -> analyze)
+        import asyncio
+
+        # Create new event loop for this thread
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+        try:
+            result = loop.run_until_complete(
+                harvester.harvest(
+                    video_url=video_url,
+                    source=source,
+                    metadata=metadata,
+                    priority=priority
+                )
+            )
+        finally:
+            loop.close()
+
+        if not result or not result.get("transcript"):
+            logger.warning(f"Transcription returned no transcript for {raw_content_id}")
+            return False
+
+        # Update database with transcript
+        db = SessionLocal()
+        raw_content = db.query(RawContent).filter(RawContent.id == raw_content_id).first()
+
+        if not raw_content:
+            logger.error(f"RawContent {raw_content_id} not found for transcript update")
+            return False
+
+        # Parse existing metadata
+        existing_metadata = json.loads(raw_content.json_metadata or "{}")
+
+        # Add transcript data to metadata
+        existing_metadata["transcript"] = result["transcript"]
+        existing_metadata["transcription_duration"] = result.get("video_duration_seconds")
+        existing_metadata["transcribed_at"] = datetime.utcnow().isoformat()
+        existing_metadata["transcription_sentiment"] = result.get("sentiment")
+        existing_metadata["transcription_conviction"] = result.get("conviction")
+        existing_metadata["transcription_themes"] = result.get("key_themes", [])
+
+        # Update the record
+        raw_content.json_metadata = json.dumps(existing_metadata)
+        raw_content.content_text = result["transcript"]  # Store transcript as main content
+
+        db.commit()
+
+        transcript_len = len(result["transcript"])
+        logger.info(f"Transcription complete for {raw_content_id}: {transcript_len} chars, sentiment={result.get('sentiment')}")
+
+        return True
+
+    except ImportError as e:
+        logger.error(f"TranscriptHarvesterAgent not available: {e}")
+        return False
+    except Exception as e:
+        logger.error(f"Transcription failed for {raw_content_id}: {e}")
+        import traceback
+        logger.debug(traceback.format_exc())
+        return False
+    finally:
+        if db:
+            db.close()
+
+
+async def _transcribe_video_async(
+    raw_content_id: int,
+    video_url: str,
+    source: str,
+    title: Optional[str] = None
+):
+    """
+    Run video transcription in background thread pool.
+
+    PRD-018: Async wrapper to avoid blocking the event loop.
+
+    Args:
+        raw_content_id: ID of the RawContent record
+        video_url: URL of the video
+        source: Source name
+        title: Optional title
+    """
+    loop = asyncio.get_event_loop()
+
+    try:
+        await loop.run_in_executor(
+            transcription_executor,
+            _transcribe_video_sync,
+            raw_content_id,
+            video_url,
+            source,
+            title
+        )
+    except Exception as e:
+        logger.error(f"Async transcription wrapper failed: {e}")
 
 
 @router.post("/discord")
@@ -68,6 +216,8 @@ async def ingest_discord_data(
         saved_count = 0
         skipped_duplicates = 0
         errors = []
+        videos_to_transcribe = []  # PRD-018: Track videos needing transcription
+
         for idx, message_data in enumerate(messages):
             try:
                 # Validate required fields
@@ -105,6 +255,25 @@ async def ingest_discord_data(
                 )
 
                 db.add(raw_content)
+                db.flush()  # PRD-018: Get the ID immediately for transcription tracking
+
+                # PRD-018: Check if video needs transcription
+                if message_data["content_type"] == "video" and url:
+                    # Check if local collector already transcribed this
+                    video_transcripts = metadata.get("video_transcripts", [])
+                    has_local_transcript = any(
+                        t.get("transcript") for t in video_transcripts
+                    )
+
+                    if not has_local_transcript:
+                        # Queue for server-side transcription
+                        videos_to_transcribe.append({
+                            "raw_content_id": raw_content.id,
+                            "url": url,
+                            "title": metadata.get("title") or message_data.get("content_text", "")[:100]
+                        })
+                        logger.info(f"Queued video for transcription: {url[:50]}...")
+
                 saved_count += 1
                 logger.info(f"Added message {idx} to session: {message_data.get('content_type')}")
 
@@ -123,12 +292,30 @@ async def ingest_discord_data(
         count_after = db.query(RawContent).filter(RawContent.source_id == source.id).count()
         logger.info(f"Total RawContent for source {source.id} after commit: {count_after}")
 
+        # PRD-018: Trigger async transcription for videos without local transcripts
+        transcription_queued = 0
+        for video in videos_to_transcribe:
+            try:
+                asyncio.create_task(_transcribe_video_async(
+                    raw_content_id=video["raw_content_id"],
+                    video_url=video["url"],
+                    source="discord",
+                    title=video["title"]
+                ))
+                transcription_queued += 1
+            except Exception as e:
+                logger.error(f"Failed to queue transcription for {video['raw_content_id']}: {e}")
+
+        if transcription_queued > 0:
+            logger.info(f"Queued {transcription_queued} videos for async transcription")
+
         response = {
             "status": "success",
             "message": f"Ingested {saved_count} Discord messages",
             "saved": saved_count,
             "received": len(messages),
             "skipped_duplicates": skipped_duplicates,
+            "transcription_queued": transcription_queued,  # PRD-018
             "total_in_db": count_after,
             "timestamp": datetime.utcnow().isoformat()
         }
@@ -190,6 +377,8 @@ async def ingest_42macro_data(
         saved_count = 0
         skipped_duplicates = 0
         errors = []
+        videos_to_transcribe = []  # PRD-018: Track videos needing transcription
+
         for idx, item_data in enumerate(items):
             try:
                 # Validate required fields
@@ -235,6 +424,17 @@ async def ingest_42macro_data(
                 )
 
                 db.add(raw_content)
+                db.flush()  # PRD-018: Get the ID immediately for transcription tracking
+
+                # PRD-018: Queue video content for transcription
+                if item_data["content_type"] == "video" and url:
+                    videos_to_transcribe.append({
+                        "raw_content_id": raw_content.id,
+                        "url": url,
+                        "title": metadata.get("title") or f"{report_type} - {date}" if report_type else ""
+                    })
+                    logger.info(f"Queued 42macro video for transcription: {url[:50]}...")
+
                 saved_count += 1
                 logger.info(f"Added 42macro item {idx}: {item_data.get('content_type')}")
 
@@ -253,12 +453,30 @@ async def ingest_42macro_data(
         count_after = db.query(RawContent).filter(RawContent.source_id == source.id).count()
         logger.info(f"Total RawContent for 42macro after commit: {count_after}")
 
+        # PRD-018: Trigger async transcription for videos
+        transcription_queued = 0
+        for video in videos_to_transcribe:
+            try:
+                asyncio.create_task(_transcribe_video_async(
+                    raw_content_id=video["raw_content_id"],
+                    video_url=video["url"],
+                    source="42macro",
+                    title=video["title"]
+                ))
+                transcription_queued += 1
+            except Exception as e:
+                logger.error(f"Failed to queue transcription for {video['raw_content_id']}: {e}")
+
+        if transcription_queued > 0:
+            logger.info(f"Queued {transcription_queued} 42macro videos for async transcription")
+
         response = {
             "status": "success",
             "message": f"Ingested {saved_count} 42macro items",
             "saved": saved_count,
             "received": len(items),
             "skipped_duplicates": skipped_duplicates,
+            "transcription_queued": transcription_queued,  # PRD-018
             "total_in_db": count_after,
             "timestamp": datetime.utcnow().isoformat()
         }
@@ -558,4 +776,66 @@ async def get_source_stats(
         raise
     except Exception as e:
         logger.error(f"Failed to get source stats: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/clear/{source_name}")
+async def clear_source_data(
+    source_name: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Clear all collected data for a specific source.
+
+    Use this to remove stale/duplicate data before re-collecting.
+    Protected by HTTP Basic Auth.
+
+    Args:
+        source_name: Name of source to clear (e.g., "youtube", "substack")
+
+    Returns:
+        Count of deleted items
+    """
+    valid_sources = ["42macro", "discord", "twitter", "youtube", "substack", "kt_technical"]
+
+    if source_name not in valid_sources:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid source. Must be one of: {', '.join(valid_sources)}"
+        )
+
+    try:
+        source = db.query(Source).filter(Source.name == source_name).first()
+
+        if not source:
+            return {
+                "status": "success",
+                "message": f"Source '{source_name}' not found (nothing to clear)",
+                "deleted": 0
+            }
+
+        # Count items before deletion
+        count = db.query(RawContent).filter(RawContent.source_id == source.id).count()
+
+        # Delete all content for this source
+        db.query(RawContent).filter(RawContent.source_id == source.id).delete()
+
+        # Reset last_collected_at so fresh collection works
+        source.last_collected_at = None
+
+        db.commit()
+
+        logger.info(f"Cleared {count} items from {source_name}")
+
+        return {
+            "status": "success",
+            "message": f"Cleared all data for {source_name}",
+            "deleted": count,
+            "source": source_name,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to clear source data: {e}")
         raise HTTPException(status_code=500, detail=str(e))

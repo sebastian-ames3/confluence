@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.4.0] - 2025-12-03
+
+### Added
+- **[PRD-018] Video Transcription** - Complete
+  - Wired `TranscriptHarvesterAgent` into collection endpoints
+  - `/api/collect/discord` triggers async transcription for videos without local transcripts
+  - `/api/collect/42macro` triggers async transcription for all video content
+  - Added `_transcribe_video_sync()` and `_transcribe_video_async()` to collect.py
+  - Uses ThreadPoolExecutor (2 workers) to avoid blocking collection
+  - Transcripts stored in `content_text` and `json_metadata.transcript`
+  - API responses include `transcription_queued` count
+
+### Changed
+- Discord ingestion checks for existing local transcripts before queuing server-side transcription
+- 42 Macro videos (Vimeo) now automatically transcribed after collection
+
+---
+
 ## [1.3.0] - 2025-12-03
 
 ### Added
