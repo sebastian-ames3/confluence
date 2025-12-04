@@ -341,9 +341,9 @@
         }
 
         .watch-item {
-            background: rgba(251, 191, 36, 0.1);
-            border-left: 4px solid var(--warning);
-            border-radius: 0 var(--radius-md) var(--radius-md) 0;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
             padding: var(--spacing-md);
             margin-bottom: var(--spacing-md);
         }
@@ -359,22 +359,29 @@
             padding: var(--spacing-sm);
             border-radius: var(--radius-sm);
             font-size: 0.85rem;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-color);
         }
 
         .watch-case.bull {
-            background: rgba(34, 197, 94, 0.1);
-            border: 1px solid rgba(34, 197, 94, 0.3);
+            border-color: rgba(34, 197, 94, 0.3);
         }
 
         .watch-case.bear {
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-color: rgba(239, 68, 68, 0.3);
         }
 
         .watch-case-label {
             font-weight: 600;
             margin-bottom: var(--spacing-xs);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
         }
+
+        .watch-case.bull .watch-case-label { color: #4ade80; }
+        .watch-case.bear .watch-case-label { color: #f87171; }
 
         .catalyst-table {
             width: 100%;
