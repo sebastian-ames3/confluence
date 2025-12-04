@@ -444,6 +444,303 @@
             to { transform: rotate(360deg); }
         }
 
+        /* V3 Research Consumption Hub Styles (PRD-021) */
+        .v3-executive-summary {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(59, 130, 246, 0.05) 100%);
+            border-left: 4px solid var(--primary);
+            padding: var(--spacing-lg);
+            border-radius: 0 var(--radius-md) var(--radius-md) 0;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .v3-executive-narrative {
+            font-size: 1.05rem;
+            line-height: 1.7;
+            color: var(--text-primary);
+        }
+
+        .v3-executive-meta {
+            display: flex;
+            gap: var(--spacing-md);
+            margin-top: var(--spacing-md);
+            flex-wrap: wrap;
+        }
+
+        .v3-tone-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            text-transform: capitalize;
+        }
+
+        .tone-cautious { background: var(--warning); color: black; }
+        .tone-constructive { background: var(--success); color: white; }
+        .tone-mixed { background: #8b5cf6; color: white; }
+        .tone-uncertain { background: var(--text-muted); color: white; }
+
+        .v3-dominant-theme {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+        }
+
+        .confluence-zone {
+            background: rgba(34, 197, 94, 0.08);
+            border-left: 4px solid var(--success);
+            border-radius: 0 var(--radius-md) var(--radius-md) 0;
+            padding: var(--spacing-md);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .confluence-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            gap: var(--spacing-sm);
+        }
+
+        .confluence-theme {
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+
+        .confluence-strength {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+            font-size: 0.8rem;
+            color: var(--success);
+        }
+
+        .confluence-sources {
+            margin-top: var(--spacing-sm);
+        }
+
+        .confluence-source {
+            display: flex;
+            gap: var(--spacing-sm);
+            padding: var(--spacing-xs) 0;
+            font-size: 0.85rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .confluence-source:last-child {
+            border-bottom: none;
+        }
+
+        .confluence-source-name {
+            font-weight: 500;
+            color: var(--primary);
+            min-width: 100px;
+        }
+
+        .confluence-source-view {
+            color: var(--text-secondary);
+        }
+
+        .confluence-contrary {
+            margin-top: var(--spacing-sm);
+            padding-top: var(--spacing-sm);
+            border-top: 1px dashed var(--danger);
+        }
+
+        .confluence-contrary-label {
+            color: var(--danger);
+            font-size: 0.75rem;
+            font-weight: 500;
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .confluence-meta {
+            display: flex;
+            gap: var(--spacing-md);
+            margin-top: var(--spacing-sm);
+            flex-wrap: wrap;
+        }
+
+        .confluence-meta-item {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .attention-priority {
+            display: flex;
+            gap: var(--spacing-md);
+            padding: var(--spacing-md);
+            background: rgba(251, 191, 36, 0.1);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--spacing-sm);
+            align-items: flex-start;
+        }
+
+        .priority-rank {
+            width: 32px;
+            height: 32px;
+            background: var(--warning);
+            color: black;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .priority-content {
+            flex: 1;
+        }
+
+        .priority-focus {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .priority-why {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-top: var(--spacing-xs);
+        }
+
+        .priority-meta {
+            display: flex;
+            gap: var(--spacing-sm);
+            margin-top: var(--spacing-xs);
+            flex-wrap: wrap;
+        }
+
+        .priority-sensitivity {
+            font-size: 0.75rem;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        .sensitivity-immediate { background: var(--danger); color: white; }
+        .sensitivity-high { background: var(--warning); color: black; }
+        .sensitivity-medium { background: var(--primary); color: white; }
+        .sensitivity-low { background: var(--text-muted); color: white; }
+
+        .re-review-item {
+            background: rgba(139, 92, 246, 0.1);
+            border-left: 4px solid #8b5cf6;
+            border-radius: 0 var(--radius-md) var(--radius-md) 0;
+            padding: var(--spacing-md);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .re-review-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            gap: var(--spacing-sm);
+        }
+
+        .re-review-title {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .re-review-source {
+            font-size: 0.8rem;
+            color: #8b5cf6;
+        }
+
+        .re-review-why {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-top: var(--spacing-sm);
+            line-height: 1.5;
+        }
+
+        .re-review-trigger {
+            display: inline-block;
+            margin-top: var(--spacing-sm);
+            font-size: 0.75rem;
+            padding: 2px 8px;
+            background: rgba(139, 92, 246, 0.2);
+            border-radius: 4px;
+            color: #a78bfa;
+        }
+
+        .source-stance-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .source-stance-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .source-stance-name {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .source-stance-weight {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .source-stance-narrative {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .source-stance-bias {
+            margin-top: var(--spacing-sm);
+            font-size: 0.8rem;
+        }
+
+        .bias-bullish { color: var(--success); }
+        .bias-bearish { color: var(--danger); }
+        .bias-cautious { color: var(--warning); }
+        .bias-neutral { color: var(--text-muted); }
+        .bias-mixed { color: #8b5cf6; }
+
+        .v3-catalyst-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        .v3-catalyst-table th {
+            text-align: left;
+            padding: var(--spacing-sm);
+            background: rgba(0, 0, 0, 0.2);
+            color: var(--text-secondary);
+        }
+
+        .v3-catalyst-table td {
+            padding: var(--spacing-sm);
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: top;
+        }
+
+        .catalyst-perspectives {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .catalyst-perspective {
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .catalyst-perspective-source {
+            font-weight: 500;
+            color: var(--primary);
+        }
+
         /* Simple header for this view */
         .simple-header {
             text-align: center;
@@ -586,6 +883,48 @@
                         <div id="source-summary" class="source-summary"></div>
                     </div>
                 </div>
+
+                <!-- V3 Sections (PRD-021: Research Consumption Hub) -->
+                <div id="v3-content" style="display: none;">
+                    <!-- Executive Summary -->
+                    <div id="v3-executive-section" class="v3-executive-summary"></div>
+
+                    <!-- Attention Priorities -->
+                    <div class="v2-section" id="v3-priorities-section">
+                        <div class="v2-section-title">This Week's Focus</div>
+                        <div id="v3-priorities-list"></div>
+                    </div>
+
+                    <!-- Confluence Zones -->
+                    <div class="v2-section" id="v3-confluence-section">
+                        <div class="v2-section-title">Where Your Sources Align</div>
+                        <div id="v3-confluence-list"></div>
+                    </div>
+
+                    <!-- Conflict Watch -->
+                    <div class="v2-section" id="v3-conflict-section">
+                        <div class="v2-section-title">Conflicts to Monitor</div>
+                        <div id="v3-conflict-list"></div>
+                    </div>
+
+                    <!-- Re-Review Recommendations -->
+                    <div class="v2-section" id="v3-rereview-section">
+                        <div class="v2-section-title">Worth Re-Reviewing</div>
+                        <div id="v3-rereview-list"></div>
+                    </div>
+
+                    <!-- Source Stances -->
+                    <div class="v2-section" id="v3-stances-section">
+                        <div class="v2-section-title">What Each Source Is Saying</div>
+                        <div id="v3-stances-list"></div>
+                    </div>
+
+                    <!-- Catalyst Calendar -->
+                    <div class="v2-section" id="v3-catalyst-section">
+                        <div class="v2-section-title">Upcoming Catalysts</div>
+                        <div id="v3-catalyst-calendar"></div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -720,8 +1059,9 @@
             document.getElementById('synthesis-empty').style.display = 'none';
             document.getElementById('synthesis-content').style.display = 'block';
 
-            // Check if this is V2 synthesis
-            const isV2 = data.version === '2.0' || data.tactical_ideas || data.strategic_ideas;
+            // Check version
+            const isV3 = data.version === '3.0' || data.confluence_zones || data.attention_priorities;
+            const isV2 = !isV3 && (data.version === '2.0' || data.tactical_ideas || data.strategic_ideas);
 
             // Update meta info
             document.getElementById('synthesis-window').textContent = data.time_window;
@@ -758,11 +1098,31 @@
                 themeTags.innerHTML = '';
             }
 
-            // Handle V1 vs V2 display
-            if (isV2) {
+            // Handle V1 vs V2 vs V3 display
+            if (isV3) {
+                // V3: Research Consumption Hub
+                document.getElementById('conviction-ideas').style.display = 'none';
+                document.getElementById('v2-content').style.display = 'none';
+                document.getElementById('v3-content').style.display = 'block';
+                document.getElementById('synthesis-text').style.display = 'none';
+                document.getElementById('theme-tags').style.display = 'none';
+
+                // Render V3 sections
+                displayV3ExecutiveSummary(data.executive_summary || {});
+                displayV3AttentionPriorities(data.attention_priorities || []);
+                displayV3ConfluenceZones(data.confluence_zones || []);
+                displayV3ConflictWatch(data.conflict_watch || []);
+                displayV3ReReviewRecommendations(data.re_review_recommendations || []);
+                displayV3SourceStances(data.source_stances || {});
+                displayV3CatalystCalendar(data.catalyst_calendar || []);
+
+            } else if (isV2) {
                 // Hide V1 conviction ideas, show V2 sections
                 document.getElementById('conviction-ideas').style.display = 'none';
                 document.getElementById('v2-content').style.display = 'block';
+                document.getElementById('v3-content').style.display = 'none';
+                document.getElementById('synthesis-text').style.display = 'block';
+                document.getElementById('theme-tags').style.display = 'flex';
 
                 // Render tactical ideas
                 displayTacticalIdeas(data.tactical_ideas || []);
@@ -779,8 +1139,12 @@
                 // Render source summary
                 displaySourceSummary(data.source_summary || {});
             } else {
-                // V1 format - show conviction ideas, hide V2 sections
+                // V1 format - show conviction ideas, hide V2/V3 sections
                 document.getElementById('v2-content').style.display = 'none';
+                document.getElementById('v3-content').style.display = 'none';
+                document.getElementById('synthesis-text').style.display = 'block';
+                document.getElementById('theme-tags').style.display = 'flex';
+
                 const convictionList = document.getElementById('conviction-ideas-list');
                 if (data.high_conviction_ideas && data.high_conviction_ideas.length > 0) {
                     document.getElementById('conviction-ideas').style.display = 'block';
@@ -1050,6 +1414,282 @@
                     ${data.current_stance ? `<div class="source-summary-stance">${data.current_stance}</div>` : ''}
                 </div>
             `).join('');
+        }
+
+        // V3: Display executive summary
+        function displayV3ExecutiveSummary(summary) {
+            const container = document.getElementById('v3-executive-section');
+            if (!summary || !summary.narrative) {
+                container.style.display = 'none';
+                return;
+            }
+            container.style.display = 'block';
+
+            const tone = summary.overall_tone || 'uncertain';
+            const theme = summary.dominant_theme || '';
+
+            container.innerHTML = `
+                <div class="v3-executive-narrative">${summary.narrative}</div>
+                <div class="v3-executive-meta">
+                    <span class="v3-tone-badge tone-${tone}">${tone}</span>
+                    ${theme ? `<span class="v3-dominant-theme">Focus: ${theme}</span>` : ''}
+                </div>
+            `;
+        }
+
+        // V3: Display attention priorities
+        function displayV3AttentionPriorities(priorities) {
+            const container = document.getElementById('v3-priorities-list');
+            const section = document.getElementById('v3-priorities-section');
+
+            if (!priorities || priorities.length === 0) {
+                section.style.display = 'none';
+                return;
+            }
+            section.style.display = 'block';
+
+            container.innerHTML = priorities.map(p => {
+                const sensitivity = p.time_sensitivity || 'medium';
+                return `
+                    <div class="attention-priority">
+                        <div class="priority-rank">${p.rank || '?'}</div>
+                        <div class="priority-content">
+                            <div class="priority-focus">${p.focus_area || 'Untitled'}</div>
+                            <div class="priority-why">${p.why || ''}</div>
+                            <div class="priority-meta">
+                                <span class="priority-sensitivity sensitivity-${sensitivity}">${sensitivity}</span>
+                                ${(p.sources_discussing || []).map(s => `<span class="idea-meta-item">${s}</span>`).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // V3: Display confluence zones
+        function displayV3ConfluenceZones(zones) {
+            const container = document.getElementById('v3-confluence-list');
+            const section = document.getElementById('v3-confluence-section');
+
+            if (!zones || zones.length === 0) {
+                section.style.display = 'none';
+                return;
+            }
+            section.style.display = 'block';
+
+            container.innerHTML = zones.map(zone => {
+                const strength = zone.confluence_strength || 0;
+                const aligned = zone.sources_aligned || [];
+                const contrary = zone.sources_contrary || [];
+                const levels = zone.relevant_levels || [];
+
+                return `
+                    <div class="confluence-zone">
+                        <div class="confluence-header">
+                            <span class="confluence-theme">${zone.theme || 'Untitled'}</span>
+                            <span class="confluence-strength">
+                                <span>${Math.round(strength * 100)}% confluence</span>
+                            </span>
+                        </div>
+
+                        <div class="confluence-sources">
+                            ${aligned.map(s => `
+                                <div class="confluence-source">
+                                    <span class="confluence-source-name">${s.source || 'Unknown'}</span>
+                                    <span class="confluence-source-view">${s.view || ''}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+
+                        ${contrary.length > 0 ? `
+                            <div class="confluence-contrary">
+                                <div class="confluence-contrary-label">Contrary View</div>
+                                ${contrary.map(s => `
+                                    <div class="confluence-source">
+                                        <span class="confluence-source-name">${s.source || 'Unknown'}</span>
+                                        <span class="confluence-source-view">${s.view || ''}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+
+                        <div class="confluence-meta">
+                            ${levels.length > 0 ? `<span class="confluence-meta-item">Levels: ${levels.join(', ')}</span>` : ''}
+                            ${zone.related_catalyst ? `<span class="confluence-meta-item">Catalyst: ${zone.related_catalyst}</span>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // V3: Display conflict watch
+        function displayV3ConflictWatch(conflicts) {
+            const container = document.getElementById('v3-conflict-list');
+            const section = document.getElementById('v3-conflict-section');
+
+            if (!conflicts || conflicts.length === 0) {
+                section.style.display = 'none';
+                return;
+            }
+            section.style.display = 'block';
+
+            container.innerHTML = conflicts.map(conflict => {
+                const bullCase = conflict.bull_case || {};
+                const bearCase = conflict.bear_case || {};
+
+                return `
+                    <div class="watch-item">
+                        <div class="idea-header">
+                            <span class="idea-title">${conflict.topic || 'Untitled'}</span>
+                            <span class="idea-meta-item">${conflict.status || 'monitoring'}</span>
+                        </div>
+
+                        <div class="watch-cases">
+                            <div class="watch-case bull">
+                                <div class="watch-case-label">Bull Case</div>
+                                <div>${bullCase.view || '-'}</div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+                                    Sources: ${(bullCase.sources || []).join(', ') || '-'}
+                                </div>
+                            </div>
+                            <div class="watch-case bear">
+                                <div class="watch-case-label">Bear Case</div>
+                                <div>${bearCase.view || '-'}</div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+                                    Sources: ${(bearCase.sources || []).join(', ') || '-'}
+                                </div>
+                            </div>
+                        </div>
+
+                        ${conflict.resolution_trigger ? `
+                        <div style="margin-top: var(--spacing-sm); font-size: 0.85rem; color: var(--text-secondary);">
+                            <strong>Resolution Trigger:</strong> ${conflict.resolution_trigger}
+                        </div>
+                        ` : ''}
+
+                        ${conflict.weighted_lean ? `
+                        <div style="margin-top: var(--spacing-xs); font-size: 0.85rem;">
+                            <strong>Weighted Lean:</strong> ${conflict.weighted_lean}
+                        </div>
+                        ` : ''}
+
+                        ${conflict.user_action ? `
+                        <div style="margin-top: var(--spacing-xs); font-size: 0.85rem; color: var(--primary);">
+                            <strong>Action:</strong> ${conflict.user_action}
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // V3: Display re-review recommendations
+        function displayV3ReReviewRecommendations(recommendations) {
+            const container = document.getElementById('v3-rereview-list');
+            const section = document.getElementById('v3-rereview-section');
+
+            if (!recommendations || recommendations.length === 0) {
+                section.style.display = 'none';
+                return;
+            }
+            section.style.display = 'block';
+
+            container.innerHTML = recommendations.map(rec => {
+                const trigger = rec.relevance_trigger || '';
+                const triggerLabel = trigger.replace(/_/g, ' ');
+
+                return `
+                    <div class="re-review-item">
+                        <div class="re-review-header">
+                            <div>
+                                <div class="re-review-title">${rec.title || 'Untitled'}</div>
+                                <div class="re-review-source">${rec.source || 'Unknown'} - ${rec.content_date || ''}</div>
+                            </div>
+                        </div>
+                        <div class="re-review-why">${rec.why_relevant_now || ''}</div>
+                        ${trigger ? `<span class="re-review-trigger">${triggerLabel}</span>` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // V3: Display source stances
+        function displayV3SourceStances(stances) {
+            const container = document.getElementById('v3-stances-list');
+            const section = document.getElementById('v3-stances-section');
+
+            if (!stances || Object.keys(stances).length === 0) {
+                section.style.display = 'none';
+                return;
+            }
+            section.style.display = 'block';
+
+            const entries = Object.entries(stances);
+            container.innerHTML = entries.map(([name, data]) => {
+                const bias = data.overall_bias || 'neutral';
+                const biasClass = `bias-${bias.replace(/[^a-z]/gi, '')}`;
+
+                return `
+                    <div class="source-stance-card">
+                        <div class="source-stance-header">
+                            <span class="source-stance-name">${name}</span>
+                            <span class="source-stance-weight">${data.items_analyzed || 0} items | ${data.weight || 1.0}x weight</span>
+                        </div>
+                        <div class="source-stance-narrative">${data.current_stance_narrative || ''}</div>
+                        <div class="source-stance-bias ${biasClass}">Bias: ${bias}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // V3: Display catalyst calendar
+        function displayV3CatalystCalendar(catalysts) {
+            const container = document.getElementById('v3-catalyst-calendar');
+            const section = document.getElementById('v3-catalyst-section');
+
+            if (!catalysts || catalysts.length === 0) {
+                section.style.display = 'none';
+                return;
+            }
+            section.style.display = 'block';
+
+            container.innerHTML = `
+                <table class="v3-catalyst-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Event</th>
+                            <th>Impact</th>
+                            <th>Source Perspectives</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${catalysts.map(c => {
+                            const perspectives = c.source_perspectives || [];
+                            return `
+                                <tr>
+                                    <td>${c.date || '-'}</td>
+                                    <td>
+                                        <strong>${c.event || '-'}</strong>
+                                        ${c.themes_affected ? `<div style="font-size: 0.75rem; color: var(--text-muted);">${c.themes_affected.join(', ')}</div>` : ''}
+                                    </td>
+                                    <td><span class="catalyst-impact impact-${c.impact || 'medium'}">${c.impact || 'medium'}</span></td>
+                                    <td>
+                                        <div class="catalyst-perspectives">
+                                            ${perspectives.map(p => `
+                                                <div class="catalyst-perspective">
+                                                    <span class="catalyst-perspective-source">${p.source}:</span> ${p.view}
+                                                </div>
+                                            `).join('')}
+                                            ${c.pre_event_review ? `<div style="margin-top: 4px; color: #8b5cf6; font-size: 0.75rem;">Review: ${c.pre_event_review}</div>` : ''}
+                                        </div>
+                                    </td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            `;
         }
 
         // Show empty synthesis state

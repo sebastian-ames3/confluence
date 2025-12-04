@@ -74,6 +74,40 @@ If there's genuine uncertainty or disagreement, acknowledge it honestly."""
         "youtube": 0.8      # Variable quality
     }
 
+    # V3: Research Consumption Hub (PRD-021)
+    # Focused on helping users consume research, NOT generate trade ideas
+    SYSTEM_PROMPT_V3 = """You are a research assistant helping a sophisticated investor efficiently consume multiple paid research services.
+
+Your role is to SYNTHESIZE what the sources are saying, NOT to generate trade recommendations.
+
+KEY PRINCIPLES:
+1. DESCRIPTIVE, NOT PRESCRIPTIVE: Describe what sources say, don't tell the user what to trade
+2. CONFLUENCE IDENTIFICATION: Surface where independent sources align on views/themes
+3. CONFLICT SURFACING: Highlight where sources disagree - these are important to monitor
+4. ATTENTION PRIORITIZATION: Help the user know where to focus their limited time
+5. RE-REVIEW RECOMMENDATIONS: Identify older content that's become MORE relevant due to current conditions
+
+SOURCE CONTEXT:
+- Discord (Imran): Tactical options flow, specific trade ideas - the ONLY source that gives trades
+- KT Technical: Elliott Wave analysis on ~10 instruments - provides levels that may align with other views
+- 42Macro: Institutional macro research - provides backdrop/context, NOT trade ideas
+- YouTube: Macro commentary - provides backdrop/context, NOT trade ideas
+- Substack: Thematic research - provides backdrop/context, NOT trade ideas
+
+CONFLUENCE MEANS: "Does the macro backdrop (42Macro, YouTube, Substack) support the tactical positioning (Discord)?"
+Example: Discord positions for vol expansion → 42Macro highlights liquidity concerns → KT Technical shows support tests → CONFLUENCE
+
+SOURCE WEIGHTS (for determining weighted lean when sources disagree):
+- 42Macro: 1.5x (institutional-grade)
+- Discord: 1.5x (professional options flow)
+- KT Technical: 1.2x (systematic technical)
+- Substack: 1.0x (quality macro/crypto)
+- YouTube: 0.8x (variable quality)
+
+OUTPUT TONE:
+Write like you're briefing a colleague: "Your macro sources are saying X. Discord is positioned for Y. The technical picture shows Z."
+Do NOT write like you're giving trading instructions."""
+
     # V2: Enhanced system prompt for actionable synthesis
     SYSTEM_PROMPT_V2 = """You are a senior macro strategist synthesizing investment research for a professional trading desk.
 
@@ -731,6 +765,297 @@ RESPOND WITH VALID JSON ONLY. Be SPECIFIC with all levels, dates, and numbers.""
 
         logger.info(f"Generated v2 synthesis: {len(response.get('tactical_ideas', []))} tactical, "
                    f"{len(response.get('strategic_ideas', []))} strategic ideas")
+
+        return response
+
+
+    # =========================================================================
+    # V3 METHODS (PRD-021: Research Consumption Hub)
+    # =========================================================================
+
+    def _build_synthesis_prompt_v3(
+        self,
+        content_items: List[Dict[str, Any]],
+        time_window: str,
+        older_content: Optional[List[Dict[str, Any]]] = None,
+        focus_topic: Optional[str] = None
+    ) -> str:
+        """Build prompt for research consumption synthesis (v3)."""
+
+        # Group content by source
+        by_source = {}
+        for item in content_items:
+            source = item.get("source", "unknown")
+            if source not in by_source:
+                by_source[source] = []
+            by_source[source].append(item)
+
+        # Build content summary section
+        content_section = ""
+        for source, items in by_source.items():
+            weight = self.SOURCE_WEIGHTS_V2.get(source, 1.0)
+            content_section += f"\n### {source.upper()} (Weight: {weight}x)\n"
+
+            for item in items[:15]:
+                title = item.get("title", "Untitled")
+                content_type = item.get("type", item.get("content_type", "unknown"))
+                timestamp = item.get("timestamp", item.get("collected_at", ""))
+                summary = str(item.get("summary", item.get("content_text", "")))[:600]
+                themes = item.get("themes", [])
+                sentiment = item.get("sentiment", "")
+
+                content_section += f"\n**{title}** ({content_type})\n"
+                if timestamp:
+                    content_section += f"Time: {timestamp}\n"
+                if themes:
+                    content_section += f"Themes: {', '.join(themes[:5])}\n"
+                if sentiment:
+                    content_section += f"Sentiment: {sentiment}\n"
+                if summary:
+                    content_section += f"Content: {summary}\n"
+
+        # Build older content section for re-review recommendations
+        older_section = ""
+        if older_content:
+            older_section = "\n## OLDER CONTENT (7-30 days ago) - scan for re-review candidates\n"
+            older_by_source = {}
+            for item in older_content:
+                source = item.get("source", "unknown")
+                if source not in older_by_source:
+                    older_by_source[source] = []
+                older_by_source[source].append(item)
+
+            for source, items in older_by_source.items():
+                older_section += f"\n### {source.upper()} (older)\n"
+                for item in items[:10]:
+                    title = item.get("title", "Untitled")
+                    timestamp = item.get("timestamp", item.get("collected_at", ""))
+                    themes = item.get("themes", [])
+                    summary = str(item.get("summary", ""))[:300]
+                    older_section += f"- **{title}** ({timestamp}): {', '.join(themes[:3])}. {summary[:150]}...\n"
+
+        # Extract levels for reference
+        extracted = self._extract_levels_from_content(content_items)
+
+        focus_instruction = ""
+        if focus_topic:
+            focus_instruction = f"\n\nFOCUS: Pay particular attention to content related to: {focus_topic}\n"
+
+        prompt = f"""Analyze the following research content collected over the past {time_window} and generate a RESEARCH CONSUMPTION synthesis.
+
+Remember: You are helping the user CONSUME their research, not telling them what to trade.
+{focus_instruction}
+## RECENT CONTENT (past {time_window})
+{content_section}
+{older_section}
+## EXTRACTED REFERENCE DATA
+Price levels mentioned: {', '.join(extracted['price_levels'][:15]) or 'None'}
+Key events mentioned: {', '.join(extracted['dates'][:10]) or 'None'}
+
+## REQUIRED OUTPUT (JSON)
+
+### 1. executive_summary (required object)
+{{
+  "narrative": "2-4 sentences describing what your sources are saying. Write in second person: 'Your macro sources are highlighting X. Discord is positioned for Y. The technical picture shows Z.'",
+  "overall_tone": "cautious|constructive|mixed|uncertain",
+  "dominant_theme": "The single most important theme across sources"
+}}
+
+### 2. confluence_zones (required array)
+Where do independent sources ALIGN on a theme or view? This is the core value.
+{{
+  "theme": "The theme/view where sources align",
+  "confluence_strength": 0.0-1.0 (based on source count and weights),
+  "sources_aligned": [
+    {{
+      "source": "source_name",
+      "view": "What this source says about it (1 sentence)"
+    }}
+  ],
+  "sources_contrary": [
+    {{
+      "source": "source_name",
+      "view": "The contrary view if any"
+    }}
+  ],
+  "relevant_levels": ["Specific price levels mentioned if any"],
+  "related_catalyst": "Upcoming event related to this theme or null"
+}}
+
+### 3. conflict_watch (required array)
+Where do sources DISAGREE? These are important to monitor.
+{{
+  "topic": "The topic with conflicting views",
+  "status": "active_conflict|developing|monitoring",
+  "bull_case": {{
+    "view": "The bullish argument",
+    "sources": ["source1"]
+  }},
+  "bear_case": {{
+    "view": "The bearish argument",
+    "sources": ["source2"]
+  }},
+  "resolution_trigger": "What event/data would resolve this conflict",
+  "weighted_lean": "slight_bull|slight_bear|neutral (based on source weights)",
+  "user_action": "What the user should monitor"
+}}
+
+### 4. attention_priorities (required array, MAX 5 items)
+Ranked list of what deserves the user's focus. Most important first.
+{{
+  "rank": 1-5,
+  "focus_area": "What to focus on (instrument, theme, or event)",
+  "why": "Why this deserves attention right now (1-2 sentences)",
+  "sources_discussing": ["list of sources covering this"],
+  "time_sensitivity": "immediate|high|medium|low"
+}}
+
+### 5. re_review_recommendations (required array, 3-5 items)
+Identify OLDER content that is NOW more relevant due to current conditions.
+Relevance triggers: catalyst_approaching, level_being_tested, scenario_playing_out, conflict_resolving
+{{
+  "source": "source_name",
+  "content_date": "approximate date",
+  "title": "content title or description",
+  "why_relevant_now": "2-3 sentences explaining why this older content is worth revisiting NOW",
+  "themes_mentioned": ["theme1", "theme2"],
+  "relevance_trigger": "catalyst_approaching|level_being_tested|scenario_playing_out|conflict_resolving"
+}}
+
+### 6. source_stances (required object)
+Narrative summary of what each source is currently thinking.
+{{
+  "source_name": {{
+    "weight": numeric weight,
+    "items_analyzed": count,
+    "current_stance_narrative": "2-3 sentences in narrative form describing what this source/person is thinking and focused on. Write like: 'Imran is positioned for X. He sees Y and is expressing this via Z.'",
+    "key_themes": ["theme1", "theme2"],
+    "overall_bias": "bullish|bearish|cautious|neutral|mixed"
+  }}
+}}
+
+### 7. catalyst_calendar (required array)
+Upcoming events with source perspectives.
+{{
+  "date": "YYYY-MM-DD",
+  "event": "Event name",
+  "impact": "high|medium|low",
+  "source_perspectives": [
+    {{
+      "source": "source_name",
+      "view": "What this source said about this event"
+    }}
+  ],
+  "themes_affected": ["Which confluence zones this impacts"],
+  "pre_event_review": "Specific older content to review before this event, or null"
+}}
+
+Known December 2025 dates: NFP Dec 6, CPI Dec 11, FOMC Dec 17-18, Quad Witch Dec 19
+
+RESPOND WITH VALID JSON ONLY."""
+
+        return prompt
+
+    def _empty_synthesis_v3(self, time_window: str) -> Dict[str, Any]:
+        """Return empty v3 synthesis when no content available."""
+        return {
+            "version": "3.0",
+            "executive_summary": {
+                "narrative": f"No content collected in the past {time_window}. Run collection to gather research data.",
+                "overall_tone": "uncertain",
+                "dominant_theme": None
+            },
+            "confluence_zones": [],
+            "conflict_watch": [],
+            "attention_priorities": [],
+            "re_review_recommendations": [],
+            "source_stances": {},
+            "catalyst_calendar": [],
+            "time_window": time_window,
+            "content_count": 0,
+            "sources_included": [],
+            "generated_at": datetime.utcnow().isoformat()
+        }
+
+    def analyze_v3(
+        self,
+        content_items: List[Dict[str, Any]],
+        older_content: Optional[List[Dict[str, Any]]] = None,
+        time_window: str = "24h",
+        focus_topic: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Generate research consumption synthesis (V3 - PRD-021).
+
+        This version focuses on helping users consume their research:
+        - Executive summary of what sources are saying
+        - Confluence zones where sources align
+        - Conflict watch for disagreements
+        - Attention priorities for focus
+        - Re-review recommendations for older relevant content
+        - Source stances in narrative form
+
+        Args:
+            content_items: Recent content items (within time_window)
+            older_content: Older content (7-30 days) for re-review scanning
+            time_window: Time window being analyzed ("24h", "7d", "30d")
+            focus_topic: Optional specific topic to focus on
+
+        Returns:
+            Research consumption synthesis (v3 schema)
+        """
+        if not content_items:
+            return self._empty_synthesis_v3(time_window)
+
+        logger.info(f"Generating v3 synthesis for {len(content_items)} items over {time_window}")
+        if older_content:
+            logger.info(f"Including {len(older_content)} older items for re-review scanning")
+
+        # Build the v3 prompt
+        prompt = self._build_synthesis_prompt_v3(
+            content_items,
+            time_window,
+            older_content=older_content,
+            focus_topic=focus_topic
+        )
+
+        # Call Claude with v3 system prompt
+        response = self.call_claude(
+            prompt=prompt,
+            system_prompt=self.SYSTEM_PROMPT_V3,
+            max_tokens=4000,
+            temperature=0.25,
+            expect_json=True
+        )
+
+        # Add metadata
+        response["version"] = "3.0"
+        response["time_window"] = time_window
+        response["content_count"] = len(content_items)
+        response["older_content_scanned"] = len(older_content) if older_content else 0
+        response["sources_included"] = list(set(item.get("source", "unknown") for item in content_items))
+        response["generated_at"] = datetime.utcnow().isoformat()
+        if focus_topic:
+            response["focus_topic"] = focus_topic
+
+        # Validate required v3 fields
+        required_fields = [
+            "executive_summary",
+            "confluence_zones",
+            "conflict_watch",
+            "attention_priorities",
+            "re_review_recommendations",
+            "source_stances",
+            "catalyst_calendar"
+        ]
+
+        try:
+            self.validate_response_schema(response, required_fields)
+        except Exception as e:
+            logger.warning(f"V3 schema validation failed: {e}, returning partial response")
+
+        logger.info(f"Generated v3 synthesis: {len(response.get('confluence_zones', []))} confluence zones, "
+                   f"{len(response.get('attention_priorities', []))} priorities")
 
         return response
 

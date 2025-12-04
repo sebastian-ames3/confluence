@@ -41,7 +41,7 @@ class SynthesisGenerateRequest(BaseModel):
     """Request model for synthesis generation"""
     time_window: str = "24h"  # "24h", "7d", "30d"
     focus_topic: Optional[str] = None
-    version: str = "2"  # "1" for legacy, "2" for actionable synthesis (PRD-020)
+    version: str = "3"  # "1" legacy, "2" actionable (PRD-020), "3" research hub (PRD-021)
 
 
 class SynthesisResponse(BaseModel):
@@ -261,10 +261,31 @@ async def generate_synthesis(
         logger.info(f"Creating SynthesisAgent for {len(content_items)} items...")
         agent = SynthesisAgent()
 
-        # Determine version (default to v2 for actionable synthesis)
-        use_v2 = synthesis_request.version == "2"
+        # Determine version
+        version = synthesis_request.version
 
-        if use_v2:
+        if version == "3":
+            # V3: Research Consumption Hub (PRD-021)
+            # Get older content for re-review recommendations (7-30 days ago)
+            older_cutoff_start = datetime.utcnow() - timedelta(days=30)
+            older_cutoff_end = cutoff  # End at the main cutoff (start of recent window)
+            older_content = _get_content_for_synthesis(
+                db, older_cutoff_start, synthesis_request.focus_topic,
+                end_date=older_cutoff_end
+            )
+            logger.info(f"Found {len(older_content)} older items for re-review scanning")
+
+            logger.info("Calling agent.analyze_v3() for research consumption synthesis...")
+            result = agent.analyze_v3(
+                content_items=content_items,
+                older_content=older_content,
+                time_window=synthesis_request.time_window,
+                focus_topic=synthesis_request.focus_topic
+            )
+            logger.info(f"V3 Analysis complete: {len(result.get('confluence_zones', []))} confluence zones, "
+                       f"{len(result.get('attention_priorities', []))} priorities")
+
+        elif version == "2":
             logger.info("Calling agent.analyze_v2() for actionable synthesis...")
             result = agent.analyze_v2(
                 content_items=content_items,
@@ -282,26 +303,40 @@ async def generate_synthesis(
             )
             logger.info(f"V1 Analysis complete, got result with keys: {list(result.keys())}")
 
-        # Extract synthesis text (v2 uses synthesis_summary, v1 uses synthesis)
-        synthesis_text = result.get("synthesis_summary") or result.get("synthesis", "")
-
-        # Extract market regime (v2 is object, v1 is string)
-        market_regime = result.get("market_regime")
-        if isinstance(market_regime, dict):
-            market_regime_str = market_regime.get("current", "unclear")
+        # Extract synthesis text based on version
+        if version == "3":
+            # V3: executive_summary.narrative
+            exec_summary = result.get("executive_summary", {})
+            synthesis_text = exec_summary.get("narrative", "") if isinstance(exec_summary, dict) else ""
+            market_regime_str = exec_summary.get("overall_tone", "unclear") if isinstance(exec_summary, dict) else "unclear"
         else:
-            market_regime_str = market_regime
+            # V2/V1: synthesis_summary or synthesis
+            synthesis_text = result.get("synthesis_summary") or result.get("synthesis", "")
+            # Extract market regime (v2 is object, v1 is string)
+            market_regime = result.get("market_regime")
+            if isinstance(market_regime, dict):
+                market_regime_str = market_regime.get("current", "unclear")
+            else:
+                market_regime_str = market_regime
+
+        # Determine schema version
+        if version == "3":
+            schema_ver = "3.0"
+        elif version == "2":
+            schema_ver = "2.0"
+        else:
+            schema_ver = "1.0"
 
         # Save to database
         synthesis = Synthesis(
-            schema_version="2.0" if use_v2 else "1.0",
+            schema_version=schema_ver,
             synthesis=synthesis_text,
-            key_themes=json.dumps(result.get("key_themes", [])),
-            high_conviction_ideas=json.dumps(result.get("high_conviction_ideas", []) or result.get("tactical_ideas", [])),
-            contradictions=json.dumps(result.get("contradictions", []) or result.get("watch_list", [])),
+            key_themes=json.dumps(result.get("key_themes", []) or [t.get("theme", "") for t in result.get("confluence_zones", [])]),
+            high_conviction_ideas=json.dumps(result.get("high_conviction_ideas", []) or result.get("tactical_ideas", []) or result.get("attention_priorities", [])),
+            contradictions=json.dumps(result.get("contradictions", []) or result.get("watch_list", []) or result.get("conflict_watch", [])),
             market_regime=market_regime_str,
             catalysts=json.dumps(result.get("catalysts", []) or result.get("catalyst_calendar", [])),
-            synthesis_json=json.dumps(result) if use_v2 else None,  # Store full v2 response
+            synthesis_json=json.dumps(result) if version in ["2", "3"] else None,
             time_window=synthesis_request.time_window,
             content_count=result.get("content_count", len(content_items)),
             sources_included=json.dumps(result.get("sources_included", [])),
@@ -313,12 +348,20 @@ async def generate_synthesis(
         db.refresh(synthesis)
 
         # Return appropriate response format
-        if use_v2:
+        if version == "3":
+            return {
+                "status": "success",
+                "version": "3.0",
+                "synthesis_id": synthesis.id,
+                **result,
+                "generated_at": synthesis.generated_at.isoformat()
+            }
+        elif version == "2":
             return {
                 "status": "success",
                 "version": "2.0",
                 "synthesis_id": synthesis.id,
-                **result,  # Include all v2 fields
+                **result,
                 "generated_at": synthesis.generated_at.isoformat()
             }
         else:
@@ -365,17 +408,17 @@ async def get_latest_synthesis(
             "message": "No synthesis found. Generate one first."
         }
 
-    # Check if this is a v2 synthesis with full JSON
+    # Check if this is a v2/v3 synthesis with full JSON
     schema_version = getattr(synthesis, 'schema_version', '1.0') or '1.0'
     synthesis_json = getattr(synthesis, 'synthesis_json', None)
 
-    if schema_version == "2.0" and synthesis_json:
-        # Return full v2 response
+    if schema_version in ["2.0", "3.0"] and synthesis_json:
+        # Return full v2/v3 response
         try:
-            v2_data = json.loads(synthesis_json)
-            v2_data["id"] = synthesis.id
-            v2_data["version"] = "2.0"
-            return v2_data
+            data = json.loads(synthesis_json)
+            data["id"] = synthesis.id
+            data["version"] = schema_version
+            return data
         except json.JSONDecodeError:
             pass  # Fall back to v1 format
 
@@ -608,26 +651,52 @@ async def get_collection_history(
 def _get_content_for_synthesis(
     db: Session,
     cutoff: datetime,
-    focus_topic: Optional[str] = None
+    focus_topic: Optional[str] = None,
+    end_date: Optional[datetime] = None
 ) -> list:
     """
     Get analyzed content for synthesis generation.
+
+    Args:
+        db: Database session
+        cutoff: Start date (content must be after this)
+        focus_topic: Optional topic filter
+        end_date: Optional end date (content must be before this) - for older content queries
 
     Returns list of dicts with content info for the synthesis agent.
     """
     # Query analyzed content with source info
     # Include items with NULL analyzed_at (for backwards compatibility)
-    from sqlalchemy import or_
+    from sqlalchemy import or_, and_
     query = db.query(AnalyzedContent, RawContent, Source).join(
         RawContent, AnalyzedContent.raw_content_id == RawContent.id
     ).join(
         Source, RawContent.source_id == Source.id
-    ).filter(
-        or_(
-            AnalyzedContent.analyzed_at >= cutoff,
-            AnalyzedContent.analyzed_at.is_(None)
-        )
     )
+
+    # Apply date filters
+    if end_date:
+        # For older content: between cutoff and end_date
+        query = query.filter(
+            and_(
+                or_(
+                    AnalyzedContent.analyzed_at >= cutoff,
+                    AnalyzedContent.analyzed_at.is_(None)
+                ),
+                or_(
+                    AnalyzedContent.analyzed_at < end_date,
+                    AnalyzedContent.analyzed_at.is_(None)
+                )
+            )
+        )
+    else:
+        # For recent content: after cutoff
+        query = query.filter(
+            or_(
+                AnalyzedContent.analyzed_at >= cutoff,
+                AnalyzedContent.analyzed_at.is_(None)
+            )
+        )
 
     # Filter by topic if provided
     if focus_topic:
