@@ -7,9 +7,13 @@ and produce concise summaries of investment themes.
 
 This agent replaces the complex confluence scoring UI with natural
 language synthesis that Claude generates using internal judgment.
+
+V2 (PRD-020): Enhanced actionable synthesis with specific levels,
+quantified conviction, entry/stop/target, and time-horizon bucketing.
 """
 
 import os
+import re
 import logging
 from typing import Dict, Any, Optional, List
 from datetime import datetime, timedelta
@@ -60,6 +64,56 @@ If there's genuine uncertainty or disagreement, acknowledge it honestly."""
         "substack": "medium (Visser Labs - macro/crypto analysis)",
         "kt_technical": "medium-high (technical analysis focus)"
     }
+
+    # V2: Numeric source weights for conviction calculation
+    SOURCE_WEIGHTS_V2 = {
+        "42macro": 1.5,      # Darius Dale - institutional-grade
+        "discord": 1.5,     # Options Insight - professional options
+        "kt_technical": 1.2, # Systematic technical analysis
+        "substack": 1.0,    # Visser Labs - macro/crypto
+        "youtube": 0.8      # Variable quality
+    }
+
+    # V2: Enhanced system prompt for actionable synthesis
+    SYSTEM_PROMPT_V2 = """You are a senior macro strategist synthesizing investment research for a professional trading desk.
+
+Your output must be ACTIONABLE, not merely observational. Every idea should include:
+- Specific price levels (not "support levels" but "5950-5980 support zone")
+- Quantified conviction (count sources agreeing/disagreeing)
+- Clear entry, stop, and target levels where available in source material
+- Time horizon classification (tactical: <4 weeks, strategic: 1-6 months)
+
+SOURCE WEIGHTING (apply these multipliers when calculating conviction):
+- 42Macro (Darius Dale): 1.5x weight - institutional-grade macro research
+- Discord Options Insight (Imran): 1.5x weight - professional options flow analysis
+- KT Technical: 1.2x weight - systematic technical analysis
+- Substack (Visser Labs): 1.0x weight - macro/crypto analysis
+- YouTube: 0.8x weight - variable quality, verify with other sources
+
+CONVICTION SCORING:
+- Calculate raw score as (agreeing sources / total sources mentioning topic)
+- Apply source weights to get weighted score (sum of agreeing weights / sum of all weights)
+- High conviction: weighted score >= 0.70
+- Medium conviction: weighted score 0.50-0.69
+- Low conviction: weighted score < 0.50
+
+LEVEL EXTRACTION:
+When sources mention specific levels, strikes, or targets, ALWAYS include them.
+If a source says "watching 5950 support" -> include "5950" in your output.
+If a source mentions "Dec VIX 16 calls" -> include the specific strike and expiry.
+Never use vague language like "key support" without the actual number.
+
+CONTRADICTION RESOLUTION:
+When sources disagree, provide a WEIGHTED synthesis view:
+"Given 42Macro (1.5x) and Options Insight (1.5x) both bullish vs YouTube (0.8x) bearish,
+the weighted view is moderately bullish with [specific invalidation conditions]."
+
+CATALYST EXTRACTION:
+Extract SPECIFIC DATES from content. Convert "December FOMC" to "December 17-18 FOMC".
+Known 2025 dates: FOMC Dec 17-18, NFP first Friday of month, CPI ~10th of month.
+Rate each catalyst's expected impact (high/medium/low) on the relevant thesis.
+
+Be direct. Be specific. Be actionable."""
 
     def __init__(
         self,
@@ -341,6 +395,342 @@ Respond with valid JSON only."""
         response["source"] = source
         response["topic"] = topic
         response["content_count"] = len(source_items)
+
+        return response
+
+    # =========================================================================
+    # V2 METHODS (PRD-020: Actionable Synthesis Enhancement)
+    # =========================================================================
+
+    def _extract_levels_from_content(self, content_items: List[Dict[str, Any]]) -> Dict[str, List[str]]:
+        """
+        Pre-scan content to extract specific levels, strikes, and dates.
+        This helps Claude produce more specific output.
+
+        Args:
+            content_items: List of content items to scan
+
+        Returns:
+            Dict with extracted price_levels, option_strikes, dates, tickers
+        """
+        extracted = {
+            "price_levels": [],
+            "option_strikes": [],
+            "dates": [],
+            "tickers": []
+        }
+
+        for item in content_items:
+            text = str(item.get("content_text", "")) + " " + str(item.get("summary", ""))
+
+            # Extract price levels (4-5 digit numbers, likely prices)
+            # Matches: 5950, 6000, 4500, 100.50, etc.
+            prices = re.findall(r'\b([1-9]\d{2,4}(?:\.\d{1,2})?)\b', text)
+            extracted["price_levels"].extend(prices)
+
+            # Extract VIX levels (2-3 digit, typically 10-50 range)
+            vix_levels = re.findall(r'\bVIX\s*(?:at|to|above|below|@)?\s*(\d{1,2}(?:\.\d{1,2})?)\b', text, re.I)
+            extracted["price_levels"].extend([f"VIX {v}" for v in vix_levels])
+
+            # Extract option mentions (e.g., "Dec 16 calls", "Jan 4500 puts", "6000C")
+            options = re.findall(
+                r'((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d+\s+(?:calls?|puts?))',
+                text, re.I
+            )
+            extracted["option_strikes"].extend(options)
+
+            # Also match strike format like "6000C" or "5900P"
+            strike_format = re.findall(r'\b(\d{3,5}[CP])\b', text, re.I)
+            extracted["option_strikes"].extend(strike_format)
+
+            # Extract dates (various formats)
+            dates = re.findall(
+                r'((?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+\d{1,2}(?:st|nd|rd|th)?(?:[,\s]+\d{4})?)',
+                text, re.I
+            )
+            extracted["dates"].extend(dates)
+
+            # Extract FOMC, CPI, NFP mentions
+            events = re.findall(r'\b(FOMC|CPI|NFP|PCE|GDP|ISM)\b', text, re.I)
+            for event in events:
+                extracted["dates"].append(event.upper())
+
+            # Tickers already extracted by classifier
+            tickers = item.get("tickers", [])
+            if isinstance(tickers, list):
+                extracted["tickers"].extend(tickers)
+
+        # Deduplicate and limit
+        for key in extracted:
+            # Remove empty strings and deduplicate
+            extracted[key] = list(set(str(x).strip() for x in extracted[key] if x and str(x).strip()))
+            # Limit to most common/relevant
+            extracted[key] = extracted[key][:25]
+
+        return extracted
+
+    def _build_synthesis_prompt_v2(
+        self,
+        content_items: List[Dict[str, Any]],
+        time_window: str,
+        focus_topic: Optional[str] = None
+    ) -> str:
+        """Build enhanced prompt for actionable synthesis (v2)."""
+
+        # Group content by source
+        by_source = {}
+        for item in content_items:
+            source = item.get("source", "unknown")
+            if source not in by_source:
+                by_source[source] = []
+            by_source[source].append(item)
+
+        # Build content summary section with source weights
+        content_section = ""
+        for source, items in by_source.items():
+            weight = self.SOURCE_WEIGHTS_V2.get(source, 1.0)
+            reliability = self.SOURCE_WEIGHTS.get(source, "medium")
+            content_section += f"\n### {source.upper()} (Weight: {weight}x, {reliability})\n"
+
+            for item in items[:15]:  # Limit items per source
+                title = item.get("title", "Untitled")
+                content_type = item.get("type", item.get("content_type", "unknown"))
+                timestamp = item.get("timestamp", item.get("collected_at", ""))
+                summary = str(item.get("summary", item.get("content_text", "")))[:600]
+                themes = item.get("themes", [])
+                sentiment = item.get("sentiment", "")
+                tickers = item.get("tickers", [])
+
+                content_section += f"\n**{title}** ({content_type})\n"
+                if timestamp:
+                    content_section += f"Time: {timestamp}\n"
+                if themes:
+                    content_section += f"Themes: {', '.join(themes[:5])}\n"
+                if sentiment:
+                    content_section += f"Sentiment: {sentiment}\n"
+                if tickers:
+                    content_section += f"Tickers: {', '.join(tickers[:10])}\n"
+                if summary:
+                    content_section += f"Content: {summary}\n"
+
+        # Extract specific levels to include in prompt
+        extracted = self._extract_levels_from_content(content_items)
+
+        extraction_section = ""
+        if any(extracted.values()):
+            extraction_section = f"""
+## Pre-Extracted Data (incorporate these specific values into your output)
+
+Price Levels Mentioned: {', '.join(extracted['price_levels'][:20]) or 'None found'}
+Option Strikes Mentioned: {', '.join(extracted['option_strikes'][:15]) or 'None found'}
+Dates/Events Mentioned: {', '.join(extracted['dates'][:15]) or 'None found'}
+Tickers Mentioned: {', '.join(extracted['tickers'][:20]) or 'None found'}
+
+IMPORTANT: Use these specific values in your tactical and strategic ideas. Do NOT use vague terms like "support" or "resistance" without the actual numbers.
+"""
+
+        # Focus instruction
+        focus_instruction = ""
+        if focus_topic:
+            focus_instruction = f"\n\nFOCUS: Pay particular attention to content related to: {focus_topic}\n"
+
+        prompt = f"""Analyze the following research content collected over the past {time_window} and generate an ACTIONABLE synthesis.
+{focus_instruction}
+## Source Content
+{content_section}
+{extraction_section}
+## Required Output (JSON)
+
+Generate a JSON response with ALL of these sections:
+
+### 1. market_regime (required object)
+{{
+  "current": "risk-on" | "risk-off" | "transitioning" | "range-bound",
+  "direction": "improving" | "deteriorating" | "stable",
+  "confidence": 0.0-1.0,
+  "key_drivers": ["driver1", "driver2", "driver3"]
+}}
+
+### 2. synthesis_summary (required string)
+2-3 sentence executive summary of the current research landscape. Be specific.
+
+### 3. tactical_ideas (required array, ideas with <4 week horizon)
+For EACH tactical idea, include ALL of these fields:
+{{
+  "idea": "clear statement of the trade idea",
+  "conviction_score": {{
+    "raw": "X/Y sources",
+    "weighted": 0.0-1.0,
+    "sources_agreeing": ["source1", "source2"],
+    "sources_disagreeing": ["source3"]
+  }},
+  "trade_structure": {{
+    "instrument": "VIX|SPX|specific ticker",
+    "direction": "long|short|spread",
+    "structure": "outright|calendar spread|butterfly|strangle|etc",
+    "entry_level": "SPECIFIC number or range from sources",
+    "stop_level": "SPECIFIC number",
+    "target_level": "SPECIFIC number or range"
+  }},
+  "time_horizon": "1-3 days|1-2 weeks|2-4 weeks|through [specific event]",
+  "catalyst": "specific event driving this thesis",
+  "invalidation": "what would make this thesis wrong - be specific",
+  "rationale": "2-3 sentences explaining the thesis"
+}}
+
+### 4. strategic_ideas (required array, ideas with 1-6 month horizon)
+{{
+  "idea": "clear statement",
+  "conviction_score": {{ same format as above }},
+  "thesis": "longer explanation of the macro thesis (3-5 sentences)",
+  "key_levels": {{
+    "support": ["level1", "level2"],
+    "resistance": ["level1", "level2"]
+  }},
+  "time_horizon": "1-3 months|3-6 months",
+  "triggers": ["what would cause thesis acceleration"],
+  "risks": ["what could derail this thesis"]
+}}
+
+### 5. watch_list (required array, topics where sources DISAGREE)
+{{
+  "topic": "the topic with conflicting views",
+  "status": "conflicting" | "developing" | "monitoring",
+  "bull_case": {{
+    "view": "the bullish argument",
+    "sources": ["source1"]
+  }},
+  "bear_case": {{
+    "view": "the bearish argument",
+    "sources": ["source2"]
+  }},
+  "resolution_trigger": "what would resolve this conflict",
+  "weighted_lean": "slight bull|slight bear|neutral - based on source weights"
+}}
+
+### 6. catalyst_calendar (required array, upcoming events with SPECIFIC DATES)
+{{
+  "date": "YYYY-MM-DD",
+  "event": "event name",
+  "impact": "high" | "medium" | "low",
+  "relevance": "which ideas this affects",
+  "consensus": "what market expects",
+  "risk_scenario": "what surprise would mean"
+}}
+
+Known December 2025 dates: NFP Dec 6, CPI Dec 11, FOMC Dec 17-18, Quad Witch Dec 19
+
+### 7. source_summary (required object)
+{{
+  "total_sources": number,
+  "total_items": number,
+  "by_source": {{
+    "source_name": {{
+      "items": number,
+      "weight": number,
+      "current_stance": "1 sentence summary of their view"
+    }}
+  }}
+}}
+
+RESPOND WITH VALID JSON ONLY. Be SPECIFIC with all levels, dates, and numbers."""
+
+        return prompt
+
+    def _empty_synthesis_v2(self, time_window: str) -> Dict[str, Any]:
+        """Return empty v2 synthesis when no content available."""
+        return {
+            "version": "2.0",
+            "market_regime": {
+                "current": "unclear",
+                "direction": "stable",
+                "confidence": 0.0,
+                "key_drivers": []
+            },
+            "synthesis_summary": f"No content collected in the past {time_window}. Run collection to gather research data.",
+            "tactical_ideas": [],
+            "strategic_ideas": [],
+            "watch_list": [],
+            "catalyst_calendar": [],
+            "source_summary": {
+                "total_sources": 0,
+                "total_items": 0,
+                "by_source": {}
+            },
+            "time_window": time_window,
+            "content_count": 0,
+            "sources_included": [],
+            "generated_at": datetime.utcnow().isoformat()
+        }
+
+    def analyze_v2(
+        self,
+        content_items: List[Dict[str, Any]],
+        time_window: str = "24h",
+        focus_topic: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Generate actionable synthesis from collected content (V2).
+
+        This is the enhanced version that provides:
+        - Specific price levels and strikes
+        - Quantified conviction with source weighting
+        - Entry/stop/target for tactical ideas
+        - Time-horizon bucketing
+        - Catalyst calendar with dates
+        - Watch list for conflicting views
+
+        Args:
+            content_items: List of analyzed content items to synthesize
+            time_window: Time window being analyzed ("24h", "7d", "30d")
+            focus_topic: Optional specific topic to focus on
+
+        Returns:
+            Actionable synthesis with structured output (v2 schema)
+        """
+        if not content_items:
+            return self._empty_synthesis_v2(time_window)
+
+        logger.info(f"Generating v2 synthesis for {len(content_items)} items over {time_window}")
+
+        # Build the enhanced prompt
+        prompt = self._build_synthesis_prompt_v2(content_items, time_window, focus_topic)
+
+        # Call Claude with v2 system prompt
+        response = self.call_claude(
+            prompt=prompt,
+            system_prompt=self.SYSTEM_PROMPT_V2,
+            max_tokens=4000,  # Larger output for detailed structure
+            temperature=0.2,  # Lower temp for more consistent structure
+            expect_json=True
+        )
+
+        # Add metadata
+        response["version"] = "2.0"
+        response["time_window"] = time_window
+        response["content_count"] = len(content_items)
+        response["sources_included"] = list(set(item.get("source", "unknown") for item in content_items))
+        response["generated_at"] = datetime.utcnow().isoformat()
+        if focus_topic:
+            response["focus_topic"] = focus_topic
+
+        # Validate required v2 fields
+        required_fields = [
+            "market_regime",
+            "synthesis_summary",
+            "tactical_ideas",
+            "strategic_ideas",
+            "watch_list",
+            "catalyst_calendar"
+        ]
+
+        try:
+            self.validate_response_schema(response, required_fields)
+        except Exception as e:
+            logger.warning(f"V2 schema validation failed: {e}, returning partial response")
+
+        logger.info(f"Generated v2 synthesis: {len(response.get('tactical_ideas', []))} tactical, "
+                   f"{len(response.get('strategic_ideas', []))} strategic ideas")
 
         return response
 

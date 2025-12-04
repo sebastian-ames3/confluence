@@ -240,13 +240,19 @@ class Synthesis(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
 
-    # Synthesis content
-    synthesis = Column(Text, nullable=False)
+    # Schema version for backwards compatibility (PRD-020)
+    schema_version = Column(String(10), default="1.0")  # "1.0" or "2.0"
+
+    # Synthesis content (v1 fields - kept for backwards compatibility)
+    synthesis = Column(Text, nullable=False)  # v1: full text, v2: synthesis_summary
     key_themes = Column(Text)  # JSON array
     high_conviction_ideas = Column(Text)  # JSON array
     contradictions = Column(Text)  # JSON array
     market_regime = Column(String)  # "risk-on", "risk-off", "transitioning", "unclear"
     catalysts = Column(Text)  # JSON array
+
+    # V2: Full JSON response (PRD-020)
+    synthesis_json = Column(Text)  # Complete v2 JSON response with tactical/strategic ideas
 
     # Metadata
     time_window = Column(String, nullable=False)  # "24h", "7d", "30d"

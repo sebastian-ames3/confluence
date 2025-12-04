@@ -210,7 +210,225 @@
         .regime-risk-on { background: var(--success); color: white; }
         .regime-risk-off { background: var(--danger); color: white; }
         .regime-transitioning { background: var(--warning); color: black; }
+        .regime-range-bound { background: #6366f1; color: white; }
         .regime-unclear { background: var(--text-muted); color: white; }
+
+        /* V2 Synthesis Styles (PRD-020) */
+        .v2-section {
+            margin-top: var(--spacing-lg);
+            padding-top: var(--spacing-lg);
+            border-top: 1px solid var(--border-color);
+        }
+
+        .v2-section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: var(--spacing-md);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .tactical-idea, .strategic-idea {
+            background: rgba(59, 130, 246, 0.08);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 var(--radius-md) var(--radius-md) 0;
+            padding: var(--spacing-md);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .idea-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: var(--spacing-sm);
+            flex-wrap: wrap;
+            gap: var(--spacing-sm);
+        }
+
+        .idea-title {
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+
+        .conviction-pill {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+            font-size: 0.8rem;
+        }
+
+        .conviction-bar {
+            width: 60px;
+            height: 6px;
+            background: var(--bg-card);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .conviction-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+
+        .conviction-fill.high { background: var(--success); }
+        .conviction-fill.medium { background: var(--warning); }
+        .conviction-fill.low { background: var(--danger); }
+
+        .trade-structure {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: var(--spacing-sm);
+            background: rgba(0, 0, 0, 0.2);
+            padding: var(--spacing-sm);
+            border-radius: var(--radius-sm);
+            margin: var(--spacing-sm) 0;
+            font-size: 0.85rem;
+        }
+
+        .trade-field {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .trade-field-label {
+            color: var(--text-muted);
+            font-size: 0.7rem;
+            text-transform: uppercase;
+        }
+
+        .trade-field-value {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .trade-field-value.entry { color: var(--primary); }
+        .trade-field-value.stop { color: var(--danger); }
+        .trade-field-value.target { color: var(--success); }
+
+        .idea-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--spacing-sm);
+            margin-top: var(--spacing-sm);
+            font-size: 0.8rem;
+        }
+
+        .idea-meta-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2px 8px;
+            border-radius: 4px;
+            color: var(--text-secondary);
+        }
+
+        .idea-rationale {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-top: var(--spacing-sm);
+            line-height: 1.5;
+        }
+
+        .idea-invalidation {
+            background: rgba(239, 68, 68, 0.1);
+            border-left: 2px solid var(--danger);
+            padding: var(--spacing-xs) var(--spacing-sm);
+            margin-top: var(--spacing-sm);
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .watch-item {
+            background: rgba(251, 191, 36, 0.1);
+            border-left: 4px solid var(--warning);
+            border-radius: 0 var(--radius-md) var(--radius-md) 0;
+            padding: var(--spacing-md);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .watch-cases {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-md);
+            margin-top: var(--spacing-sm);
+        }
+
+        .watch-case {
+            padding: var(--spacing-sm);
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+        }
+
+        .watch-case.bull {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .watch-case.bear {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .watch-case-label {
+            font-weight: 600;
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .catalyst-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        .catalyst-table th {
+            text-align: left;
+            padding: var(--spacing-sm);
+            background: rgba(0, 0, 0, 0.2);
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .catalyst-table td {
+            padding: var(--spacing-sm);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .catalyst-impact {
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .impact-high { background: var(--danger); color: white; }
+        .impact-medium { background: var(--warning); color: black; }
+        .impact-low { background: var(--text-muted); color: white; }
+
+        .source-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: var(--spacing-sm);
+            margin-top: var(--spacing-sm);
+        }
+
+        .source-summary-item {
+            background: rgba(0, 0, 0, 0.2);
+            padding: var(--spacing-sm);
+            border-radius: var(--radius-sm);
+            font-size: 0.8rem;
+        }
+
+        .source-summary-name {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .source-summary-stance {
+            color: var(--text-secondary);
+            margin-top: var(--spacing-xs);
+        }
 
         .loading-spinner {
             display: inline-block;
@@ -328,10 +546,44 @@
                     <!-- Theme tags will be inserted here -->
                 </div>
 
+                <!-- V1 High-Conviction Ideas -->
                 <div class="conviction-ideas" id="conviction-ideas">
                     <h4 style="margin-bottom: var(--spacing-md); color: var(--text-secondary);">High-Conviction Ideas</h4>
                     <div id="conviction-ideas-list">
-                        <!-- Conviction ideas will be inserted here -->
+                        <!-- V1 Conviction ideas will be inserted here -->
+                    </div>
+                </div>
+
+                <!-- V2 Sections (PRD-020) -->
+                <div id="v2-content" style="display: none;">
+                    <!-- Tactical Ideas -->
+                    <div class="v2-section" id="tactical-section">
+                        <div class="v2-section-title">Tactical Ideas (< 4 weeks)</div>
+                        <div id="tactical-ideas-list"></div>
+                    </div>
+
+                    <!-- Strategic Ideas -->
+                    <div class="v2-section" id="strategic-section">
+                        <div class="v2-section-title">Strategic Ideas (1-6 months)</div>
+                        <div id="strategic-ideas-list"></div>
+                    </div>
+
+                    <!-- Watch List -->
+                    <div class="v2-section" id="watch-section">
+                        <div class="v2-section-title">Watch List (Conflicting/Developing)</div>
+                        <div id="watch-list"></div>
+                    </div>
+
+                    <!-- Catalyst Calendar -->
+                    <div class="v2-section" id="catalyst-section">
+                        <div class="v2-section-title">Catalyst Calendar</div>
+                        <div id="catalyst-calendar"></div>
+                    </div>
+
+                    <!-- Source Summary -->
+                    <div class="v2-section" id="source-section">
+                        <div class="v2-section-title">Source Analysis</div>
+                        <div id="source-summary" class="source-summary"></div>
                     </div>
                 </div>
             </div>
@@ -468,57 +720,336 @@
             document.getElementById('synthesis-empty').style.display = 'none';
             document.getElementById('synthesis-content').style.display = 'block';
 
+            // Check if this is V2 synthesis
+            const isV2 = data.version === '2.0' || data.tactical_ideas || data.strategic_ideas;
+
             // Update meta info
             document.getElementById('synthesis-window').textContent = data.time_window;
             document.getElementById('synthesis-count').textContent = data.content_count;
             document.getElementById('synthesis-time').textContent = data.generated_at ? formatDateTime(new Date(data.generated_at)) : '-';
 
-            // Market regime badge
+            // Market regime badge (handle v2 object format)
             const regimeBadge = document.getElementById('market-regime-badge');
-            if (data.market_regime) {
-                const regimeClass = `regime-${data.market_regime.replace('_', '-')}`;
-                regimeBadge.innerHTML = `<span class="market-regime ${regimeClass}">${data.market_regime}</span>`;
+            let regimeValue = data.market_regime;
+            if (typeof regimeValue === 'object' && regimeValue !== null) {
+                regimeValue = regimeValue.current;
+            }
+            if (regimeValue) {
+                const regimeClass = `regime-${regimeValue.replace('_', '-').replace(' ', '-')}`;
+                regimeBadge.innerHTML = `<span class="market-regime ${regimeClass}">${regimeValue}</span>`;
             } else {
                 regimeBadge.innerHTML = '';
             }
 
-            // Synthesis text (split by newlines for paragraphs)
+            // Synthesis text (v2 uses synthesis_summary, v1 uses synthesis)
             const synthText = document.getElementById('synthesis-text');
-            const paragraphs = data.synthesis.split('\n\n').filter(p => p.trim());
+            const synthesisContent = data.synthesis_summary || data.synthesis || '';
+            const paragraphs = synthesisContent.split('\n\n').filter(p => p.trim());
             synthText.innerHTML = paragraphs.map(p => `<p>${p}</p>`).join('');
 
-            // Theme tags
+            // Theme tags (v2 may have key_themes in different format)
             const themeTags = document.getElementById('theme-tags');
-            if (data.key_themes && data.key_themes.length > 0) {
-                themeTags.innerHTML = data.key_themes.map(theme =>
+            const themes = data.key_themes || [];
+            if (themes.length > 0) {
+                themeTags.innerHTML = themes.map(theme =>
                     `<span class="theme-tag">${theme}</span>`
                 ).join('');
             } else {
                 themeTags.innerHTML = '';
             }
 
-            // High-conviction ideas
-            const convictionList = document.getElementById('conviction-ideas-list');
-            if (data.high_conviction_ideas && data.high_conviction_ideas.length > 0) {
-                document.getElementById('conviction-ideas').style.display = 'block';
-                convictionList.innerHTML = data.high_conviction_ideas.map(idea => {
-                    const badgeClass = `conviction-${idea.confidence || 'medium'}`;
-                    return `
-                        <div class="conviction-idea">
-                            <div class="conviction-idea-header">
-                                <span class="conviction-idea-title">${idea.idea}</span>
-                                <span class="conviction-badge ${badgeClass}">${idea.confidence || 'medium'}</span>
+            // Handle V1 vs V2 display
+            if (isV2) {
+                // Hide V1 conviction ideas, show V2 sections
+                document.getElementById('conviction-ideas').style.display = 'none';
+                document.getElementById('v2-content').style.display = 'block';
+
+                // Render tactical ideas
+                displayTacticalIdeas(data.tactical_ideas || []);
+
+                // Render strategic ideas
+                displayStrategicIdeas(data.strategic_ideas || []);
+
+                // Render watch list
+                displayWatchList(data.watch_list || []);
+
+                // Render catalyst calendar
+                displayCatalystCalendar(data.catalyst_calendar || []);
+
+                // Render source summary
+                displaySourceSummary(data.source_summary || {});
+            } else {
+                // V1 format - show conviction ideas, hide V2 sections
+                document.getElementById('v2-content').style.display = 'none';
+                const convictionList = document.getElementById('conviction-ideas-list');
+                if (data.high_conviction_ideas && data.high_conviction_ideas.length > 0) {
+                    document.getElementById('conviction-ideas').style.display = 'block';
+                    convictionList.innerHTML = data.high_conviction_ideas.map(idea => {
+                        const badgeClass = `conviction-${idea.confidence || 'medium'}`;
+                        return `
+                            <div class="conviction-idea">
+                                <div class="conviction-idea-header">
+                                    <span class="conviction-idea-title">${idea.idea}</span>
+                                    <span class="conviction-badge ${badgeClass}">${idea.confidence || 'medium'}</span>
+                                </div>
+                                <div class="conviction-idea-sources">
+                                    Sources: ${(idea.sources || []).join(', ')}
+                                    ${idea.rationale ? ` - ${idea.rationale}` : ''}
+                                </div>
                             </div>
-                            <div class="conviction-idea-sources">
-                                Sources: ${(idea.sources || []).join(', ')}
-                                ${idea.rationale ? ` - ${idea.rationale}` : ''}
+                        `;
+                    }).join('');
+                } else {
+                    document.getElementById('conviction-ideas').style.display = 'none';
+                }
+            }
+        }
+
+        // V2: Display tactical ideas
+        function displayTacticalIdeas(ideas) {
+            const container = document.getElementById('tactical-ideas-list');
+            if (!ideas || ideas.length === 0) {
+                document.getElementById('tactical-section').style.display = 'none';
+                return;
+            }
+            document.getElementById('tactical-section').style.display = 'block';
+
+            container.innerHTML = ideas.map(idea => {
+                const conviction = idea.conviction_score || {};
+                const weighted = conviction.weighted || 0;
+                const convictionClass = weighted >= 0.7 ? 'high' : weighted >= 0.5 ? 'medium' : 'low';
+                const trade = idea.trade_structure || {};
+
+                return `
+                    <div class="tactical-idea">
+                        <div class="idea-header">
+                            <span class="idea-title">${idea.idea || 'Untitled'}</span>
+                            <div class="conviction-pill">
+                                <span>${conviction.raw || '-'}</span>
+                                <div class="conviction-bar">
+                                    <div class="conviction-fill ${convictionClass}" style="width: ${weighted * 100}%"></div>
+                                </div>
+                                <span>${Math.round(weighted * 100)}%</span>
                             </div>
                         </div>
-                    `;
-                }).join('');
-            } else {
-                document.getElementById('conviction-ideas').style.display = 'none';
+
+                        ${trade.instrument ? `
+                        <div class="trade-structure">
+                            <div class="trade-field">
+                                <span class="trade-field-label">Instrument</span>
+                                <span class="trade-field-value">${trade.instrument}</span>
+                            </div>
+                            <div class="trade-field">
+                                <span class="trade-field-label">Direction</span>
+                                <span class="trade-field-value">${trade.direction || '-'}</span>
+                            </div>
+                            <div class="trade-field">
+                                <span class="trade-field-label">Structure</span>
+                                <span class="trade-field-value">${trade.structure || '-'}</span>
+                            </div>
+                            <div class="trade-field">
+                                <span class="trade-field-label">Entry</span>
+                                <span class="trade-field-value entry">${trade.entry_level || '-'}</span>
+                            </div>
+                            <div class="trade-field">
+                                <span class="trade-field-label">Stop</span>
+                                <span class="trade-field-value stop">${trade.stop_level || '-'}</span>
+                            </div>
+                            <div class="trade-field">
+                                <span class="trade-field-label">Target</span>
+                                <span class="trade-field-value target">${trade.target_level || '-'}</span>
+                            </div>
+                        </div>
+                        ` : ''}
+
+                        <div class="idea-meta">
+                            ${idea.time_horizon ? `<span class="idea-meta-item">${idea.time_horizon}</span>` : ''}
+                            ${idea.catalyst ? `<span class="idea-meta-item">${idea.catalyst}</span>` : ''}
+                        </div>
+
+                        ${idea.rationale ? `<div class="idea-rationale">${idea.rationale}</div>` : ''}
+
+                        ${idea.invalidation ? `<div class="idea-invalidation"><strong>Invalidation:</strong> ${idea.invalidation}</div>` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // V2: Display strategic ideas
+        function displayStrategicIdeas(ideas) {
+            const container = document.getElementById('strategic-ideas-list');
+            if (!ideas || ideas.length === 0) {
+                document.getElementById('strategic-section').style.display = 'none';
+                return;
             }
+            document.getElementById('strategic-section').style.display = 'block';
+
+            container.innerHTML = ideas.map(idea => {
+                const conviction = idea.conviction_score || {};
+                const weighted = conviction.weighted || 0;
+                const convictionClass = weighted >= 0.7 ? 'high' : weighted >= 0.5 ? 'medium' : 'low';
+                const levels = idea.key_levels || {};
+
+                return `
+                    <div class="strategic-idea">
+                        <div class="idea-header">
+                            <span class="idea-title">${idea.idea || 'Untitled'}</span>
+                            <div class="conviction-pill">
+                                <span>${conviction.raw || '-'}</span>
+                                <div class="conviction-bar">
+                                    <div class="conviction-fill ${convictionClass}" style="width: ${weighted * 100}%"></div>
+                                </div>
+                                <span>${Math.round(weighted * 100)}%</span>
+                            </div>
+                        </div>
+
+                        ${idea.thesis ? `<div class="idea-rationale">${idea.thesis}</div>` : ''}
+
+                        ${(levels.support || levels.resistance) ? `
+                        <div class="trade-structure">
+                            ${levels.support ? `
+                            <div class="trade-field">
+                                <span class="trade-field-label">Support</span>
+                                <span class="trade-field-value">${levels.support.join(', ')}</span>
+                            </div>
+                            ` : ''}
+                            ${levels.resistance ? `
+                            <div class="trade-field">
+                                <span class="trade-field-label">Resistance</span>
+                                <span class="trade-field-value">${levels.resistance.join(', ')}</span>
+                            </div>
+                            ` : ''}
+                        </div>
+                        ` : ''}
+
+                        <div class="idea-meta">
+                            ${idea.time_horizon ? `<span class="idea-meta-item">${idea.time_horizon}</span>` : ''}
+                        </div>
+
+                        ${idea.triggers && idea.triggers.length > 0 ? `
+                        <div style="margin-top: var(--spacing-sm); font-size: 0.85rem; color: var(--text-secondary);">
+                            <strong>Triggers:</strong> ${idea.triggers.join('; ')}
+                        </div>
+                        ` : ''}
+
+                        ${idea.risks && idea.risks.length > 0 ? `
+                        <div class="idea-invalidation">
+                            <strong>Risks:</strong> ${idea.risks.join('; ')}
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // V2: Display watch list
+        function displayWatchList(items) {
+            const container = document.getElementById('watch-list');
+            if (!items || items.length === 0) {
+                document.getElementById('watch-section').style.display = 'none';
+                return;
+            }
+            document.getElementById('watch-section').style.display = 'block';
+
+            container.innerHTML = items.map(item => {
+                const bullCase = item.bull_case || {};
+                const bearCase = item.bear_case || {};
+
+                return `
+                    <div class="watch-item">
+                        <div class="idea-header">
+                            <span class="idea-title">${item.topic || 'Untitled'}</span>
+                            <span class="idea-meta-item">${item.status || 'monitoring'}</span>
+                        </div>
+
+                        <div class="watch-cases">
+                            <div class="watch-case bull">
+                                <div class="watch-case-label">Bull Case</div>
+                                <div>${bullCase.view || '-'}</div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+                                    Sources: ${(bullCase.sources || []).join(', ') || '-'}
+                                </div>
+                            </div>
+                            <div class="watch-case bear">
+                                <div class="watch-case-label">Bear Case</div>
+                                <div>${bearCase.view || '-'}</div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+                                    Sources: ${(bearCase.sources || []).join(', ') || '-'}
+                                </div>
+                            </div>
+                        </div>
+
+                        ${item.resolution_trigger ? `
+                        <div style="margin-top: var(--spacing-sm); font-size: 0.85rem; color: var(--text-secondary);">
+                            <strong>Resolution Trigger:</strong> ${item.resolution_trigger}
+                        </div>
+                        ` : ''}
+
+                        ${item.weighted_lean ? `
+                        <div style="margin-top: var(--spacing-xs); font-size: 0.85rem;">
+                            <strong>Weighted Lean:</strong> ${item.weighted_lean}
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // V2: Display catalyst calendar
+        function displayCatalystCalendar(catalysts) {
+            const container = document.getElementById('catalyst-calendar');
+            if (!catalysts || catalysts.length === 0) {
+                document.getElementById('catalyst-section').style.display = 'none';
+                return;
+            }
+            document.getElementById('catalyst-section').style.display = 'block';
+
+            container.innerHTML = `
+                <table class="catalyst-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Event</th>
+                            <th>Impact</th>
+                            <th>Relevance</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${catalysts.map(c => `
+                            <tr>
+                                <td>${c.date || '-'}</td>
+                                <td><strong>${c.event || '-'}</strong></td>
+                                <td><span class="catalyst-impact impact-${c.impact || 'medium'}">${c.impact || 'medium'}</span></td>
+                                <td>${c.relevance || '-'}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        // V2: Display source summary
+        function displaySourceSummary(summary) {
+            const container = document.getElementById('source-summary');
+            if (!summary || !summary.by_source) {
+                document.getElementById('source-section').style.display = 'none';
+                return;
+            }
+            document.getElementById('source-section').style.display = 'block';
+
+            const sources = Object.entries(summary.by_source || {});
+            if (sources.length === 0) {
+                container.innerHTML = '<div class="empty-state">No source data available</div>';
+                return;
+            }
+
+            container.innerHTML = sources.map(([name, data]) => `
+                <div class="source-summary-item">
+                    <div class="source-summary-name">${name} (${data.items || 0} items)</div>
+                    <div style="font-size: 0.7rem; color: var(--text-muted);">Weight: ${data.weight || 1.0}x</div>
+                    ${data.current_stance ? `<div class="source-summary-stance">${data.current_stance}</div>` : ''}
+                </div>
+            `).join('');
         }
 
         // Show empty synthesis state

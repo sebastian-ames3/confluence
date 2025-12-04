@@ -41,6 +41,7 @@ class SynthesisGenerateRequest(BaseModel):
     """Request model for synthesis generation"""
     time_window: str = "24h"  # "24h", "7d", "30d"
     focus_topic: Optional[str] = None
+    version: str = "2"  # "1" for legacy, "2" for actionable synthesis (PRD-020)
 
 
 class SynthesisResponse(BaseModel):
@@ -218,22 +219,47 @@ async def generate_synthesis(
         logger.info(f"Creating SynthesisAgent for {len(content_items)} items...")
         agent = SynthesisAgent()
 
-        logger.info("Calling agent.analyze()...")
-        result = agent.analyze(
-            content_items=content_items,
-            time_window=synthesis_request.time_window,
-            focus_topic=synthesis_request.focus_topic
-        )
-        logger.info(f"Analysis complete, got result with keys: {list(result.keys())}")
+        # Determine version (default to v2 for actionable synthesis)
+        use_v2 = synthesis_request.version == "2"
+
+        if use_v2:
+            logger.info("Calling agent.analyze_v2() for actionable synthesis...")
+            result = agent.analyze_v2(
+                content_items=content_items,
+                time_window=synthesis_request.time_window,
+                focus_topic=synthesis_request.focus_topic
+            )
+            logger.info(f"V2 Analysis complete: {len(result.get('tactical_ideas', []))} tactical, "
+                       f"{len(result.get('strategic_ideas', []))} strategic ideas")
+        else:
+            logger.info("Calling agent.analyze() for legacy synthesis...")
+            result = agent.analyze(
+                content_items=content_items,
+                time_window=synthesis_request.time_window,
+                focus_topic=synthesis_request.focus_topic
+            )
+            logger.info(f"V1 Analysis complete, got result with keys: {list(result.keys())}")
+
+        # Extract synthesis text (v2 uses synthesis_summary, v1 uses synthesis)
+        synthesis_text = result.get("synthesis_summary") or result.get("synthesis", "")
+
+        # Extract market regime (v2 is object, v1 is string)
+        market_regime = result.get("market_regime")
+        if isinstance(market_regime, dict):
+            market_regime_str = market_regime.get("current", "unclear")
+        else:
+            market_regime_str = market_regime
 
         # Save to database
         synthesis = Synthesis(
-            synthesis=result.get("synthesis", ""),
+            schema_version="2.0" if use_v2 else "1.0",
+            synthesis=synthesis_text,
             key_themes=json.dumps(result.get("key_themes", [])),
-            high_conviction_ideas=json.dumps(result.get("high_conviction_ideas", [])),
-            contradictions=json.dumps(result.get("contradictions", [])),
-            market_regime=result.get("market_regime"),
-            catalysts=json.dumps(result.get("catalysts", [])),
+            high_conviction_ideas=json.dumps(result.get("high_conviction_ideas", []) or result.get("tactical_ideas", [])),
+            contradictions=json.dumps(result.get("contradictions", []) or result.get("watch_list", [])),
+            market_regime=market_regime_str,
+            catalysts=json.dumps(result.get("catalysts", []) or result.get("catalyst_calendar", [])),
+            synthesis_json=json.dumps(result) if use_v2 else None,  # Store full v2 response
             time_window=synthesis_request.time_window,
             content_count=result.get("content_count", len(content_items)),
             sources_included=json.dumps(result.get("sources_included", [])),
@@ -244,15 +270,26 @@ async def generate_synthesis(
         db.commit()
         db.refresh(synthesis)
 
-        return {
-            "status": "success",
-            "synthesis_id": synthesis.id,
-            "synthesis": result.get("synthesis"),
-            "key_themes": result.get("key_themes", []),
-            "high_conviction_ideas": result.get("high_conviction_ideas", []),
-            "content_count": result.get("content_count", len(content_items)),
-            "generated_at": synthesis.generated_at.isoformat()
-        }
+        # Return appropriate response format
+        if use_v2:
+            return {
+                "status": "success",
+                "version": "2.0",
+                "synthesis_id": synthesis.id,
+                **result,  # Include all v2 fields
+                "generated_at": synthesis.generated_at.isoformat()
+            }
+        else:
+            return {
+                "status": "success",
+                "version": "1.0",
+                "synthesis_id": synthesis.id,
+                "synthesis": result.get("synthesis"),
+                "key_themes": result.get("key_themes", []),
+                "high_conviction_ideas": result.get("high_conviction_ideas", []),
+                "content_count": result.get("content_count", len(content_items)),
+                "generated_at": synthesis.generated_at.isoformat()
+            }
 
     except Exception as e:
         error_msg = f"Synthesis generation failed: {str(e)}\n{traceback.format_exc()}"
@@ -286,8 +323,24 @@ async def get_latest_synthesis(
             "message": "No synthesis found. Generate one first."
         }
 
+    # Check if this is a v2 synthesis with full JSON
+    schema_version = getattr(synthesis, 'schema_version', '1.0') or '1.0'
+    synthesis_json = getattr(synthesis, 'synthesis_json', None)
+
+    if schema_version == "2.0" and synthesis_json:
+        # Return full v2 response
+        try:
+            v2_data = json.loads(synthesis_json)
+            v2_data["id"] = synthesis.id
+            v2_data["version"] = "2.0"
+            return v2_data
+        except json.JSONDecodeError:
+            pass  # Fall back to v1 format
+
+    # Return v1 format (backwards compatibility)
     return {
         "id": synthesis.id,
+        "version": schema_version,
         "synthesis": synthesis.synthesis,
         "key_themes": json.loads(synthesis.key_themes) if synthesis.key_themes else [],
         "high_conviction_ideas": json.loads(synthesis.high_conviction_ideas) if synthesis.high_conviction_ideas else [],
