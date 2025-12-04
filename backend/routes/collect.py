@@ -638,6 +638,8 @@ async def _save_collected_items(
     # Save each item with duplicate detection
     saved_count = 0
     skipped_duplicates = 0
+    videos_to_transcribe = []  # PRD-018: Track videos needing transcription
+
     for item in items:
         try:
             # Check for duplicates by URL or video_id
@@ -667,6 +669,16 @@ async def _save_collected_items(
                 processed=False
             )
             db.add(raw_content)
+            db.flush()  # PRD-018: Get ID for transcription tracking
+
+            # PRD-018: Queue video content for transcription (YouTube, etc.)
+            if item.get("content_type") == "video" and url:
+                videos_to_transcribe.append({
+                    "raw_content_id": raw_content.id,
+                    "url": url,
+                    "title": metadata.get("title") or item.get("content_text", "")[:100]
+                })
+
             saved_count += 1
         except Exception as e:
             logger.error(f"Error saving item from {source_name}: {e}")
@@ -677,6 +689,23 @@ async def _save_collected_items(
         logger.info(f"Saved {saved_count}/{len(items)} items from {source_name} (skipped {skipped_duplicates} duplicates)")
     else:
         logger.info(f"Saved {saved_count}/{len(items)} items from {source_name}")
+
+    # PRD-018: Trigger async transcription for video content
+    transcription_queued = 0
+    for video in videos_to_transcribe:
+        try:
+            asyncio.create_task(_transcribe_video_async(
+                raw_content_id=video["raw_content_id"],
+                video_url=video["url"],
+                source=source_name,
+                title=video["title"]
+            ))
+            transcription_queued += 1
+        except Exception as e:
+            logger.error(f"Failed to queue transcription for {video['raw_content_id']}: {e}")
+
+    if transcription_queued > 0:
+        logger.info(f"Queued {transcription_queued} videos from {source_name} for async transcription")
 
     return saved_count
 
