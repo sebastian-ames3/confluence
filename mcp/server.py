@@ -5,7 +5,10 @@ Confluence Research Hub MCP Server
 Provides Claude Desktop access to your research synthesis and content.
 
 Usage:
-    python server.py
+    python server.py          # Run as HTTP server (for Claude Desktop remote MCP)
+    python server.py --stdio  # Run as stdio server (for local MCP)
+
+The HTTP server runs at http://localhost:8765/sse
 
 Requires environment variables:
     CONFLUENCE_API_URL - Base URL of Confluence Hub API
@@ -16,10 +19,11 @@ Requires environment variables:
 import asyncio
 import json
 import logging
+import sys
+import os
 from typing import Optional
 
 from mcp.server import Server
-from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent
 
 from confluence_client import (
@@ -357,11 +361,70 @@ async def call_tool(name: str, arguments: dict):
         )]
 
 
-async def main():
-    """Run the MCP server."""
-    logger.info("Starting Confluence Research MCP Server...")
+async def run_stdio():
+    """Run the MCP server in stdio mode."""
+    from mcp.server.stdio import stdio_server
+    logger.info("Starting Confluence Research MCP Server (stdio mode)...")
     async with stdio_server() as (read_stream, write_stream):
         await server.run(read_stream, write_stream, server.create_initialization_options())
+
+
+async def run_sse():
+    """Run the MCP server in SSE (HTTP) mode."""
+    from mcp.server.sse import SseServerTransport
+    from starlette.applications import Starlette
+    from starlette.routing import Route
+    from starlette.responses import JSONResponse
+    import uvicorn
+
+    # Create SSE transport
+    sse = SseServerTransport("/messages")
+
+    async def handle_sse(request):
+        """Handle SSE connections."""
+        async with sse.connect_sse(
+            request.scope, request.receive, request._send
+        ) as streams:
+            await server.run(
+                streams[0], streams[1], server.create_initialization_options()
+            )
+
+    async def handle_messages(request):
+        """Handle message POST requests."""
+        await sse.handle_post_message(request.scope, request.receive, request._send)
+
+    async def health(request):
+        """Health check endpoint."""
+        return JSONResponse({"status": "ok", "server": "confluence-research"})
+
+    # Create Starlette app
+    app = Starlette(
+        debug=True,
+        routes=[
+            Route("/sse", endpoint=handle_sse),
+            Route("/messages", endpoint=handle_messages, methods=["POST"]),
+            Route("/health", endpoint=health),
+        ],
+    )
+
+    port = int(os.getenv("MCP_PORT", "8765"))
+    logger.info(f"Starting Confluence Research MCP Server (SSE mode) on http://localhost:{port}/sse")
+    print(f"\n{'='*60}")
+    print(f"MCP Server running at: http://localhost:{port}/sse")
+    print(f"Add this URL to Claude Desktop Settings > Integrations")
+    print(f"{'='*60}\n")
+
+    config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="info")
+    server_instance = uvicorn.Server(config)
+    await server_instance.serve()
+
+
+async def main():
+    """Run the MCP server."""
+    if "--stdio" in sys.argv:
+        await run_stdio()
+    else:
+        await run_sse()
 
 
 if __name__ == "__main__":
