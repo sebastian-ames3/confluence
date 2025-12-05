@@ -1,0 +1,149 @@
+# Macro Confluence Hub
+
+Personal investment research aggregation system. Collects from 5 sources, applies AI analysis, surfaces confluence via web dashboard and Claude Desktop MCP.
+
+**Version**: 1.5.0 (Dec 2025) | **Status**: Production
+
+---
+
+## Quick Reference
+
+### Generate New v3 Synthesis
+```bash
+curl -X POST -u sames3:Spotswood1 -H "Content-Type: application/json" \
+  -d '{"time_window": "7d", "version": "3"}' \
+  https://confluence-production-a32e.up.railway.app/api/synthesis/generate
+```
+
+### Run Discord Collection (local)
+```bash
+cd "C:\Users\14102\Documents\Sebastian Ames\Projects\Confluence"
+python dev/scripts/discord_local.py --railway-api
+```
+
+### Run 42 Macro Collection (local)
+```bash
+python dev/scripts/macro42_local.py --railway-api
+```
+
+### Trigger Analysis Pipeline
+```bash
+curl -X POST -u sames3:Spotswood1 \
+  https://confluence-production-a32e.up.railway.app/api/analyze/classify-batch
+```
+
+---
+
+## Architecture
+
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│  Collectors │────▶│   Backend   │────▶│  Dashboard  │
+│  (Local)    │     │  (Railway)  │     │  (Railway)  │
+└─────────────┘     └─────────────┘     └─────────────┘
+                           │
+                           ▼
+                    ┌─────────────┐
+                    │ MCP Server  │
+                    │(Claude Desktop)│
+                    └─────────────┘
+```
+
+### Data Flow
+1. **Collect**: Local scripts upload to Railway API
+2. **Analyze**: `/api/analyze/classify-batch` runs AI analysis
+3. **Synthesize**: `/api/synthesis/generate` creates v3 research summary
+4. **View**: Dashboard at Railway URL or query via MCP tools
+
+---
+
+## Key Directories
+
+| Directory | Purpose |
+|-----------|---------|
+| `/agents/` | 10 AI agents (synthesis, scoring, analysis) |
+| `/backend/` | FastAPI app, routes, models |
+| `/collectors/` | Source-specific collection logic |
+| `/frontend/` | Dashboard (vanilla JS + Chart.js) |
+| `/mcp/` | Claude Desktop MCP server |
+| `/dev/scripts/` | Local collection scripts |
+| `/tests/` | Unit tests |
+| `/docs/archived/` | Completed PRDs |
+
+---
+
+## Data Sources
+
+| Source | Type | Collection Method |
+|--------|------|-------------------|
+| Discord (Options Insight) | Real-time trades | discord.py-self (local) |
+| 42 Macro | Institutional research | Selenium (local) |
+| KT Technical | Elliott Wave analysis | Session auth |
+| YouTube | Macro commentary | API v3 |
+| Substack | Thematic research | RSS |
+
+---
+
+## API Endpoints (Key)
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/synthesis/generate` | POST | Generate v1/v2/v3 synthesis |
+| `/api/synthesis/latest` | GET | Get most recent synthesis |
+| `/api/analyze/classify-batch` | POST | Run analysis on unprocessed content |
+| `/api/collect/discord` | POST | Upload Discord content |
+| `/api/dashboard/today` | GET | Dashboard summary data |
+
+---
+
+## MCP Tools (Claude Desktop)
+
+| Tool | Purpose |
+|------|---------|
+| `get_latest_synthesis` | Full v3 synthesis |
+| `get_executive_summary` | Quick overview |
+| `get_confluence_zones` | Where sources align |
+| `get_conflicts` | Where sources disagree |
+| `get_attention_priorities` | Ranked focus areas |
+| `get_source_stance` | Specific source view |
+| `get_catalyst_calendar` | Upcoming events |
+| `search_research` | Search content |
+
+---
+
+## Environment
+
+- **Production**: Railway (https://confluence-production-a32e.up.railway.app)
+- **Auth**: HTTP Basic (`sames3` / `Spotswood1`)
+- **Database**: SQLite on Railway volume
+- **AI**: Claude Sonnet 4, Whisper API
+
+---
+
+## Completed PRDs
+
+| PRD | Feature |
+|-----|---------|
+| 001-011 | Foundation, agents, dashboard |
+| 012-013 | Dashboard simplification, MCP |
+| 014-017 | Deployment, security, polish |
+| 018-019 | Video transcription, deduplication |
+| 020-021 | Actionable synthesis v2, Research hub v3 |
+| 022 | MCP SSE mode for Claude Desktop |
+| 023 | Final cleanup & organization |
+
+---
+
+## Development Notes
+
+**Adding new features:**
+1. Create PRD in `/docs/` (e.g., `PRD-024_FeatureName.md`)
+2. Implement in appropriate directory
+3. Update this file with new commands/endpoints
+4. Move PRD to `/docs/archived/` when complete
+
+**Local scripts** in `/dev/scripts/` - archived scripts in `/dev/scripts/archived/`
+
+---
+
+**Last Updated**: 2025-12-05

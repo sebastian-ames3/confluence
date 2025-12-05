@@ -56,6 +56,13 @@ backups/
 # Debug files
 debug/
 nul
+scheduler.log
+
+# Downloaded content (collected files - keep locally only)
+downloads/
+
+# Old MCP server (removed in PRD-023)
+mcp_server/
 
 # Development artifacts (in dev/ folder)
 dev/downloads/
