@@ -451,6 +451,26 @@
             to { transform: rotate(360deg); }
         }
 
+        .btn-analyze {
+            background: #f59e0b;
+            color: white;
+            border: none;
+            padding: var(--spacing-md) var(--spacing-lg);
+            border-radius: var(--radius-md);
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-analyze:hover {
+            background: #d97706;
+        }
+
+        .btn-analyze:disabled {
+            background: var(--text-muted);
+            cursor: not-allowed;
+        }
+
         /* V3 Research Consumption Hub Styles (PRD-021) - Clean Design */
         .v3-executive-summary {
             background: rgba(255, 255, 255, 0.03);
@@ -856,6 +876,9 @@
 
         <!-- Action Buttons -->
         <div class="action-buttons">
+            <button class="btn-analyze" id="analyze-btn" onclick="analyzeContent()">
+                Analyze Content
+            </button>
             <button class="btn-generate" id="generate-btn" onclick="generateSynthesis('24h')">
                 Generate 24h Synthesis
             </button>
@@ -1064,6 +1087,65 @@
             } catch (error) {
                 console.error('Error loading synthesis:', error);
                 showEmptySynthesis();
+            }
+        }
+
+        // Analyze unprocessed content
+        async function analyzeContent() {
+            const btn = document.getElementById('analyze-btn');
+            const originalText = btn.textContent;
+            btn.disabled = true;
+
+            let totalAnalyzed = 0;
+            let batchCount = 0;
+
+            try {
+                // Loop until all items are processed
+                while (true) {
+                    batchCount++;
+                    btn.innerHTML = `<span class="loading-spinner"></span> Analyzing... (${totalAnalyzed} done)`;
+
+                    const response = await fetch(`${API_BASE}/analyze/classify-batch?limit=50`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    const data = await response.json();
+
+                    // Check for HTTP errors
+                    if (!response.ok) {
+                        throw new Error(data.detail || `Server error: ${response.status}`);
+                    }
+
+                    if (data.count > 0) {
+                        totalAnalyzed += data.count;
+                    } else {
+                        // No more items to process
+                        break;
+                    }
+
+                    // Safety limit to prevent infinite loops
+                    if (batchCount > 20) {
+                        console.warn('Reached batch limit, stopping');
+                        break;
+                    }
+                }
+
+                if (totalAnalyzed > 0) {
+                    alert(`Successfully analyzed ${totalAnalyzed} items. You can now generate a synthesis.`);
+                    await loadStatus();
+                } else {
+                    alert('No new content to analyze.');
+                }
+
+            } catch (error) {
+                console.error('Error analyzing content:', error);
+                alert('Failed to analyze content: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
             }
         }
 
