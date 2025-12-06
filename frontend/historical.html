@@ -208,7 +208,7 @@
 
             const ctx = document.getElementById('conviction-chart').getContext('2d');
 
-            const labels = timeline.map(point => new Date(point.date).toLocaleDateString());
+            const labels = timeline.map(point => parseUTCDate(point.date).toLocaleDateString());
             const data = timeline.map(point => point.conviction * 100); // Convert to percentage
 
             convictionChart = new Chart(ctx, {

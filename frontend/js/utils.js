@@ -26,12 +26,25 @@ function sanitizeHTML(str) {
 }
 
 /**
- * Format ISO date string to readable format
+ * Parse ISO timestamp as UTC (backend stores UTC but may omit 'Z' suffix)
+ */
+function parseUTCDate(isoString) {
+    if (!isoString) return null;
+    // If no timezone indicator, assume UTC by appending 'Z'
+    if (!isoString.endsWith('Z') && !isoString.includes('+') && !isoString.includes('-', 10)) {
+        isoString = isoString + 'Z';
+    }
+    return new Date(isoString);
+}
+
+/**
+ * Format ISO date string to readable format (displays in user's local timezone)
  */
 function formatDate(isoString) {
     if (!isoString) return 'N/A';
 
-    const date = new Date(isoString);
+    const date = parseUTCDate(isoString);
+    if (!date || isNaN(date)) return 'N/A';
     const now = new Date();
     const diff = now - date;
 
@@ -67,12 +80,13 @@ function formatDate(isoString) {
 }
 
 /**
- * Format full date with time
+ * Format full date with time (displays in user's local timezone)
  */
 function formatDateTime(isoString) {
     if (!isoString) return 'N/A';
 
-    const date = new Date(isoString);
+    const date = parseUTCDate(isoString);
+    if (!date || isNaN(date)) return 'N/A';
     return date.toLocaleString('en-US', {
         month: 'short',
         day: 'numeric',
