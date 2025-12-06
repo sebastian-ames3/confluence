@@ -1030,7 +1030,7 @@
 
                 // Update status cards
                 if (data.last_collection) {
-                    const lastTime = new Date(data.last_collection.started_at);
+                    const lastTime = parseUTCDate(data.last_collection.started_at);
                     document.getElementById('last-collection-time').textContent = formatTimeAgo(lastTime);
                     document.getElementById('last-collection-type').textContent = data.last_collection.run_type;
                 } else {
@@ -1041,7 +1041,7 @@
                 document.getElementById('content-7d').textContent = data.total_content_7d || 0;
 
                 if (data.latest_synthesis) {
-                    const synthTime = new Date(data.latest_synthesis.generated_at);
+                    const synthTime = parseUTCDate(data.latest_synthesis.generated_at);
                     document.getElementById('last-synthesis-time').textContent = formatTimeAgo(synthTime);
                     document.getElementById('last-synthesis-window').textContent = data.latest_synthesis.time_window + ' window';
                 } else {
@@ -1058,7 +1058,7 @@
                             <div class="source-stats">
                                 <span>${source.items_24h} (24h)</span>
                                 <span>${source.items_7d} (7d)</span>
-                                <span>${source.last_collected ? formatTimeAgo(new Date(source.last_collected)) : 'Never'}</span>
+                                <span>${source.last_collected ? formatTimeAgo(parseUTCDate(source.last_collected)) : 'Never'}</span>
                             </div>
                         </div>
                     `).join('');
@@ -1198,7 +1198,7 @@
             // Update meta info
             document.getElementById('synthesis-window').textContent = data.time_window;
             document.getElementById('synthesis-count').textContent = data.content_count;
-            document.getElementById('synthesis-time').textContent = data.generated_at ? formatDateTime(new Date(data.generated_at)) : '-';
+            document.getElementById('synthesis-time').textContent = data.generated_at ? formatDateTime(parseUTCDate(data.generated_at)) : '-';
 
             // Market regime badge (handle v2 object format)
             const regimeBadge = document.getElementById('market-regime-badge');
@@ -1830,6 +1830,16 @@
             document.getElementById('synthesis-content').style.display = 'none';
         }
 
+        // Parse ISO timestamp as UTC (backend stores UTC but may omit 'Z' suffix)
+        function parseUTCDate(isoString) {
+            if (!isoString) return null;
+            // If no timezone indicator, assume UTC by appending 'Z'
+            if (!isoString.endsWith('Z') && !isoString.includes('+') && !isoString.includes('-', 10)) {
+                isoString = isoString + 'Z';
+            }
+            return new Date(isoString);
+        }
+
         // Format time ago
         function formatTimeAgo(date) {
             const now = new Date();
@@ -1841,7 +1851,7 @@
             return `${Math.floor(diff / 86400)}d ago`;
         }
 
-        // Format date time
+        // Format date time (displays in user's local timezone)
         function formatDateTime(date) {
             return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
         }
