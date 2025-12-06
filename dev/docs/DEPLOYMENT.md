@@ -41,7 +41,7 @@ Complete guide for deploying the Macro Confluence Hub to Railway with automated 
 
 ### Step 2: Configure Environment Variables
 
-In Railway dashboard ’ Variables tab, add:
+In Railway dashboard ï¿½ Variables tab, add:
 
 ```bash
 # AI APIs
@@ -66,14 +66,14 @@ KT_PASSWORD=your_password
 RAILWAY_ENV=production
 ```
 
-**  Important:**
+**ï¿½ Important:**
 - Never commit these to git!
 - Use Railway's environment variable encryption
 - Rotate keys quarterly
 
 ### Step 3: Add Persistent Volume
 
-1. Railway dashboard ’ Settings ’ Volumes
+1. Railway dashboard ï¿½ Settings ï¿½ Volumes
 2. Click "Add Volume"
 3. Mount path: `/data`
 4. Size: 1GB (sufficient for SQLite database)
@@ -85,7 +85,7 @@ This ensures database persists across deployments.
 Railway auto-deploys on every push to `main` branch.
 
 **Manual deploy:**
-1. Railway dashboard ’ Deployments
+1. Railway dashboard ï¿½ Deployments
 2. Click "Deploy Now"
 3. Wait for build (2-3 minutes)
 4. Check logs for errors
@@ -98,7 +98,7 @@ curl https://your-app.up.railway.app/health
 
 ### Step 5: Get Railway URL
 
-1. Railway dashboard ’ Settings ’ Domains
+1. Railway dashboard ï¿½ Settings ï¿½ Domains
 2. Your app URL: `https://confluence-production.up.railway.app`
 3. Copy this URL for Discord local script
 
@@ -108,7 +108,7 @@ curl https://your-app.up.railway.app/health
 
 ### Option A: Separate Railway Service (Recommended)
 
-1. Railway dashboard ’ New Service ’ Empty Service
+1. Railway dashboard ï¿½ New Service ï¿½ Empty Service
 2. Name: "Confluence Scheduler"
 3. Add same environment variables as main service
 4. Deploy Command: `python backend/scheduler.py`
@@ -141,7 +141,7 @@ curl https://your-app.up.railway.app/health
 
 View scheduler logs in Railway:
 ```
-Railway dashboard ’ Service ’ Logs ’ Filter "scheduler"
+Railway dashboard ï¿½ Service ï¿½ Logs ï¿½ Filter "scheduler"
 ```
 
 Logs saved to `scheduler.log` in Railway volume.
@@ -172,7 +172,7 @@ RAILWAY_API_URL=https://confluence-production.up.railway.app
 
 **Get Discord Token:**
 1. Open Discord in browser
-2. Press F12 ’ Network tab
+2. Press F12 ï¿½ Network tab
 3. Reload page
 4. Find any request to `discord.com/api`
 5. Look for `Authorization` header
@@ -196,20 +196,20 @@ Discord Collection - 2025-11-19 18:00:00
 ### Step 4: Windows Task Scheduler
 
 1. Open Task Scheduler (search in Windows)
-2. Create Task ’ General tab:
+2. Create Task ï¿½ General tab:
    - Name: "Confluence Discord 6AM"
    - Description: "Morning Discord collection"
    - Run whether user logged in or not: NO (Discord needs to be running)
    - Run with highest privileges: NO
 
-3. Triggers tab ’ New:
+3. Triggers tab ï¿½ New:
    - Begin the task: On a schedule
    - Daily, recur every 1 days
    - Start: 6:00:00 AM
-   - Advanced: Enable "Repeat task every" ’ unchecked
+   - Advanced: Enable "Repeat task every" ï¿½ unchecked
    - Enabled: YES
 
-4. Actions tab ’ New:
+4. Actions tab ï¿½ New:
    - Action: Start a program
    - Program/script: `C:\Path\To\Python\python.exe`
    - Add arguments: `C:\Path\To\confluence\scripts\discord_local.py --railway-api`
@@ -232,7 +232,7 @@ Discord Collection - 2025-11-19 18:00:00
 
 ### Step 5: Test Scheduled Tasks
 
-Right-click task ’ Run
+Right-click task ï¿½ Run
 
 Check logs:
 ```bash
@@ -285,18 +285,14 @@ railway run python
 
 ### Dashboard Check
 
-Visit dashboard pages:
-1. https://your-app.up.railway.app/index.html - Today's View
-2. https://your-app.up.railway.app/themes.html - Themes
-3. https://your-app.up.railway.app/sources.html - Sources
-4. https://your-app.up.railway.app/matrix.html - Matrix
-5. https://your-app.up.railway.app/historical.html - Historical
+Visit the dashboard:
+- https://your-app.up.railway.app/ - Research Synthesis Hub
 
 **Should See:**
-- Sources populated with content
-- Themes identified and scored
-- Confluence matrix showing pillar scores
-- Historical conviction trends
+- Executive summary with source stances
+- Confluence zones (where sources align)
+- Attention priorities
+- Catalyst calendar
 
 ---
 
@@ -306,7 +302,7 @@ Visit dashboard pages:
 
 **Check build logs:**
 ```
-Railway ’ Deployments ’ Latest ’ Build Logs
+Railway ï¿½ Deployments ï¿½ Latest ï¿½ Build Logs
 ```
 
 **Common Issues:**
@@ -324,7 +320,7 @@ git push origin main
 
 **Check logs:**
 ```
-Railway ’ Scheduler Service ’ Logs
+Railway ï¿½ Scheduler Service ï¿½ Logs
 ```
 
 **Common Issues:**
@@ -360,7 +356,7 @@ python scripts/discord_local.py --railway-api
 
 **Check Railway volume:**
 ```
-Railway ’ Service ’ Data ’ Volumes
+Railway ï¿½ Service ï¿½ Data ï¿½ Volumes
 ```
 
 **Common Issues:**
@@ -467,7 +463,7 @@ railway run "cat > /data/confluence.db" < latest_backup.db
 - Stays within plan limits
 
 ### API Costs
-- Track in Railway ’ Billing
+- Track in Railway ï¿½ Billing
 - Set budget alerts at $100/month
 - Review monthly usage
 
@@ -526,7 +522,7 @@ railway run "cat > /data/confluence.db" < latest_backup.db
  Dashboard shows real data
  No errors in logs for 72 hours
 
-**When all checked:** **<‰ Production Ready!**
+**When all checked:** **<ï¿½ Production Ready!**
 
 ---
 
