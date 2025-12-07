@@ -1,11 +1,12 @@
 -- ============================================================================
 -- Macro Confluence Hub - Database Schema
 -- ============================================================================
--- Version: 1.1
--- Date: 2025-11-20
+-- Version: 1.2
+-- Date: 2025-12-07
 -- Description: Complete SQLite schema for storing collected content,
 --              AI analysis, confluence scores, and theme tracking
 -- Changelog v1.1: Added extracted_images table for Chart Intelligence System
+-- Changelog v1.2: Added schema_version and synthesis_json columns to syntheses
 -- ============================================================================
 
 -- Enable foreign key constraints
@@ -217,7 +218,11 @@ CREATE INDEX IF NOT EXISTS idx_bayesian_updates_time ON bayesian_updates(updated
 CREATE TABLE IF NOT EXISTS syntheses (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
 
-    -- Synthesis content
+    -- Version tracking (v1, v2, v3 synthesis formats)
+    schema_version VARCHAR(10) DEFAULT '1.0', -- "1.0", "2.0", "3.0"
+    synthesis_json TEXT,                      -- Full JSON for v2/v3 syntheses
+
+    -- Synthesis content (v1 format, kept for backwards compatibility)
     synthesis TEXT NOT NULL,                  -- 1-3 paragraph natural language synthesis
     key_themes TEXT,                          -- JSON array of key themes
     high_conviction_ideas TEXT,               -- JSON array of high-conviction ideas
