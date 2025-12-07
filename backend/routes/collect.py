@@ -20,7 +20,7 @@ import asyncio
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 
-from backend.models import get_db, RawContent, Source, SessionLocal
+from backend.models import get_db, RawContent, Source, SessionLocal, AnalyzedContent
 from backend.utils.deduplication import check_duplicate
 
 logger = logging.getLogger(__name__)
@@ -119,10 +119,23 @@ def _transcribe_video_sync(
         raw_content.json_metadata = json.dumps(existing_metadata)
         raw_content.content_text = result["transcript"]  # Store transcript as main content
 
+        # Create AnalyzedContent record so synthesis can find it
+        analyzed_content = AnalyzedContent(
+            raw_content_id=raw_content_id,
+            agent_type="transcript_harvester",
+            analysis_result=json.dumps(result),
+            key_themes=",".join(result.get("key_themes", [])) if result.get("key_themes") else None,
+            tickers_mentioned=",".join(result.get("tickers_mentioned", [])) if result.get("tickers_mentioned") else None,
+            sentiment=result.get("sentiment"),
+            conviction=result.get("conviction"),
+            time_horizon=result.get("time_horizon")
+        )
+        db.add(analyzed_content)
+
         db.commit()
 
         transcript_len = len(result["transcript"])
-        logger.info(f"Transcription complete for {raw_content_id}: {transcript_len} chars, sentiment={result.get('sentiment')}")
+        logger.info(f"Transcription complete for {raw_content_id}: {transcript_len} chars, sentiment={result.get('sentiment')}, AnalyzedContent created")
 
         return True
 
