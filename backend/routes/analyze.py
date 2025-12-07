@@ -136,6 +136,10 @@ def run_pdf_analysis(raw_content, metadata: Dict, db: Session) -> Dict:
         return {"error": "No file path"}
 
     if not os.path.exists(file_path):
+        # Check if text was already extracted locally (42 Macro case)
+        if metadata.get("text_extracted") and raw_content.content_text:
+            logger.info(f"PDF text already extracted locally for content {raw_content.id}, skipping PDF analysis")
+            return {"skipped": "Text already extracted locally"}
         logger.warning(f"PDF file not found: {file_path}")
         return {"error": f"File not found: {file_path}"}
 

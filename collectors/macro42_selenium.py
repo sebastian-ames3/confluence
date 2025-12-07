@@ -31,10 +31,40 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
+import PyPDF2
 
 from collectors.base_collector import BaseCollector
 
 logger = logging.getLogger(__name__)
+
+
+def extract_pdf_text(pdf_path: str, max_chars: int = 50000) -> str:
+    """
+    Extract text content from a PDF file.
+
+    Args:
+        pdf_path: Path to the PDF file
+        max_chars: Maximum characters to extract (to avoid huge uploads)
+
+    Returns:
+        Extracted text content
+    """
+    try:
+        text_parts = []
+        with open(pdf_path, 'rb') as f:
+            reader = PyPDF2.PdfReader(f)
+            for page in reader.pages:
+                page_text = page.extract_text()
+                if page_text:
+                    text_parts.append(page_text)
+                # Stop if we have enough
+                if sum(len(t) for t in text_parts) > max_chars:
+                    break
+        full_text = "\n\n".join(text_parts)
+        return full_text[:max_chars] if len(full_text) > max_chars else full_text
+    except Exception as e:
+        logger.warning(f"Failed to extract PDF text from {pdf_path}: {e}")
+        return ""
 
 # Global reference for cleanup handler
 _active_driver = None
@@ -491,12 +521,18 @@ class Macro42Collector(BaseCollector):
                         pdf_path.rename(new_path)
                         logger.info(f"Downloaded and renamed: {new_filename}")
 
-                        # Create content item with downloaded file
+                        # Extract PDF text content for upload to Railway
+                        # (Railway can't access local file paths)
+                        extracted_text = extract_pdf_text(str(new_path))
+                        content_text = f"{title}\n\n{extracted_text}" if extracted_text else title
+                        logger.info(f"Extracted {len(extracted_text)} chars from PDF")
+
+                        # Create content item with extracted text
                         pdfs.append({
                             "content_type": "pdf",
-                            "file_path": str(new_path),
+                            "file_path": str(new_path),  # Keep for local reference
                             "url": research_url,
-                            "content_text": title,
+                            "content_text": content_text,  # Full extracted text for Railway
                             "collected_at": datetime.utcnow().isoformat(),
                             "metadata": {
                                 "title": title,
@@ -504,7 +540,8 @@ class Macro42Collector(BaseCollector):
                                 "date": date_text,
                                 "is_locked": is_locked,
                                 "source_url": research_url,
-                                "file_size_mb": round(new_path.stat().st_size / (1024 * 1024), 2)
+                                "file_size_mb": round(new_path.stat().st_size / (1024 * 1024), 2),
+                                "text_extracted": len(extracted_text) > 0
                             }
                         })
 
