@@ -9,16 +9,19 @@ from sqlalchemy.orm import Session
 from typing import List, Dict, Any
 import logging
 import json
+import os
 
 from backend.models import get_db, RawContent, AnalyzedContent
 from agents.content_classifier import ContentClassifierAgent
+from agents.image_intelligence import ImageIntelligenceAgent
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/analyze", tags=["analyze"])
 
 
-# Initialize classifier agent (singleton)
+# Initialize agents (singletons)
 classifier_agent = None
+image_agent = None
 
 
 def get_classifier():
@@ -27,6 +30,81 @@ def get_classifier():
     if classifier_agent is None:
         classifier_agent = ContentClassifierAgent()
     return classifier_agent
+
+
+def get_image_agent():
+    """Get or create image intelligence agent instance."""
+    global image_agent
+    if image_agent is None:
+        image_agent = ImageIntelligenceAgent()
+    return image_agent
+
+
+def run_image_analysis(raw_content, metadata: Dict, db: Session) -> List[Dict]:
+    """
+    Run image intelligence agent on images in content.
+
+    Args:
+        raw_content: RawContent object
+        metadata: Parsed metadata dict containing image_paths
+        db: Database session
+
+    Returns:
+        List of image analysis results
+    """
+    results = []
+    image_paths = metadata.get("image_paths", [])
+
+    if not image_paths:
+        logger.debug(f"No images to analyze for content {raw_content.id}")
+        return results
+
+    agent = get_image_agent()
+    source_name = raw_content.source.name if raw_content.source else "unknown"
+
+    for image_path in image_paths:
+        try:
+            # Check if image file exists
+            if not os.path.exists(image_path):
+                logger.warning(f"Image file not found: {image_path}")
+                continue
+
+            # Run image analysis
+            analysis = agent.analyze(
+                image_path=image_path,
+                source=source_name,
+                context=raw_content.content_text[:500] if raw_content.content_text else None,
+                metadata=metadata
+            )
+
+            # Save analysis to database
+            analyzed_content = AnalyzedContent(
+                raw_content_id=raw_content.id,
+                agent_type="image_intelligence",
+                analysis_result=json.dumps(analysis),
+                key_themes=",".join(analysis.get("key_themes", [])) if analysis.get("key_themes") else None,
+                tickers_mentioned=",".join(analysis.get("tickers", [])) if analysis.get("tickers") else None,
+                sentiment=analysis.get("sentiment"),
+                conviction=analysis.get("conviction_score"),
+                time_horizon=analysis.get("time_horizon")
+            )
+            db.add(analyzed_content)
+
+            results.append({
+                "image_path": image_path,
+                "analysis": analysis
+            })
+
+            logger.info(f"Analyzed image {image_path} for content {raw_content.id}")
+
+        except Exception as e:
+            logger.error(f"Failed to analyze image {image_path}: {str(e)}")
+            results.append({
+                "image_path": image_path,
+                "error": str(e)
+            })
+
+    return results
 
 
 @router.post("/classify/{raw_content_id}")
@@ -148,7 +226,7 @@ async def classify_batch(
                 # Classify
                 result = classifier.classify(content_dict)
 
-                # Save to database
+                # Save classification to database
                 analyzed_content = AnalyzedContent(
                     raw_content_id=raw_content.id,
                     agent_type="classifier",
@@ -161,6 +239,14 @@ async def classify_batch(
 
                 db.add(analyzed_content)
 
+                # Run specialized agents based on routing
+                route_to = result.get("route_to_agents", [])
+                image_results = []
+
+                if "image_intelligence" in route_to:
+                    metadata = content_dict.get("metadata", {})
+                    image_results = run_image_analysis(raw_content, metadata, db)
+
                 # Mark as processed
                 raw_content.processed = True
 
@@ -168,7 +254,8 @@ async def classify_batch(
                     "raw_content_id": raw_content.id,
                     "classification": result["classification"],
                     "priority": result["priority"],
-                    "route_to": result["route_to_agents"]
+                    "route_to": route_to,
+                    "images_analyzed": len([r for r in image_results if "analysis" in r])
                 })
 
             except Exception as e:

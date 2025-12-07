@@ -52,6 +52,7 @@ class ContentClassifierAgent(BaseAgent):
         "video": ["transcript_harvester"],
         "pdf": ["pdf_analyzer"],
         "image": ["image_intelligence"],
+        "blog_post": ["image_intelligence"],  # Blog posts often contain chart images
         "text": [],  # Will be determined by information density
     }
 
@@ -310,6 +311,9 @@ Respond with JSON only."""
             route_to = ["pdf_analyzer", "confluence_scorer"]
             classification = "pdf_analysis"
         elif content_type == "image":
+            route_to = ["image_intelligence", "confluence_scorer"]
+            classification = "image_intelligence"
+        elif content_type == "blog_post":
             route_to = ["image_intelligence", "confluence_scorer"]
             classification = "image_intelligence"
         else:
