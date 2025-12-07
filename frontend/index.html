@@ -471,6 +471,105 @@
             cursor: not-allowed;
         }
 
+        /* Collection Trigger Styles */
+        .collection-triggers {
+            margin-bottom: var(--spacing-lg);
+            padding: var(--spacing-md);
+            background: var(--bg-card);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+        }
+
+        .collection-triggers-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .collection-triggers-title {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .trigger-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--spacing-sm);
+        }
+
+        .btn-trigger {
+            background: transparent;
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            padding: var(--spacing-sm) var(--spacing-md);
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+        }
+
+        .btn-trigger:hover {
+            border-color: var(--primary);
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .btn-trigger:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-trigger.success {
+            border-color: var(--success);
+            color: var(--success);
+        }
+
+        .btn-trigger.error {
+            border-color: var(--danger);
+            color: var(--danger);
+        }
+
+        .btn-trigger-local {
+            background: transparent;
+            color: var(--text-muted);
+            border: 1px dashed var(--border-color);
+            padding: var(--spacing-sm) var(--spacing-md);
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+            cursor: help;
+        }
+
+        .local-info-tooltip {
+            display: none;
+            position: absolute;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: var(--spacing-md);
+            font-size: 0.8rem;
+            max-width: 300px;
+            z-index: 100;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .local-info-tooltip.show {
+            display: block;
+        }
+
+        .local-info-tooltip code {
+            background: rgba(0,0,0,0.3);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.75rem;
+            display: block;
+            margin: var(--spacing-xs) 0;
+            word-break: break-all;
+        }
+
         /* V3 Research Consumption Hub Styles (PRD-021) - Clean Design */
         .v3-executive-summary {
             background: rgba(255, 255, 255, 0.03);
@@ -866,6 +965,33 @@
             </div>
         </div>
 
+        <!-- Collection Triggers -->
+        <div class="collection-triggers">
+            <div class="collection-triggers-header">
+                <span class="collection-triggers-title">Manual Collection</span>
+            </div>
+            <div class="trigger-buttons">
+                <button class="btn-trigger" id="trigger-youtube" onclick="triggerCollection('youtube')">
+                    Collect YouTube
+                </button>
+                <button class="btn-trigger" id="trigger-substack" onclick="triggerCollection('substack')">
+                    Collect Substack
+                </button>
+                <button class="btn-trigger" id="trigger-kt_technical" onclick="triggerCollection('kt_technical')">
+                    Collect KT Technical
+                </button>
+                <span class="btn-trigger-local" onclick="showLocalInfo(event)" title="Click for instructions">
+                    Discord / 42 Macro (local)
+                </span>
+                <div class="local-info-tooltip" id="local-tooltip">
+                    <strong>These run locally on your laptop:</strong>
+                    <code>python dev/scripts/discord_local.py --railway-api</code>
+                    <code>python dev/scripts/macro42_local.py --railway-api</code>
+                    <div style="margin-top: 8px; color: var(--text-muted);">Scheduled: 6 AM & 6 PM daily</div>
+                </div>
+            </div>
+        </div>
+
         <!-- Action Buttons -->
         <div class="action-buttons">
             <button class="btn-analyze" id="analyze-btn" onclick="analyzeContent()">
@@ -1060,6 +1186,83 @@
 
             } catch (error) {
                 console.error('Error loading status:', error);
+            }
+        }
+
+        // Trigger manual collection for a source
+        async function triggerCollection(sourceName) {
+            const btn = document.getElementById(`trigger-${sourceName}`);
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading-spinner"></span> Collecting...';
+            btn.classList.remove('success', 'error');
+
+            try {
+                const response = await fetch(`${API_BASE}/collect/trigger/${sourceName}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok && (data.status === 'success' || data.status === 'info')) {
+                    btn.classList.add('success');
+                    const savedCount = data.saved || 0;
+                    btn.textContent = savedCount > 0 ? `Done (${savedCount} new)` : 'Done (0 new)';
+
+                    // Refresh status to show new content
+                    await loadStatus();
+
+                    // Reset button after 3 seconds
+                    setTimeout(() => {
+                        btn.textContent = originalText;
+                        btn.classList.remove('success');
+                    }, 3000);
+                } else {
+                    throw new Error(data.detail || data.message || 'Collection failed');
+                }
+
+            } catch (error) {
+                console.error('Error triggering collection:', error);
+                btn.classList.add('error');
+                btn.textContent = 'Error';
+
+                // Reset button after 3 seconds
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.classList.remove('error');
+                }, 3000);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        // Show local collection info tooltip
+        function showLocalInfo(event) {
+            const tooltip = document.getElementById('local-tooltip');
+            tooltip.classList.toggle('show');
+
+            // Position tooltip near the clicked element
+            const rect = event.target.getBoundingClientRect();
+            tooltip.style.position = 'fixed';
+            tooltip.style.left = `${rect.left}px`;
+            tooltip.style.top = `${rect.bottom + 8}px`;
+
+            // Close when clicking elsewhere
+            if (tooltip.classList.contains('show')) {
+                setTimeout(() => {
+                    document.addEventListener('click', closeTooltipOnClickOutside, { once: true });
+                }, 0);
+            }
+        }
+
+        function closeTooltipOnClickOutside(event) {
+            const tooltip = document.getElementById('local-tooltip');
+            const localBtn = document.querySelector('.btn-trigger-local');
+            if (!tooltip.contains(event.target) && event.target !== localBtn) {
+                tooltip.classList.remove('show');
             }
         }
 
