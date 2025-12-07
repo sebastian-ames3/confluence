@@ -14,6 +14,7 @@ import os
 from backend.models import get_db, RawContent, AnalyzedContent
 from agents.content_classifier import ContentClassifierAgent
 from agents.image_intelligence import ImageIntelligenceAgent
+from agents.pdf_analyzer import PDFAnalyzerAgent
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/analyze", tags=["analyze"])
@@ -22,6 +23,7 @@ router = APIRouter(prefix="/analyze", tags=["analyze"])
 # Initialize agents (singletons)
 classifier_agent = None
 image_agent = None
+pdf_agent = None
 
 
 def get_classifier():
@@ -38,6 +40,14 @@ def get_image_agent():
     if image_agent is None:
         image_agent = ImageIntelligenceAgent()
     return image_agent
+
+
+def get_pdf_agent():
+    """Get or create PDF analyzer agent instance."""
+    global pdf_agent
+    if pdf_agent is None:
+        pdf_agent = PDFAnalyzerAgent()
+    return pdf_agent
 
 
 def run_image_analysis(raw_content, metadata: Dict, db: Session) -> List[Dict]:
@@ -105,6 +115,62 @@ def run_image_analysis(raw_content, metadata: Dict, db: Session) -> List[Dict]:
             })
 
     return results
+
+
+def run_pdf_analysis(raw_content, metadata: Dict, db: Session) -> Dict:
+    """
+    Run PDF analyzer agent on PDF content.
+
+    Args:
+        raw_content: RawContent object with file_path to PDF
+        metadata: Parsed metadata dict
+        db: Database session
+
+    Returns:
+        PDF analysis result
+    """
+    file_path = raw_content.file_path
+
+    if not file_path:
+        logger.warning(f"No file_path for PDF content {raw_content.id}")
+        return {"error": "No file path"}
+
+    if not os.path.exists(file_path):
+        logger.warning(f"PDF file not found: {file_path}")
+        return {"error": f"File not found: {file_path}"}
+
+    try:
+        agent = get_pdf_agent()
+        source_name = raw_content.source.name if raw_content.source else "unknown"
+
+        # Run PDF analysis
+        analysis = agent.analyze(
+            pdf_path=file_path,
+            source=source_name,
+            metadata=metadata,
+            analyze_images=True  # Enable image extraction from PDFs
+        )
+
+        # Save analysis to database
+        analyzed_content = AnalyzedContent(
+            raw_content_id=raw_content.id,
+            agent_type="pdf_analyzer",
+            analysis_result=json.dumps(analysis),
+            key_themes=",".join(analysis.get("key_themes", [])) if analysis.get("key_themes") else None,
+            tickers_mentioned=",".join(analysis.get("tickers_mentioned", [])) if analysis.get("tickers_mentioned") else None,
+            sentiment=analysis.get("market_sentiment"),
+            conviction=analysis.get("conviction_score"),
+            time_horizon=analysis.get("time_horizon")
+        )
+        db.add(analyzed_content)
+
+        logger.info(f"Analyzed PDF {file_path} for content {raw_content.id}")
+
+        return {"analysis": analysis}
+
+    except Exception as e:
+        logger.error(f"Failed to analyze PDF {file_path}: {str(e)}")
+        return {"error": str(e)}
 
 
 @router.post("/classify/{raw_content_id}")
@@ -241,10 +307,14 @@ async def classify_batch(
 
                 # Run specialized agents based on routing
                 route_to = result.get("route_to_agents", [])
+                metadata = content_dict.get("metadata", {})
                 image_results = []
+                pdf_result = {}
+
+                if "pdf_analyzer" in route_to:
+                    pdf_result = run_pdf_analysis(raw_content, metadata, db)
 
                 if "image_intelligence" in route_to:
-                    metadata = content_dict.get("metadata", {})
                     image_results = run_image_analysis(raw_content, metadata, db)
 
                 # Mark as processed
@@ -255,6 +325,7 @@ async def classify_batch(
                     "classification": result["classification"],
                     "priority": result["priority"],
                     "route_to": route_to,
+                    "pdf_analyzed": "analysis" in pdf_result,
                     "images_analyzed": len([r for r in image_results if "analysis" in r])
                 })
 
