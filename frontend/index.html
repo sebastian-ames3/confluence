@@ -910,6 +910,92 @@
         .impact-medium { border-color: rgba(251, 191, 36, 0.5); color: #fbbf24; }
         .impact-low { border-color: var(--border-color); }
 
+        /* Enhanced Executive Summary Styles (PRD-025) */
+        .macro-context {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-lg);
+            padding-bottom: var(--spacing-md);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .section-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .source-highlights-section {
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .source-highlight {
+            margin-bottom: var(--spacing-md);
+        }
+
+        .source-highlight-header {
+            border-left: 3px solid var(--primary);
+            padding-left: var(--spacing-sm);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .source-highlight-name {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--text-primary);
+        }
+
+        .source-highlight-text {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            line-height: 1.6;
+            padding-left: calc(var(--spacing-sm) + 3px);
+        }
+
+        .synthesis-narrative-section {
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .synthesis-narrative-section .v3-executive-narrative p {
+            margin-bottom: var(--spacing-md);
+        }
+
+        .key-takeaways {
+            background: rgba(59, 130, 246, 0.05);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .key-takeaways-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--primary);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .key-takeaways-list {
+            margin: 0;
+            padding-left: var(--spacing-lg);
+            color: var(--text-primary);
+        }
+
+        .key-takeaways-list li {
+            margin-bottom: var(--spacing-xs);
+            line-height: 1.5;
+        }
+
+        .key-takeaways-list li:last-child {
+            margin-bottom: 0;
+        }
+
         /* Simple header for this view */
         .simple-header {
             text-align: center;
@@ -1743,10 +1829,13 @@
             `).join('');
         }
 
-        // V3: Display executive summary
+        // V3: Display executive summary (enhanced PRD-025 format)
         function displayV3ExecutiveSummary(summary) {
             const container = document.getElementById('v3-executive-section');
-            if (!summary || !summary.narrative) {
+
+            // Handle both old format (narrative) and new format (synthesis_narrative)
+            const hasContent = summary && (summary.narrative || summary.synthesis_narrative || summary.macro_context);
+            if (!hasContent) {
                 container.style.display = 'none';
                 return;
             }
@@ -1755,13 +1844,97 @@
             const tone = summary.overall_tone || 'uncertain';
             const theme = summary.dominant_theme || '';
 
-            container.innerHTML = `
-                <div class="v3-executive-narrative">${summary.narrative}</div>
-                <div class="v3-executive-meta">
-                    <span class="v3-tone-badge tone-${tone}">${tone}</span>
-                    ${theme ? `<span class="v3-dominant-theme">Focus: ${theme}</span>` : ''}
-                </div>
-            `;
+            // Check if this is enhanced format (PRD-025)
+            const isEnhanced = summary.source_highlights || summary.synthesis_narrative || summary.key_takeaways;
+
+            if (isEnhanced) {
+                // Enhanced format with per-source highlights
+                const macroContext = summary.macro_context || '';
+                const sourceHighlights = summary.source_highlights || {};
+                const synthesisNarrative = summary.synthesis_narrative || '';
+                const keyTakeaways = summary.key_takeaways || [];
+
+                // Build source highlights HTML
+                const sourceOrder = ['42macro', 'discord', 'kt_technical', 'youtube', 'substack'];
+                const sourceLabels = {
+                    '42macro': '42 Macro',
+                    'discord': 'Discord (Imran)',
+                    'kt_technical': 'KT Technical',
+                    'youtube': 'YouTube',
+                    'substack': 'Substack'
+                };
+                const sourceColors = {
+                    '42macro': '#3b82f6',
+                    'discord': '#22c55e',
+                    'kt_technical': '#eab308',
+                    'youtube': '#ef4444',
+                    'substack': '#f97316'
+                };
+
+                let sourceHighlightsHtml = '';
+                for (const source of sourceOrder) {
+                    const highlight = sourceHighlights[source];
+                    if (highlight && highlight !== 'null' && highlight.length > 0) {
+                        const color = sourceColors[source] || '#6b7280';
+                        sourceHighlightsHtml += `
+                            <div class="source-highlight">
+                                <div class="source-highlight-header" style="border-left-color: ${color}">
+                                    <span class="source-highlight-name">${sourceLabels[source] || source}</span>
+                                </div>
+                                <div class="source-highlight-text">${highlight}</div>
+                            </div>
+                        `;
+                    }
+                }
+
+                // Build key takeaways HTML
+                let takeawaysHtml = '';
+                if (keyTakeaways.length > 0) {
+                    takeawaysHtml = `
+                        <div class="key-takeaways">
+                            <div class="key-takeaways-title">Key Takeaways</div>
+                            <ol class="key-takeaways-list">
+                                ${keyTakeaways.map(t => `<li>${t}</li>`).join('')}
+                            </ol>
+                        </div>
+                    `;
+                }
+
+                // Render enhanced format
+                container.innerHTML = `
+                    ${macroContext ? `<div class="macro-context">${macroContext}</div>` : ''}
+
+                    ${sourceHighlightsHtml ? `
+                        <div class="source-highlights-section">
+                            <div class="section-label">Source Highlights</div>
+                            ${sourceHighlightsHtml}
+                        </div>
+                    ` : ''}
+
+                    ${synthesisNarrative ? `
+                        <div class="synthesis-narrative-section">
+                            <div class="section-label">Synthesis</div>
+                            <div class="v3-executive-narrative">${synthesisNarrative.replace(/\n\n/g, '</p><p>').replace(/^/, '<p>').replace(/$/, '</p>')}</div>
+                        </div>
+                    ` : ''}
+
+                    ${takeawaysHtml}
+
+                    <div class="v3-executive-meta">
+                        <span class="v3-tone-badge tone-${tone}">${tone}</span>
+                        ${theme ? `<span class="v3-dominant-theme">Theme: ${theme}</span>` : ''}
+                    </div>
+                `;
+            } else {
+                // Legacy format (simple narrative)
+                container.innerHTML = `
+                    <div class="v3-executive-narrative">${summary.narrative}</div>
+                    <div class="v3-executive-meta">
+                        <span class="v3-tone-badge tone-${tone}">${tone}</span>
+                        ${theme ? `<span class="v3-dominant-theme">Focus: ${theme}</span>` : ''}
+                    </div>
+                `;
+            }
         }
 
         // V3: Display attention priorities
