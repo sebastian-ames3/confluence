@@ -117,6 +117,82 @@ def run_image_analysis(raw_content, metadata: Dict, db: Session) -> List[Dict]:
     return results
 
 
+def run_text_analysis(raw_content, metadata: Dict, db: Session) -> Dict:
+    """
+    Analyze already-extracted text content for themes, sentiment, conviction.
+
+    Used for 42 Macro PDFs where text is extracted locally but we still
+    need to create a proper AnalyzedContent record for synthesis.
+
+    Args:
+        raw_content: RawContent object with content_text
+        metadata: Parsed metadata dict
+        db: Database session
+
+    Returns:
+        Analysis result
+    """
+    from agents.base_agent import BaseAgent
+
+    try:
+        source_name = raw_content.source.name if raw_content.source else "unknown"
+        content_text = raw_content.content_text or ""
+        title = metadata.get("title", "Untitled")
+
+        # Use base agent for simple text analysis
+        agent = BaseAgent()
+
+        # Build analysis prompt
+        prompt = f"""Analyze this investment research content and extract key information.
+
+**Source**: {source_name}
+**Title**: {title}
+
+**Content**:
+{content_text[:8000]}
+
+Provide analysis as JSON:
+{{
+  "key_themes": ["theme1", "theme2"],
+  "tickers_mentioned": ["SPY", "QQQ"],
+  "market_sentiment": "bullish" | "bearish" | "neutral" | "mixed",
+  "conviction_score": 1-10,
+  "time_horizon": "1d" | "1w" | "1m" | "3m" | "6m+",
+  "summary": "2-3 sentence summary of the key points"
+}}"""
+
+        system_prompt = """You are an investment research analyst. Extract key themes, tickers, sentiment, and conviction from the content. Be accurate and concise. Respond with JSON only."""
+
+        analysis = agent.call_claude(
+            prompt=prompt,
+            system_prompt=system_prompt,
+            max_tokens=1000,
+            temperature=0.0,
+            expect_json=True
+        )
+
+        # Save analysis to database
+        analyzed_content = AnalyzedContent(
+            raw_content_id=raw_content.id,
+            agent_type="text_analyzer",
+            analysis_result=json.dumps(analysis),
+            key_themes=",".join(analysis.get("key_themes", [])) if analysis.get("key_themes") else None,
+            tickers_mentioned=",".join(analysis.get("tickers_mentioned", [])) if analysis.get("tickers_mentioned") else None,
+            sentiment=analysis.get("market_sentiment"),
+            conviction=analysis.get("conviction_score"),
+            time_horizon=analysis.get("time_horizon")
+        )
+        db.add(analyzed_content)
+
+        logger.info(f"Analyzed text content {raw_content.id}: sentiment={analysis.get('market_sentiment')}, themes={len(analysis.get('key_themes', []))}")
+
+        return {"analysis": analysis}
+
+    except Exception as e:
+        logger.error(f"Failed to analyze text content {raw_content.id}: {str(e)}")
+        return {"error": str(e)}
+
+
 def run_pdf_analysis(raw_content, metadata: Dict, db: Session) -> Dict:
     """
     Run PDF analyzer agent on PDF content.
@@ -131,15 +207,17 @@ def run_pdf_analysis(raw_content, metadata: Dict, db: Session) -> Dict:
     """
     file_path = raw_content.file_path
 
+    # Check if text was already extracted locally (42 Macro case)
+    # Still need to analyze the text for themes, sentiment, conviction
+    if metadata.get("text_extracted") and raw_content.content_text:
+        logger.info(f"PDF text already extracted locally for content {raw_content.id}, analyzing text directly")
+        return run_text_analysis(raw_content, metadata, db)
+
     if not file_path:
         logger.warning(f"No file_path for PDF content {raw_content.id}")
         return {"error": "No file path"}
 
     if not os.path.exists(file_path):
-        # Check if text was already extracted locally (42 Macro case)
-        if metadata.get("text_extracted") and raw_content.content_text:
-            logger.info(f"PDF text already extracted locally for content {raw_content.id}, skipping PDF analysis")
-            return {"skipped": "Text already extracted locally"}
         logger.warning(f"PDF file not found: {file_path}")
         return {"error": f"File not found: {file_path}"}
 
