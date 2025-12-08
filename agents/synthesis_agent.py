@@ -854,10 +854,29 @@ Key events mentioned: {', '.join(extracted['dates'][:10]) or 'None'}
 
 ## REQUIRED OUTPUT (JSON)
 
-### 1. executive_summary (required object)
+### 1. executive_summary (required object - COMPREHENSIVE FORMAT)
 {{
-  "narrative": "2-4 sentences describing what your sources are saying. Write in second person: 'Your macro sources are highlighting X. Discord is positioned for Y. The technical picture shows Z.'",
-  "overall_tone": "cautious|constructive|mixed|uncertain",
+  "macro_context": "1-2 sentences setting the stage for what's happening in markets right now. E.g., 'Markets are navigating the final trading days before FOMC amid mixed signals on inflation trajectory.'",
+
+  "source_highlights": {{
+    "42macro": "2-3 sentences on 42Macro's current stance. What is Darius focusing on? What's his framework saying?",
+    "discord": "2-3 sentences on Discord's current focus. What is Imran positioned for? What structures is he using?",
+    "kt_technical": "2-3 sentences on KT Technical's view. What do the Elliott Wave counts show? Key levels?",
+    "youtube": "1-2 sentences if relevant content, otherwise null",
+    "substack": "1-2 sentences if relevant content, otherwise null"
+  }},
+
+  "synthesis_narrative": "2-3 PARAGRAPHS connecting the dots across all sources:\\n\\nParagraph 1: Where sources ALIGN (confluence). What themes do multiple sources agree on?\\n\\nParagraph 2: Where sources DIFFER and what that means. What conflicts exist and how might they resolve?\\n\\nParagraph 3: What deserves attention and why. What's the overall picture?",
+
+  "key_takeaways": [
+    "Takeaway 1: Most important insight (be specific with levels/dates)",
+    "Takeaway 2: Second most important insight",
+    "Takeaway 3: Third insight",
+    "Takeaway 4: Optional fourth insight",
+    "Takeaway 5: Optional fifth insight"
+  ],
+
+  "overall_tone": "bullish|bearish|neutral|cautious|uncertain|transitioning",
   "dominant_theme": "The single most important theme across sources"
 }}
 
@@ -961,7 +980,10 @@ RESPOND WITH VALID JSON ONLY."""
         return {
             "version": "3.0",
             "executive_summary": {
-                "narrative": f"No content collected in the past {time_window}. Run collection to gather research data.",
+                "macro_context": f"No content collected in the past {time_window}.",
+                "source_highlights": {},
+                "synthesis_narrative": "Run collection to gather research data.",
+                "key_takeaways": [],
                 "overall_tone": "uncertain",
                 "dominant_theme": None
             },
@@ -1020,10 +1042,11 @@ RESPOND WITH VALID JSON ONLY."""
         )
 
         # Call Claude with v3 system prompt
+        # Increased max_tokens for enhanced executive summary (PRD-025)
         response = self.call_claude(
             prompt=prompt,
             system_prompt=self.SYSTEM_PROMPT_V3,
-            max_tokens=4000,
+            max_tokens=5000,
             temperature=0.25,
             expect_json=True
         )

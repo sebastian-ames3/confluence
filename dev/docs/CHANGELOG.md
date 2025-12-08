@@ -1,5 +1,39 @@
 # Changelog
 
+## [1.6.0] - 2025-12-07
+
+### Added
+- **[PRD-024] Theme Tracking System** (In Progress)
+  - PRD created: structured theme tracking with source-level evidence
+  - Theme lifecycle: emerging → active → evolved → dormant
+  - Claude-based semantic matching for theme consolidation
+  - Per-source evidence tracking without pseudo-Bayesian scores
+
+- **[PRD-025] Enhanced Synthesis Summary** (In Progress)
+  - Updated v3 synthesis prompt with comprehensive executive_summary
+  - Added: macro_context, source_highlights, synthesis_narrative, key_takeaways
+  - Increased max_tokens from 4000→5000 for expanded output
+
+### Changed
+- `agents/synthesis_agent.py` - Enhanced executive_summary schema for v3
+- `CLAUDE.md` - Updated with PRD-024/025 status
+
+---
+
+## [1.5.0] - 2025-12-06
+
+### Added
+- Manual collection trigger buttons on dashboard (YouTube, Substack, KT Technical)
+- Migration 005: schema_version and synthesis_json columns for v2/v3 persistence
+
+### Fixed
+- KT Technical image analysis: Added "blog_post" to classifier ROUTING_MAP
+- 42 Macro PDF analysis: Added run_pdf_analysis execution to analyze.py
+- 42 Macro local PDFs: Extract text via PyPDF2 before Railway upload
+- Video transcripts: Create AnalyzedContent records after transcription
+
+---
+
 ## [1.4.0] - 2025-12-03
 
 ### Added
@@ -97,20 +131,14 @@
 
 ---
 
-## PRD Completion Status
+## PRD Status
 
 | PRD | Status |
 |-----|--------|
-| 001-011 | Complete |
-| 012 | Complete |
-| 013 | Complete |
-| 014 | Complete |
-| 015 | Complete |
-| 016 | Complete |
-| 017 | Complete |
-| 018 | Not started |
-| 019 | Complete |
+| 001-023 | Complete |
+| 024 | In Progress |
+| 025 | In Progress |
 
 ---
 
-**Last Updated**: 2025-12-03
+**Last Updated**: 2025-12-07
