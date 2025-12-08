@@ -1,12 +1,13 @@
 -- ============================================================================
 -- Macro Confluence Hub - Database Schema
 -- ============================================================================
--- Version: 1.2
+-- Version: 1.3
 -- Date: 2025-12-07
 -- Description: Complete SQLite schema for storing collected content,
 --              AI analysis, confluence scores, and theme tracking
 -- Changelog v1.1: Added extracted_images table for Chart Intelligence System
 -- Changelog v1.2: Added schema_version and synthesis_json columns to syntheses
+-- Changelog v1.3: PRD-024 theme tracking columns (aliases, evolved_from, source_evidence, catalysts, first_source, last_updated_at)
 -- ============================================================================
 
 -- Enable foreign key constraints
@@ -140,34 +141,50 @@ CREATE INDEX IF NOT EXISTS idx_confluence_scores_scored_at ON confluence_scores(
 
 -- ============================================================================
 -- TABLE: themes
--- Purpose: Tracks active investment ideas being monitored
+-- Purpose: Tracks active investment themes with source-level evidence (PRD-024)
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS themes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL UNIQUE,              -- "Tech sector rotation", "Fed pivot imminent"
+    name TEXT NOT NULL UNIQUE,              -- "FOMC hawkish cut expectations"
     description TEXT,
 
-    -- Confluence tracking
-    current_conviction REAL NOT NULL CHECK(current_conviction >= 0.0 AND current_conviction <= 1.0),
+    -- PRD-024: Theme aliases (alternative expressions of same theme)
+    aliases TEXT,                           -- JSON array: ["Fed December decision", "Hawkish 25bp cut"]
+
+    -- PRD-024: Theme evolution tracking
+    evolved_from_theme_id INTEGER,          -- Self-reference for evolved themes
+    FOREIGN KEY (evolved_from_theme_id) REFERENCES themes(id),
+
+    -- PRD-024: Per-source evidence (replaces numerical conviction)
+    source_evidence TEXT,                   -- JSON: {"42macro": [{date, summary, strength}], ...}
+
+    -- PRD-024: Related catalysts
+    catalysts TEXT,                         -- JSON array: [{date, event, impact}]
+
+    -- PRD-024: First source attribution
+    first_source TEXT,                      -- Source that first mentioned theme
+
+    -- Theme lifecycle (PRD-024: emerging -> active -> evolved -> dormant)
+    first_mentioned_at TIMESTAMP,
+    status TEXT DEFAULT 'emerging' CHECK(status IN ('emerging', 'active', 'evolved', 'dormant')),
+    last_updated_at TIMESTAMP,
+
+    -- Legacy fields (kept for backwards compatibility)
+    current_conviction REAL DEFAULT 0.5,
     confidence_interval_low REAL,
     confidence_interval_high REAL,
-
-    -- Theme lifecycle
-    first_mentioned_at TIMESTAMP,
-    status TEXT DEFAULT 'active' CHECK(status IN ('active', 'acted_upon', 'invalidated', 'archived')),
-
-    -- Bayesian tracking
     prior_probability REAL,
     evidence_count INTEGER DEFAULT 0,
 
-    json_metadata TEXT,                     -- JSON: Supporting sources, related tickers, etc.
+    json_metadata TEXT,                     -- JSON: Additional metadata
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Indexes for themes
 CREATE INDEX IF NOT EXISTS idx_themes_status ON themes(status);
-CREATE INDEX IF NOT EXISTS idx_themes_conviction ON themes(current_conviction DESC);
+CREATE INDEX IF NOT EXISTS idx_themes_first_source ON themes(first_source);
+CREATE INDEX IF NOT EXISTS idx_themes_last_updated ON themes(last_updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_themes_updated_at ON themes(updated_at DESC);
 
 -- ============================================================================

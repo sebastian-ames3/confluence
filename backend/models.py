@@ -146,23 +146,37 @@ class ConfluenceScore(Base):
 
 
 class Theme(Base):
-    """Investment themes being tracked"""
+    """Investment themes being tracked (PRD-024)"""
     __tablename__ = "themes"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String, nullable=False, unique=True)
     description = Column(Text)
 
-    # Confluence tracking
-    current_conviction = Column(Float, nullable=False)
+    # PRD-024: Theme aliases (JSON array of alternative expressions)
+    aliases = Column(Text)  # JSON array
+
+    # PRD-024: Theme evolution tracking
+    evolved_from_theme_id = Column(Integer, ForeignKey("themes.id"))
+
+    # PRD-024: Per-source evidence (JSON with source-specific evidence)
+    source_evidence = Column(Text)  # JSON: {"42macro": [...], "discord": [...]}
+
+    # PRD-024: Related catalysts (JSON array)
+    catalysts = Column(Text)  # JSON array
+
+    # PRD-024: First source to mention theme
+    first_source = Column(String)
+
+    # Theme lifecycle (PRD-024: emerging -> active -> evolved -> dormant)
+    first_mentioned_at = Column(DateTime)
+    status = Column(String, default='emerging')  # "emerging", "active", "evolved", "dormant"
+    last_updated_at = Column(DateTime)
+
+    # Legacy fields (kept for backwards compatibility, not actively used in PRD-024)
+    current_conviction = Column(Float, default=0.5)  # Not used in PRD-024 approach
     confidence_interval_low = Column(Float)
     confidence_interval_high = Column(Float)
-
-    # Theme lifecycle
-    first_mentioned_at = Column(DateTime)
-    status = Column(String, default='active')  # "active", "acted_upon", "invalidated", "archived"
-
-    # Bayesian tracking
     prior_probability = Column(Float)
     evidence_count = Column(Integer, default=0)
 
@@ -173,15 +187,15 @@ class Theme(Base):
     # Relationships
     evidence_items = relationship("ThemeEvidence", back_populates="theme", cascade="all, delete-orphan")
     bayesian_updates = relationship("BayesianUpdate", back_populates="theme", cascade="all, delete-orphan")
+    evolved_from = relationship("Theme", remote_side=[id], backref="evolved_into")
 
-    # Constraints
+    # Constraints - updated for PRD-024 lifecycle
     __table_args__ = (
-        CheckConstraint('current_conviction >= 0.0 AND current_conviction <= 1.0', name='check_conviction_range'),
-        CheckConstraint("status IN ('active', 'acted_upon', 'invalidated', 'archived')", name='check_status_values'),
+        CheckConstraint("status IN ('emerging', 'active', 'evolved', 'dormant')", name='check_status_values'),
     )
 
     def __repr__(self):
-        return f"<Theme(id={self.id}, name='{self.name}', conviction={self.current_conviction:.2f})>"
+        return f"<Theme(id={self.id}, name='{self.name}', status='{self.status}')>"
 
 
 class ThemeEvidence(Base):
