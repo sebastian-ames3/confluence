@@ -1010,6 +1010,265 @@
         .simple-header p {
             color: var(--text-secondary);
         }
+
+        /* Tab Navigation (PRD-024) */
+        .tab-navigation {
+            display: flex;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-lg);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: var(--spacing-sm);
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1rem;
+            padding: var(--spacing-sm) var(--spacing-md);
+            cursor: pointer;
+            border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+            transition: all 0.2s;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom: 2px solid var(--primary);
+            margin-bottom: -1px;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Themes Tab Styles (PRD-024) */
+        .themes-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-lg);
+            flex-wrap: wrap;
+            gap: var(--spacing-md);
+        }
+
+        .themes-filters {
+            display: flex;
+            gap: var(--spacing-sm);
+        }
+
+        .filter-btn {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: var(--spacing-xs) var(--spacing-md);
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-btn:hover {
+            border-color: var(--primary);
+            color: var(--text-primary);
+        }
+
+        .filter-btn.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        .themes-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .theme-stat {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+            text-align: center;
+        }
+
+        .theme-stat-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .theme-stat-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .themes-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+        }
+
+        .theme-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-lg);
+            transition: border-color 0.2s;
+        }
+
+        .theme-card:hover {
+            border-color: var(--primary);
+        }
+
+        .theme-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: var(--spacing-sm);
+            flex-wrap: wrap;
+            gap: var(--spacing-sm);
+        }
+
+        .theme-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .theme-status {
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            border-radius: 3px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 500;
+        }
+
+        .status-emerging {
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .status-active {
+            background: rgba(34, 197, 94, 0.2);
+            color: #4ade80;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .status-evolved {
+            background: rgba(139, 92, 246, 0.2);
+            color: #a78bfa;
+            border: 1px solid rgba(139, 92, 246, 0.3);
+        }
+
+        .status-dormant {
+            background: rgba(107, 114, 128, 0.2);
+            color: #9ca3af;
+            border: 1px solid rgba(107, 114, 128, 0.3);
+        }
+
+        .theme-description {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: var(--spacing-md);
+            line-height: 1.5;
+        }
+
+        .theme-meta {
+            display: flex;
+            gap: var(--spacing-md);
+            flex-wrap: wrap;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .theme-evidence-section {
+            margin-top: var(--spacing-md);
+            padding-top: var(--spacing-md);
+            border-top: 1px solid var(--border-color);
+        }
+
+        .theme-evidence-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .theme-sources {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--spacing-sm);
+        }
+
+        .theme-source-badge {
+            font-size: 0.8rem;
+            padding: 4px 10px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+        }
+
+        .theme-source-badge.source-42macro { border-color: rgba(59, 130, 246, 0.5); }
+        .theme-source-badge.source-discord { border-color: rgba(34, 197, 94, 0.5); }
+        .theme-source-badge.source-kt_technical { border-color: rgba(234, 179, 8, 0.5); }
+        .theme-source-badge.source-youtube { border-color: rgba(239, 68, 68, 0.5); }
+        .theme-source-badge.source-substack { border-color: rgba(249, 115, 22, 0.5); }
+
+        .theme-catalysts {
+            margin-top: var(--spacing-sm);
+        }
+
+        .theme-catalyst-tag {
+            display: inline-block;
+            font-size: 0.75rem;
+            padding: 2px 8px;
+            border-radius: 3px;
+            background: rgba(251, 191, 36, 0.1);
+            color: #fbbf24;
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            margin-right: var(--spacing-xs);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .theme-evolution-chain {
+            margin-top: var(--spacing-sm);
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .evolution-arrow {
+            color: var(--primary);
+            margin: 0 var(--spacing-xs);
+        }
+
+        .themes-empty {
+            text-align: center;
+            padding: var(--spacing-xl);
+            color: var(--text-secondary);
+        }
+
+        .themes-empty-icon {
+            font-size: 3rem;
+            margin-bottom: var(--spacing-md);
+        }
     </style>
 </head>
 <body>
@@ -1023,9 +1282,18 @@
     <!-- Main Content -->
     <div class="container">
         <div class="simple-header">
-            <h1>Research Synthesis</h1>
-            <p>AI-powered analysis of your investment research</p>
+            <h1>Macro Confluence Hub</h1>
+            <p>AI-powered investment research synthesis</p>
         </div>
+
+        <!-- Tab Navigation (PRD-024) -->
+        <div class="tab-navigation">
+            <button class="tab-btn active" onclick="switchTab('synthesis')">Research Synthesis</button>
+            <button class="tab-btn" onclick="switchTab('themes')">Themes</button>
+        </div>
+
+        <!-- Synthesis Tab Content -->
+        <div id="synthesis-tab" class="tab-content active">
 
         <!-- Status Grid -->
         <div class="status-grid">
@@ -1214,6 +1482,53 @@
                 <div class="loading">Loading...</div>
             </div>
         </div>
+
+        </div><!-- End Synthesis Tab -->
+
+        <!-- Themes Tab Content (PRD-024) -->
+        <div id="themes-tab" class="tab-content">
+            <!-- Themes Stats -->
+            <div class="themes-stats">
+                <div class="theme-stat">
+                    <div class="theme-stat-value" id="themes-total">0</div>
+                    <div class="theme-stat-label">Total Themes</div>
+                </div>
+                <div class="theme-stat">
+                    <div class="theme-stat-value" id="themes-active">0</div>
+                    <div class="theme-stat-label">Active</div>
+                </div>
+                <div class="theme-stat">
+                    <div class="theme-stat-value" id="themes-emerging">0</div>
+                    <div class="theme-stat-label">Emerging</div>
+                </div>
+                <div class="theme-stat">
+                    <div class="theme-stat-value" id="themes-evolved">0</div>
+                    <div class="theme-stat-label">Evolved</div>
+                </div>
+            </div>
+
+            <!-- Themes Filters -->
+            <div class="themes-header">
+                <h2 style="margin: 0; font-size: 1.2rem;">Investment Themes</h2>
+                <div class="themes-filters">
+                    <button class="filter-btn active" onclick="filterThemes('all')">All</button>
+                    <button class="filter-btn" onclick="filterThemes('active')">Active</button>
+                    <button class="filter-btn" onclick="filterThemes('emerging')">Emerging</button>
+                    <button class="filter-btn" onclick="filterThemes('evolved')">Evolved</button>
+                    <button class="filter-btn" onclick="filterThemes('dormant')">Dormant</button>
+                </div>
+            </div>
+
+            <!-- Themes List -->
+            <div class="themes-list" id="themes-list">
+                <div class="themes-empty">
+                    <div class="themes-empty-icon">📋</div>
+                    <h3>No Themes Yet</h3>
+                    <p>Themes will be extracted automatically from synthesis.</p>
+                </div>
+            </div>
+        </div><!-- End Themes Tab -->
+
     </div>
 
     <script>
@@ -2222,6 +2537,175 @@
         // Format date time (displays in user's local timezone)
         function formatDateTime(date) {
             return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        }
+
+        // =====================================================
+        // THEMES TAB FUNCTIONS (PRD-024)
+        // =====================================================
+
+        let allThemes = [];
+        let currentThemeFilter = 'all';
+
+        // Switch between tabs
+        function switchTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+
+            // Load themes when switching to themes tab
+            if (tabName === 'themes') {
+                loadThemes();
+            }
+        }
+
+        // Load themes from API
+        async function loadThemes() {
+            try {
+                // Load summary stats
+                const summaryResponse = await fetch(`${API_BASE}/themes/summary`);
+                const summary = await summaryResponse.json();
+
+                // Update stats
+                document.getElementById('themes-total').textContent = summary.total || 0;
+                document.getElementById('themes-active').textContent = summary.by_status?.active || 0;
+                document.getElementById('themes-emerging').textContent = summary.by_status?.emerging || 0;
+                document.getElementById('themes-evolved').textContent = summary.by_status?.evolved || 0;
+
+                // Load themes list
+                const themesResponse = await fetch(`${API_BASE}/themes`);
+                allThemes = await themesResponse.json();
+
+                // Display themes
+                displayThemes(allThemes);
+
+            } catch (error) {
+                console.error('Error loading themes:', error);
+                document.getElementById('themes-list').innerHTML = `
+                    <div class="themes-empty">
+                        <div class="themes-empty-icon">⚠️</div>
+                        <h3>Error Loading Themes</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Filter themes by status
+        function filterThemes(status) {
+            currentThemeFilter = status;
+
+            // Update filter buttons
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // Filter and display
+            let filtered = allThemes;
+            if (status !== 'all') {
+                filtered = allThemes.filter(t => t.status === status);
+            }
+            displayThemes(filtered);
+        }
+
+        // Display themes list
+        function displayThemes(themes) {
+            const container = document.getElementById('themes-list');
+
+            if (!themes || themes.length === 0) {
+                container.innerHTML = `
+                    <div class="themes-empty">
+                        <div class="themes-empty-icon">📋</div>
+                        <h3>No Themes Found</h3>
+                        <p>${currentThemeFilter === 'all' ? 'Themes will be extracted automatically from synthesis.' : `No ${currentThemeFilter} themes.`}</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = themes.map(theme => {
+                // Parse source evidence
+                let sourceEvidence = {};
+                try {
+                    sourceEvidence = theme.source_evidence ? JSON.parse(theme.source_evidence) : {};
+                } catch (e) {
+                    sourceEvidence = theme.source_evidence || {};
+                }
+                const sources = Object.keys(sourceEvidence);
+
+                // Parse catalysts
+                let catalysts = [];
+                try {
+                    catalysts = theme.catalysts ? JSON.parse(theme.catalysts) : [];
+                } catch (e) {
+                    catalysts = theme.catalysts || [];
+                }
+
+                // Format dates
+                const firstMentioned = theme.first_mentioned_at ? formatDateShort(parseUTCDate(theme.first_mentioned_at)) : 'Unknown';
+                const lastUpdated = theme.last_updated_at ? formatTimeAgo(parseUTCDate(theme.last_updated_at)) : 'Never';
+
+                return `
+                    <div class="theme-card">
+                        <div class="theme-card-header">
+                            <span class="theme-name">${theme.name}</span>
+                            <span class="theme-status status-${theme.status}">${theme.status}</span>
+                        </div>
+
+                        ${theme.description ? `<div class="theme-description">${theme.description}</div>` : ''}
+
+                        <div class="theme-meta">
+                            <span>First: ${firstMentioned}</span>
+                            <span>Updated: ${lastUpdated}</span>
+                            ${theme.first_source ? `<span>Origin: ${theme.first_source}</span>` : ''}
+                            <span>Evidence: ${theme.evidence_count || 0} items</span>
+                        </div>
+
+                        ${sources.length > 0 ? `
+                            <div class="theme-evidence-section">
+                                <div class="theme-evidence-title">Sources Discussing</div>
+                                <div class="theme-sources">
+                                    ${sources.map(source => {
+                                        const evidence = sourceEvidence[source] || [];
+                                        const count = Array.isArray(evidence) ? evidence.length : 1;
+                                        return `<span class="theme-source-badge source-${source.replace(/\s+/g, '_').toLowerCase()}">${source} (${count})</span>`;
+                                    }).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+
+                        ${catalysts.length > 0 ? `
+                            <div class="theme-catalysts">
+                                <div class="theme-evidence-title">Related Catalysts</div>
+                                ${catalysts.map(c => {
+                                    const catalystText = typeof c === 'string' ? c : (c.event || c.date || JSON.stringify(c));
+                                    return `<span class="theme-catalyst-tag">${catalystText}</span>`;
+                                }).join('')}
+                            </div>
+                        ` : ''}
+
+                        ${theme.evolved_from_theme_id ? `
+                            <div class="theme-evolution-chain">
+                                Evolved from theme #${theme.evolved_from_theme_id}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Format date short (MM/DD)
+        function formatDateShort(date) {
+            if (!date) return 'Unknown';
+            return (date.getMonth() + 1) + '/' + date.getDate();
         }
     </script>
 </body>
