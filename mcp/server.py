@@ -244,6 +244,92 @@ Use this to find specific research on a topic.""",
                 },
                 "required": ["query"]
             }
+        ),
+        # PRD-024: Theme Tracking Tools
+        Tool(
+            name="get_themes",
+            description="""Get tracked investment themes from your research.
+
+Themes are extracted from synthesis and tracked over time.
+Each theme has:
+- Name and description
+- Status lifecycle: emerging → active → evolved → dormant
+- Source evidence (what each source says about it)
+- Related catalysts
+- First mentioned date and last updated
+
+Args:
+- status: Optional - filter by status (emerging, active, evolved, dormant)
+
+Use this to understand the major themes across your research.""",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "description": "Optional: filter by status (emerging, active, evolved, dormant)"
+                    }
+                },
+                "required": []
+            }
+        ),
+        Tool(
+            name="get_active_themes",
+            description="""Get currently active investment themes (emerging + active).
+
+Returns themes that are currently relevant:
+- Emerging: New themes mentioned by 1-2 sources
+- Active: Established themes with multiple sources
+
+Excludes evolved (superseded) and dormant (no longer relevant) themes.
+
+Use this for a quick view of what themes matter right now.""",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "required": []
+            }
+        ),
+        Tool(
+            name="get_theme_detail",
+            description="""Get detailed information about a specific theme.
+
+Args:
+- theme_id: The numeric ID of the theme
+
+Returns full theme details including:
+- Complete source evidence (what each source says)
+- All related catalysts
+- Evolution history (if evolved from another theme)
+- Timeline of updates
+
+Use this to deep-dive into a specific theme.""",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "theme_id": {
+                        "type": "integer",
+                        "description": "Theme ID number"
+                    }
+                },
+                "required": ["theme_id"]
+            }
+        ),
+        Tool(
+            name="get_themes_summary",
+            description="""Get summary statistics about tracked themes.
+
+Returns:
+- Total theme count
+- Count by status (emerging, active, evolved, dormant)
+- Recent theme activity
+
+Use this for a quick overview of theme tracking status.""",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "required": []
+            }
         )
     ]
 
@@ -345,6 +431,42 @@ async def call_tool(name: str, arguments: dict):
             return [TextContent(
                 type="text",
                 text=json.dumps(results, indent=2)
+            )]
+
+        # PRD-024: Theme Tracking Tools
+        elif name == "get_themes":
+            status = arguments.get("status")
+            themes = client.get_themes(status=status)
+            return [TextContent(
+                type="text",
+                text=json.dumps(themes, indent=2)
+            )]
+
+        elif name == "get_active_themes":
+            themes = client.get_active_themes()
+            return [TextContent(
+                type="text",
+                text=json.dumps(themes, indent=2)
+            )]
+
+        elif name == "get_theme_detail":
+            theme_id = arguments.get("theme_id")
+            if not theme_id:
+                return [TextContent(
+                    type="text",
+                    text="Error: theme_id is required"
+                )]
+            theme = client.get_theme(theme_id)
+            return [TextContent(
+                type="text",
+                text=json.dumps(theme, indent=2)
+            )]
+
+        elif name == "get_themes_summary":
+            summary = client.get_themes_summary()
+            return [TextContent(
+                type="text",
+                text=json.dumps(summary, indent=2)
             )]
 
         else:

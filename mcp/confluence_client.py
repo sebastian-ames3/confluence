@@ -108,6 +108,43 @@ class ConfluenceClient:
         """Get recent content from a specific source."""
         return self.search_content("", source=source, days=days)
 
+    # =====================================================
+    # THEME TRACKING API (PRD-024)
+    # =====================================================
+
+    def get_themes(
+        self,
+        status: Optional[str] = None,
+        limit: int = 50
+    ) -> List[Dict[str, Any]]:
+        """
+        Get investment themes being tracked.
+
+        Args:
+            status: Filter by status (emerging, active, evolved, dormant)
+            limit: Maximum number of themes to return
+        """
+        params = {"limit": limit}
+        if status:
+            params["status"] = status
+
+        query_string = "&".join(f"{k}={v}" for k, v in params.items())
+        return self._request("GET", f"/api/themes?{query_string}")
+
+    def get_theme(self, theme_id: int) -> Dict[str, Any]:
+        """Get a specific theme by ID with full details."""
+        return self._request("GET", f"/api/themes/{theme_id}")
+
+    def get_themes_summary(self) -> Dict[str, Any]:
+        """Get theme statistics summary."""
+        return self._request("GET", "/api/themes/summary")
+
+    def get_active_themes(self) -> List[Dict[str, Any]]:
+        """Get currently active themes (emerging or active status)."""
+        emerging = self.get_themes(status="emerging")
+        active = self.get_themes(status="active")
+        return active + emerging
+
 
 # Convenience functions for extracting synthesis components
 

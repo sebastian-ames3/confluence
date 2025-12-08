@@ -108,6 +108,10 @@ curl -X POST -u sames3:Spotswood1 \
 | `get_source_stance` | Specific source view |
 | `get_catalyst_calendar` | Upcoming events |
 | `search_research` | Search content |
+| `get_themes` | All tracked themes (with status filter) |
+| `get_active_themes` | Currently active themes |
+| `get_theme_detail` | Deep-dive into specific theme |
+| `get_themes_summary` | Theme tracking stats |
 
 ---
 
@@ -125,18 +129,18 @@ curl -X POST -u sames3:Spotswood1 \
 | PRD | Feature | Status |
 |-----|---------|--------|
 | 001-023 | Foundation through cleanup | Complete |
-| 024 | Theme Tracking System | In Progress |
-| 025 | Enhanced Synthesis Summary | In Progress |
+| 024 | Theme Tracking System | Complete |
+| 025 | Enhanced Synthesis Summary | Complete |
 
-**024**: Structured theme tracking with source-level evidence, evolution lifecycle, semantic matching
-**025**: Expanded executive summary with per-source highlights, multi-paragraph synthesis, key takeaways
+**024**: Theme tracking with source-level evidence, lifecycle (emerging→active→evolved→dormant), MCP tools
+**025**: Enhanced executive summary with per-source highlights, synthesis narrative, key takeaways
 
 ---
 
 ## Development Notes
 
 **Adding new features:**
-1. Create PRD in `/docs/` (e.g., `PRD-024_FeatureName.md`)
+1. Create PRD in `/docs/` (e.g., `PRD-026_FeatureName.md`)
 2. Implement in appropriate directory
 3. Update this file with new commands/endpoints
 4. Move PRD to `/docs/archived/` when complete
@@ -145,4 +149,4 @@ curl -X POST -u sames3:Spotswood1 \
 
 ---
 
-**Last Updated**: 2025-12-07
+**Last Updated**: 2025-12-08
