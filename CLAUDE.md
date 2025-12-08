@@ -2,7 +2,7 @@
 
 Personal investment research aggregation system. Collects from 5 sources, applies AI analysis, surfaces confluence via web dashboard and Claude Desktop MCP.
 
-**Version**: 1.5.0 (Dec 2025) | **Status**: Production
+**Version**: 1.6.0 (Dec 2025) | **Status**: Production
 
 ---
 
@@ -120,17 +120,16 @@ curl -X POST -u sames3:Spotswood1 \
 
 ---
 
-## Completed PRDs
+## PRDs
 
-| PRD | Feature |
-|-----|---------|
-| 001-011 | Foundation, agents, dashboard |
-| 012-013 | Dashboard simplification, MCP |
-| 014-017 | Deployment, security, polish |
-| 018-019 | Video transcription, deduplication |
-| 020-021 | Actionable synthesis v2, Research hub v3 |
-| 022 | MCP SSE mode for Claude Desktop |
-| 023 | Final cleanup & organization |
+| PRD | Feature | Status |
+|-----|---------|--------|
+| 001-023 | Foundation through cleanup | Complete |
+| 024 | Theme Tracking System | In Progress |
+| 025 | Enhanced Synthesis Summary | In Progress |
+
+**024**: Structured theme tracking with source-level evidence, evolution lifecycle, semantic matching
+**025**: Expanded executive summary with per-source highlights, multi-paragraph synthesis, key takeaways
 
 ---
 
@@ -146,4 +145,4 @@ curl -X POST -u sames3:Spotswood1 \
 
 ---
 
-**Last Updated**: 2025-12-05
+**Last Updated**: 2025-12-07
