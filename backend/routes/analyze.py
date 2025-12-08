@@ -399,6 +399,14 @@ async def classify_batch(
                 if "image_intelligence" in route_to:
                     image_results = run_image_analysis(raw_content, metadata, db)
 
+                # Analyze text content for blog posts (KT Technical, etc.)
+                # Blog posts route to image_intelligence for charts, but also need
+                # text analysis for themes/sentiment/conviction
+                text_result = {}
+                if raw_content.content_type == "blog_post" and raw_content.content_text:
+                    logger.info(f"Running text analysis for blog_post {raw_content.id}")
+                    text_result = run_text_analysis(raw_content, metadata, db)
+
                 # Mark as processed
                 raw_content.processed = True
 
@@ -408,7 +416,8 @@ async def classify_batch(
                     "priority": result["priority"],
                     "route_to": route_to,
                     "pdf_analyzed": "analysis" in pdf_result,
-                    "images_analyzed": len([r for r in image_results if "analysis" in r])
+                    "images_analyzed": len([r for r in image_results if "analysis" in r]),
+                    "text_analyzed": "analysis" in text_result
                 })
 
             except Exception as e:
