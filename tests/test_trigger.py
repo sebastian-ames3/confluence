@@ -43,27 +43,23 @@ class TestRailwayConfig:
         config_path = Path(__file__).parent.parent / "railway.json"
         assert config_path.exists(), "railway.json should exist"
 
-    def test_railway_json_has_nix_packages(self):
-        """Test that railway.json includes nixPackages."""
+    def test_railway_json_uses_dockerfile(self):
+        """Test that railway.json uses Dockerfile builder."""
         config_path = Path(__file__).parent.parent / "railway.json"
         config = json.loads(config_path.read_text())
 
         assert "build" in config
-        assert "nixPackages" in config["build"]
-        assert "ffmpeg" in config["build"]["nixPackages"]
-        assert "chromium" in config["build"]["nixPackages"]
+        assert config["build"]["builder"] == "DOCKERFILE"
+        assert "dockerfilePath" in config["build"]
 
-    def test_railway_json_runs_migrations(self):
-        """Test that railway.json start command runs migrations."""
-        config_path = Path(__file__).parent.parent / "railway.json"
-        config = json.loads(config_path.read_text())
+    def test_dockerfile_runs_migrations(self):
+        """Test that Dockerfile CMD runs migrations."""
+        dockerfile_path = Path(__file__).parent.parent / "Dockerfile"
+        assert dockerfile_path.exists(), "Dockerfile should exist"
 
-        assert "deploy" in config
-        assert "startCommand" in config["deploy"]
-
-        start_cmd = config["deploy"]["startCommand"]
-        assert "run_migrations.py" in start_cmd
-        assert "--auto" in start_cmd
+        content = dockerfile_path.read_text()
+        assert "run_migrations.py" in content
+        assert "--auto" in content
 
     def test_railway_json_has_healthcheck(self):
         """Test that railway.json has healthcheck configured."""
