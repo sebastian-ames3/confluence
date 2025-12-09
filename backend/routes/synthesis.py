@@ -112,6 +112,28 @@ async def migrate_synthesis_v2(
         except Exception as e:
             migrations.append({"column": "synthesis_json", "status": "error", "error": str(e)})
 
+    # PRD-024: Themes table columns
+    themes_columns = [
+        ("aliases", "TEXT"),
+        ("source_evidence", "TEXT"),
+        ("catalysts", "TEXT"),
+        ("first_source", "VARCHAR"),
+        ("evolved_from_theme_id", "INTEGER"),
+        ("last_updated_at", "DATETIME"),
+    ]
+
+    for col_name, col_type in themes_columns:
+        try:
+            db.execute(text(f"SELECT {col_name} FROM themes LIMIT 1"))
+            migrations.append({"table": "themes", "column": col_name, "status": "exists"})
+        except Exception:
+            try:
+                db.execute(text(f"ALTER TABLE themes ADD COLUMN {col_name} {col_type}"))
+                db.commit()
+                migrations.append({"table": "themes", "column": col_name, "status": "added"})
+            except Exception as e:
+                migrations.append({"table": "themes", "column": col_name, "status": "error", "error": str(e)})
+
     return {"migrations": migrations, "status": "complete"}
 
 
