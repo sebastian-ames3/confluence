@@ -142,16 +142,24 @@ app.include_router(heartbeat.router, prefix="/api", tags=["heartbeat"])
 
 # Mount static files for frontend assets
 frontend_path = Path(__file__).parent.parent / "frontend"
+css_path = frontend_path / "css"
+js_path = frontend_path / "js"
+
+# Debug: log paths at startup
+print(f"STATIC FILES DEBUG: frontend_path={frontend_path}, exists={frontend_path.exists()}")
+print(f"STATIC FILES DEBUG: css_path={css_path}, exists={css_path.exists()}")
+print(f"STATIC FILES DEBUG: js_path={js_path}, exists={js_path.exists()}")
+
+# Mount static asset directories
+if css_path.exists():
+    app.mount("/css", StaticFiles(directory=str(css_path)), name="css")
+    print("STATIC FILES: Mounted /css")
+if js_path.exists():
+    app.mount("/js", StaticFiles(directory=str(js_path)), name="js")
+    print("STATIC FILES: Mounted /js")
 if frontend_path.exists():
-    # Mount specific static asset directories
-    css_path = frontend_path / "css"
-    js_path = frontend_path / "js"
-    if css_path.exists():
-        app.mount("/css", StaticFiles(directory=str(css_path)), name="css")
-    if js_path.exists():
-        app.mount("/js", StaticFiles(directory=str(js_path)), name="js")
-    # Mount root for index.html and other static files
     app.mount("/static", StaticFiles(directory=str(frontend_path), html=True), name="frontend")
+    print("STATIC FILES: Mounted /static")
 
 
 if __name__ == "__main__":
