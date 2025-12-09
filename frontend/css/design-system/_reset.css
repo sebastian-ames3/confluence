@@ -1,5 +1,5 @@
 /* ============================================
-   CSS Reset
+   CSS Reset (PRD-026 Compliant)
    Modern CSS reset for consistent styling
    ============================================ */
 
@@ -167,9 +167,9 @@ select {
   outline: none;
 }
 
-/* Restore focus outline for keyboard users */
+/* Restore focus outline for keyboard users (PRD-026 uses --primary) */
 :focus-visible {
-  outline: 2px solid var(--color-accent-primary, #60A5FA);
+  outline: 2px solid var(--primary, #60A5FA);
   outline-offset: 2px;
 }
 
@@ -194,33 +194,33 @@ a, button, input, select, textarea {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Better placeholder styling */
+/* Better placeholder styling (PRD-026 uses --text-muted) */
 ::placeholder {
-  color: var(--color-text-disabled, #64748B);
+  color: var(--text-muted, #64748B);
   opacity: 1;
 }
 
-/* Scrollbar styling */
+/* Scrollbar styling (PRD-026 uses --bg-surface, --bg-elevated) */
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--color-bg-secondary, #1E293B);
+  background: var(--bg-surface, #1E293B);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--color-bg-tertiary, #334155);
+  background: var(--bg-elevated, #334155);
   border-radius: 5px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-disabled, #64748B);
+  background: var(--text-muted, #64748B);
 }
 
 /* Firefox scrollbar */
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--color-bg-tertiary, #334155) var(--color-bg-secondary, #1E293B);
+  scrollbar-color: var(--bg-elevated, #334155) var(--bg-surface, #1E293B);
 }

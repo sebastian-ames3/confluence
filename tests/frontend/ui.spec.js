@@ -28,15 +28,16 @@ test.describe('UI Modernization - Design System (PRD-027)', () => {
     const cssVars = await page.evaluate(() => {
       const styles = getComputedStyle(document.documentElement);
       return {
-        primaryColor: styles.getPropertyValue('--color-primary').trim(),
+        // PRD-026 specifies these variable names
+        primary: styles.getPropertyValue('--primary').trim(),
         bgBase: styles.getPropertyValue('--bg-base').trim(),
         spacingMd: styles.getPropertyValue('--spacing-md').trim(),
         radiusMd: styles.getPropertyValue('--radius-md').trim()
       };
     });
 
-    // Verify design tokens are present
-    expect(cssVars.primaryColor).not.toBe('');
+    // Verify design tokens are present (PRD-026 naming)
+    expect(cssVars.primary).not.toBe('');
   });
 
   test('should include modern CSS file', async ({ page }) => {

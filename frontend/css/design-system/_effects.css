@@ -1,15 +1,11 @@
 /* ============================================
-   Effects System
+   Effects System (PRD-026 Compliant)
    Shadows, glassmorphism, and neumorphism
    ============================================ */
 
 :root {
-  /* ----- Box Shadows ----- */
+  /* ----- Extended Shadows ----- */
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.2);
-  --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.3), 0 4px 8px rgba(0, 0, 0, 0.2);
-  --shadow-xl: 0 16px 32px rgba(0, 0, 0, 0.3), 0 8px 16px rgba(0, 0, 0, 0.2);
   --shadow-2xl: 0 24px 48px rgba(0, 0, 0, 0.4);
 
   /* Inner shadows for neumorphism */
@@ -17,7 +13,6 @@
   --shadow-inner-lg: inset 0 4px 8px rgba(0, 0, 0, 0.3);
 
   /* Glow effects */
-  --shadow-glow-accent: 0 0 20px rgba(96, 165, 250, 0.3);
   --shadow-glow-success: 0 0 20px rgba(16, 185, 129, 0.3);
   --shadow-glow-error: 0 0 20px rgba(239, 68, 68, 0.3);
   --shadow-glow-warning: 0 0 20px rgba(245, 158, 11, 0.3);
@@ -32,7 +27,7 @@
   --glass-blur-heavy: blur(20px);
 
   /* ----- Neumorphism ----- */
-  --neu-bg: #1E293B;
+  --neu-bg: #1e293b;
   --neu-shadow-light: rgba(255, 255, 255, 0.05);
   --neu-shadow-dark: rgba(0, 0, 0, 0.5);
 }
@@ -48,12 +43,29 @@
 .shadow-none { box-shadow: none; }
 
 /* ----- Glow Effects ----- */
-.glow-accent { box-shadow: var(--shadow-glow-accent); }
+.glow-primary { box-shadow: var(--shadow-glow); }
 .glow-success { box-shadow: var(--shadow-glow-success); }
 .glow-error { box-shadow: var(--shadow-glow-error); }
 .glow-warning { box-shadow: var(--shadow-glow-warning); }
 
-/* ----- Glass Effect Classes ----- */
+/* ----- Glass Effect Classes (PRD-026) ----- */
+.glass-card {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  transition: all var(--transition-normal);
+}
+
+.glass-card:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.12);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg), var(--shadow-glow);
+}
+
 .glass {
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur);
@@ -75,17 +87,32 @@
   border: 1px solid var(--glass-border);
 }
 
-/* Glass card variant */
-.glass-card {
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-lg);
+/* ----- Neumorphic Effects (PRD-026) ----- */
+.btn-neumorphic {
+  background: var(--bg-elevated);
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 12px 24px;
+  color: var(--text-primary);
+  font-weight: 500;
+  box-shadow:
+    6px 6px 12px rgba(0, 0, 0, 0.4),
+    -6px -6px 12px rgba(255, 255, 255, 0.05);
+  transition: all var(--transition-normal);
 }
 
-/* ----- Neumorphic Effects ----- */
+.btn-neumorphic:hover {
+  box-shadow:
+    4px 4px 8px rgba(0, 0, 0, 0.4),
+    -4px -4px 8px rgba(255, 255, 255, 0.05);
+}
+
+.btn-neumorphic:active {
+  box-shadow:
+    inset 4px 4px 8px rgba(0, 0, 0, 0.4),
+    inset -4px -4px 8px rgba(255, 255, 255, 0.03);
+}
+
 .neu {
   background: var(--neu-bg);
   box-shadow:
@@ -110,28 +137,12 @@
   border-radius: var(--radius-lg);
 }
 
-.neu-flat {
-  background: linear-gradient(145deg, #1a2536, #212e45);
-  box-shadow:
-    6px 6px 12px var(--neu-shadow-dark),
-    -6px -6px 12px var(--neu-shadow-light);
-  border-radius: var(--radius-lg);
-}
-
-/* Neumorphic button (pressed state) */
-.neu-pressed {
-  background: var(--neu-bg);
-  box-shadow:
-    inset 2px 2px 5px var(--neu-shadow-dark),
-    inset -2px -2px 5px var(--neu-shadow-light);
-}
-
 /* ----- Gradient Overlays ----- */
 .gradient-fade-down {
   background: linear-gradient(
     to bottom,
     transparent 0%,
-    var(--color-bg-primary) 100%
+    var(--bg-base) 100%
   );
 }
 
@@ -139,47 +150,37 @@
   background: linear-gradient(
     to top,
     transparent 0%,
-    var(--color-bg-primary) 100%
+    var(--bg-base) 100%
   );
 }
 
 .gradient-accent {
-  background: linear-gradient(
-    135deg,
-    var(--color-accent-primary) 0%,
-    var(--color-accent-secondary) 100%
-  );
+  background: var(--gradient-primary);
 }
 
 .gradient-success {
-  background: linear-gradient(
-    135deg,
-    var(--color-success) 0%,
-    var(--color-success-light) 100%
-  );
+  background: var(--gradient-success);
 }
 
 /* ----- Border Utilities ----- */
-.border { border: 1px solid var(--color-border-primary); }
+.border { border: 1px solid var(--border-subtle); }
 .border-0 { border: 0; }
-.border-t { border-top: 1px solid var(--color-border-primary); }
-.border-r { border-right: 1px solid var(--color-border-primary); }
-.border-b { border-bottom: 1px solid var(--color-border-primary); }
-.border-l { border-left: 1px solid var(--color-border-primary); }
+.border-t { border-top: 1px solid var(--border-subtle); }
+.border-r { border-right: 1px solid var(--border-subtle); }
+.border-b { border-bottom: 1px solid var(--border-subtle); }
+.border-l { border-left: 1px solid var(--border-subtle); }
 
-.border-accent { border-color: var(--color-accent-primary); }
-.border-success { border-color: var(--color-success); }
-.border-warning { border-color: var(--color-warning); }
-.border-error { border-color: var(--color-error); }
+.border-accent { border-color: var(--border-accent); }
+.border-success { border-color: var(--success); }
+.border-warning { border-color: var(--warning); }
+.border-danger { border-color: var(--danger); }
 
 /* ----- Rounded Utilities ----- */
-.rounded-none { border-radius: var(--radius-none); }
-.rounded-xs { border-radius: var(--radius-xs); }
+.rounded-none { border-radius: 0; }
 .rounded-sm { border-radius: var(--radius-sm); }
 .rounded { border-radius: var(--radius-md); }
 .rounded-lg { border-radius: var(--radius-lg); }
 .rounded-xl { border-radius: var(--radius-xl); }
-.rounded-2xl { border-radius: var(--radius-2xl); }
 .rounded-full { border-radius: var(--radius-full); }
 
 /* ----- Opacity Utilities ----- */
@@ -216,33 +217,33 @@
 
 /* ----- Ring Utilities (Focus states) ----- */
 .ring {
-  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.3);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
 }
 
-.ring-accent {
-  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.3);
+.ring-primary {
+  box-shadow: 0 0 0 3px var(--primary-glow);
 }
 
 .ring-success {
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.3);
 }
 
-.ring-error {
+.ring-danger {
   box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.3);
 }
 
 /* ----- Divider ----- */
 .divider {
   height: 1px;
-  background: var(--color-border-primary);
-  margin: var(--space-4) 0;
+  background: var(--border-subtle);
+  margin: var(--spacing-md) 0;
 }
 
 .divider-vertical {
   width: 1px;
   height: 100%;
-  background: var(--color-border-primary);
-  margin: 0 var(--space-4);
+  background: var(--border-subtle);
+  margin: 0 var(--spacing-md);
 }
 
 /* ----- Fallback for no backdrop-filter support ----- */
@@ -251,6 +252,6 @@
   .glass-light,
   .glass-heavy,
   .glass-card {
-    background: var(--color-bg-secondary);
+    background: var(--bg-surface);
   }
 }
