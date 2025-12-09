@@ -92,7 +92,11 @@ app.add_middleware(
 
 @app.get("/")
 async def root():
-    """API root endpoint."""
+    """Serve the dashboard HTML."""
+    from fastapi.responses import FileResponse
+    frontend_path = Path(__file__).parent.parent / "frontend" / "index.html"
+    if frontend_path.exists():
+        return FileResponse(frontend_path, media_type="text/html")
     return {
         "message": "Macro Confluence Hub API",
         "version": "1.0.0",
@@ -136,10 +140,18 @@ app.include_router(themes.router, prefix="/api", tags=["themes"])  # PRD-024 the
 app.include_router(websocket.router, tags=["websocket"])
 app.include_router(heartbeat.router, prefix="/api", tags=["heartbeat"])
 
-# Mount static files for frontend
+# Mount static files for frontend assets
 frontend_path = Path(__file__).parent.parent / "frontend"
 if frontend_path.exists():
-    app.mount("/", StaticFiles(directory=str(frontend_path), html=True), name="frontend")
+    # Mount specific static asset directories
+    css_path = frontend_path / "css"
+    js_path = frontend_path / "js"
+    if css_path.exists():
+        app.mount("/css", StaticFiles(directory=str(css_path)), name="css")
+    if js_path.exists():
+        app.mount("/js", StaticFiles(directory=str(js_path)), name="js")
+    # Mount root for index.html and other static files
+    app.mount("/static", StaticFiles(directory=str(frontend_path), html=True), name="frontend")
 
 
 if __name__ == "__main__":
