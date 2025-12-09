@@ -131,22 +131,47 @@ curl -X POST -u sames3:Spotswood1 \
 | 001-023 | Foundation through cleanup | Complete |
 | 024 | Theme Tracking System | Complete |
 | 025 | Enhanced Synthesis Summary | Complete |
+| 026-032 | UI/UX Modernization | Complete |
 
 **024**: Theme tracking with source-level evidence, lifecycle (emerging→active→evolved→dormant), MCP tools
 **025**: Enhanced executive summary with per-source highlights, synthesis narrative, key takeaways
+**026-032**: Modern UI design system (glassmorphism, animations, accessibility, Chart.js theming)
 
 ---
 
 ## Development Notes
 
+**Git Workflow (REQUIRED):**
+1. NEVER push directly to `main` branch
+2. Create a feature branch for all changes: `git checkout -b feature/prd-XXX-description`
+3. Make commits to the feature branch
+4. Push feature branch: `git push -u origin feature/prd-XXX-description`
+5. Create a Pull Request on GitHub
+6. Wait for GitHub Actions tests to pass (pytest runs automatically)
+7. Only merge to main after all checks pass
+8. Railway auto-deploys from main when tests pass
+
 **Adding new features:**
 1. Create PRD in `/docs/` (e.g., `PRD-026_FeatureName.md`)
-2. Implement in appropriate directory
-3. Update this file with new commands/endpoints
-4. Move PRD to `/docs/archived/` when complete
+2. Create feature branch: `git checkout -b feature/prd-026-feature-name`
+3. Implement in appropriate directory
+4. Run tests locally: `pytest tests/ -v`
+5. Push and create PR
+6. Wait for CI to pass, then merge
+7. Update this file with new commands/endpoints
+8. Move PRD to `/docs/archived/` when complete
+
+**Running Tests:**
+```bash
+# Run all Python tests
+pytest tests/ -v
+
+# Run frontend tests (Playwright)
+npm run test:chromium
+```
 
 **Local scripts** in `/dev/scripts/` - archived scripts in `/dev/scripts/archived/`
 
 ---
 
-**Last Updated**: 2025-12-08
+**Last Updated**: 2025-12-09
