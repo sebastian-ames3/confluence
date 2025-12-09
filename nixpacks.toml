@@ -1,18 +1,16 @@
 # Nixpacks configuration for Railway deployment
-# Use Python provider with pip install to writable location
+# Use --break-system-packages to bypass Nix immutability
 
 [phases.setup]
 nixPkgs = ["python311", "python311Packages.pip", "ffmpeg", "chromium", "chromedriver"]
 
 [phases.install]
 dependsOn = ["setup"]
-cmds = ["pip install --no-cache-dir --user -r requirements.txt && echo 'PIP INSTALL COMPLETE'"]
+cmds = ["pip install --no-cache-dir --break-system-packages -r requirements.txt && echo 'PIP INSTALL COMPLETE'"]
 
 [start]
 cmd = "python3 scripts/run_migrations.py --auto && python3 -m uvicorn backend.app:app --host 0.0.0.0 --port $PORT"
 
-# Force rebuild v6
+# Force rebuild v7
 [variables]
-NIXPACKS_FORCE_REBUILD = "6"
-PYTHONUSERBASE = "/app/.local"
-PATH = "/app/.local/bin:$PATH"
+NIXPACKS_FORCE_REBUILD = "7"
