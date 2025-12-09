@@ -5,7 +5,7 @@
     "nixPackages": ["ffmpeg", "chromium", "chromedriver"]
   },
   "deploy": {
-    "startCommand": "python scripts/run_migrations.py --auto && uvicorn backend.app:app --host 0.0.0.0 --port $PORT",
+    "startCommand": "python3 scripts/run_migrations.py --auto && python3 -m uvicorn backend.app:app --host 0.0.0.0 --port $PORT",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10,
     "healthcheckPath": "/health",
