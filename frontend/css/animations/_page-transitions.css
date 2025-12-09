@@ -9,15 +9,15 @@
 }
 
 .page-ready {
-  animation: fadeIn var(--duration-slow) var(--ease-out) forwards;
+  animation: fadeIn var(--transition-slow) var(--ease-out) forwards;
 }
 
 /* ----- Tab Content Transitions ----- */
 .tab-panel {
   opacity: 0;
   transform: translateY(10px);
-  transition: opacity var(--duration-normal) var(--ease-out),
-              transform var(--duration-normal) var(--ease-out);
+  transition: opacity var(--transition-normal) var(--ease-out),
+              transform var(--transition-normal) var(--ease-out);
   pointer-events: none;
 }
 
@@ -35,7 +35,7 @@
 }
 
 .hero-section.animate {
-  animation: slideInUp var(--duration-slow) var(--ease-out) forwards;
+  animation: slideInUp var(--transition-slow) var(--ease-out) forwards;
 }
 
 /* ----- KPI Cards Stagger ----- */
@@ -44,11 +44,11 @@
   transform: translateY(20px) scale(0.95);
 }
 
-.kpi-grid.animate .card-kpi:nth-child(1) { animation: kpiEnter var(--duration-normal) var(--ease-spring) 100ms forwards; }
-.kpi-grid.animate .card-kpi:nth-child(2) { animation: kpiEnter var(--duration-normal) var(--ease-spring) 150ms forwards; }
-.kpi-grid.animate .card-kpi:nth-child(3) { animation: kpiEnter var(--duration-normal) var(--ease-spring) 200ms forwards; }
-.kpi-grid.animate .card-kpi:nth-child(4) { animation: kpiEnter var(--duration-normal) var(--ease-spring) 250ms forwards; }
-.kpi-grid.animate .card-kpi:nth-child(5) { animation: kpiEnter var(--duration-normal) var(--ease-spring) 300ms forwards; }
+.kpi-grid.animate .card-kpi:nth-child(1) { animation: kpiEnter var(--transition-normal) var(--ease-spring) 100ms forwards; }
+.kpi-grid.animate .card-kpi:nth-child(2) { animation: kpiEnter var(--transition-normal) var(--ease-spring) 150ms forwards; }
+.kpi-grid.animate .card-kpi:nth-child(3) { animation: kpiEnter var(--transition-normal) var(--ease-spring) 200ms forwards; }
+.kpi-grid.animate .card-kpi:nth-child(4) { animation: kpiEnter var(--transition-normal) var(--ease-spring) 250ms forwards; }
+.kpi-grid.animate .card-kpi:nth-child(5) { animation: kpiEnter var(--transition-normal) var(--ease-spring) 300ms forwards; }
 
 @keyframes kpiEnter {
   to {
@@ -64,7 +64,7 @@
 }
 
 .content-section.animate {
-  animation: slideInUp var(--duration-normal) var(--ease-out) forwards;
+  animation: slideInUp var(--transition-normal) var(--ease-out) forwards;
 }
 
 /* ----- Card List Stagger ----- */
@@ -74,7 +74,7 @@
 }
 
 .card-list.animate > .card {
-  animation: slideInLeft var(--duration-normal) var(--ease-out) forwards;
+  animation: slideInLeft var(--transition-normal) var(--ease-out) forwards;
 }
 
 .card-list.animate > .card:nth-child(1) { animation-delay: 0ms; }
@@ -87,7 +87,7 @@
 .collapse-content {
   display: grid;
   grid-template-rows: 0fr;
-  transition: grid-template-rows var(--duration-normal) var(--ease-out);
+  transition: grid-template-rows var(--transition-normal) var(--ease-out);
 }
 
 .collapse-content.expanded {
@@ -105,7 +105,7 @@
 
 .fade-enter-active {
   opacity: 1;
-  transition: opacity var(--duration-normal) var(--ease-out);
+  transition: opacity var(--transition-normal) var(--ease-out);
 }
 
 .fade-exit {
@@ -114,7 +114,7 @@
 
 .fade-exit-active {
   opacity: 0;
-  transition: opacity var(--duration-normal) var(--ease-in);
+  transition: opacity var(--transition-normal) var(--ease-in);
 }
 
 /* ----- Slide Transition Helper ----- */
@@ -126,8 +126,8 @@
 .slide-enter-active {
   opacity: 1;
   transform: translateY(0);
-  transition: opacity var(--duration-normal) var(--ease-out),
-              transform var(--duration-normal) var(--ease-out);
+  transition: opacity var(--transition-normal) var(--ease-out),
+              transform var(--transition-normal) var(--ease-out);
 }
 
 .slide-exit {
@@ -138,8 +138,8 @@
 .slide-exit-active {
   opacity: 0;
   transform: translateY(-20px);
-  transition: opacity var(--duration-normal) var(--ease-in),
-              transform var(--duration-normal) var(--ease-in);
+  transition: opacity var(--transition-normal) var(--ease-in),
+              transform var(--transition-normal) var(--ease-in);
 }
 
 /* ----- Scale Transition Helper ----- */
@@ -151,8 +151,8 @@
 .scale-enter-active {
   opacity: 1;
   transform: scale(1);
-  transition: opacity var(--duration-normal) var(--ease-out),
-              transform var(--duration-normal) var(--ease-out);
+  transition: opacity var(--transition-normal) var(--ease-out),
+              transform var(--transition-normal) var(--ease-out);
 }
 
 .scale-exit {
@@ -163,15 +163,15 @@
 .scale-exit-active {
   opacity: 0;
   transform: scale(0.95);
-  transition: opacity var(--duration-normal) var(--ease-in),
-              transform var(--duration-normal) var(--ease-in);
+  transition: opacity var(--transition-normal) var(--ease-in),
+              transform var(--transition-normal) var(--ease-in);
 }
 
 /* ----- View Transitions (if supported) ----- */
 @supports (view-transition-name: main) {
   ::view-transition-old(root),
   ::view-transition-new(root) {
-    animation-duration: var(--duration-normal);
+    animation-duration: var(--transition-normal);
   }
 
   .hero-section {

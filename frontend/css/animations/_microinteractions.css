@@ -27,7 +27,7 @@
 
 /* ----- Button Press Effect ----- */
 .press-effect {
-  transition: transform var(--duration-instant) var(--ease-out);
+  transition: transform var(--transition-instant) var(--ease-out);
 }
 
 .press-effect:active {
@@ -53,7 +53,7 @@
     rgba(255, 255, 255, 0.08),
     transparent
   );
-  transition: left var(--duration-slow) var(--ease-out);
+  transition: left var(--transition-slow) var(--ease-out);
 }
 
 .shine-effect:hover::before {
@@ -71,16 +71,16 @@
   bottom: 100%;
   left: 50%;
   transform: translateX(-50%) translateY(10px);
-  padding: var(--space-2) var(--space-3);
-  background: var(--color-bg-elevated);
-  color: var(--color-text-primary);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
   border-radius: var(--radius-md);
   font-size: var(--text-xs);
   white-space: nowrap;
   opacity: 0;
   pointer-events: none;
-  transition: opacity var(--duration-fast) var(--ease-out),
-              transform var(--duration-fast) var(--ease-out);
+  transition: opacity var(--transition-fast) var(--ease-out),
+              transform var(--transition-fast) var(--ease-out);
   box-shadow: var(--shadow-lg);
   z-index: var(--z-tooltip);
 }
@@ -92,7 +92,7 @@
 
 /* ----- Icon Rotate on Hover ----- */
 .icon-rotate {
-  transition: transform var(--duration-normal) var(--ease-out);
+  transition: transform var(--transition-normal) var(--ease-out);
 }
 
 .icon-rotate:hover {
@@ -106,7 +106,7 @@
 
 /* ----- Expandable Icon ----- */
 .expand-icon {
-  transition: transform var(--duration-fast) var(--ease-out);
+  transition: transform var(--transition-fast) var(--ease-out);
 }
 
 .expanded .expand-icon {
@@ -125,7 +125,7 @@
   right: -2px;
   width: 8px;
   height: 8px;
-  background: var(--color-error);
+  background: var(--danger);
   border-radius: 50%;
   animation: notificationPulse 2s ease-in-out infinite;
 }
@@ -170,23 +170,23 @@
 
 /* ----- Success/Error Feedback ----- */
 .feedback-success {
-  animation: feedbackSuccess var(--duration-normal) var(--ease-out);
+  animation: feedbackSuccess var(--transition-normal) var(--ease-out);
 }
 
 @keyframes feedbackSuccess {
-  0% { box-shadow: 0 0 0 0 var(--color-success); }
+  0% { box-shadow: 0 0 0 0 var(--success); }
   50% { box-shadow: 0 0 0 8px transparent; }
   100% { box-shadow: 0 0 0 0 transparent; }
 }
 
 .feedback-error {
-  animation: shake var(--duration-slow) var(--ease-in-out);
+  animation: shake var(--transition-slow) var(--ease-in-out);
 }
 
 /* ----- Number Counter Animation ----- */
 .number-animate {
   display: inline-block;
-  transition: transform var(--duration-fast) var(--ease-out);
+  transition: transform var(--transition-fast) var(--ease-out);
 }
 
 .number-animate.changing {
@@ -202,11 +202,11 @@
 
 /* ----- Active State Feedback ----- */
 .active-feedback {
-  transition: background-color var(--duration-instant) var(--ease-out);
+  transition: background-color var(--transition-instant) var(--ease-out);
 }
 
 .active-feedback:active {
-  background-color: var(--color-bg-active);
+  background-color: var(--bg-glass-hover);
 }
 
 /* ----- Loading Button Feedback ----- */
@@ -234,10 +234,10 @@
   position: relative;
   width: 48px;
   height: 24px;
-  background: var(--color-bg-tertiary);
+  background: var(--bg-elevated);
   border-radius: var(--radius-full);
   cursor: pointer;
-  transition: background-color var(--duration-fast) var(--ease-out);
+  transition: background-color var(--transition-fast) var(--ease-out);
 }
 
 .switch-toggle::after {
@@ -250,11 +250,11 @@
   background: white;
   border-radius: 50%;
   box-shadow: var(--shadow-sm);
-  transition: transform var(--duration-fast) var(--ease-spring);
+  transition: transform var(--transition-fast) var(--ease-spring);
 }
 
 .switch-toggle.active {
-  background: var(--color-accent-primary);
+  background: var(--primary);
 }
 
 .switch-toggle.active::after {
@@ -277,7 +277,7 @@
   border-top: none;
   border-left: none;
   transform: rotate(45deg) scale(0);
-  transition: transform var(--duration-fast) var(--ease-spring);
+  transition: transform var(--transition-fast) var(--ease-spring);
 }
 
 .checkbox-animated.checked::after {
@@ -287,7 +287,7 @@
 /* ----- Menu Item Hover ----- */
 .menu-item-hover {
   position: relative;
-  transition: background-color var(--duration-fast) var(--ease-out);
+  transition: background-color var(--transition-fast) var(--ease-out);
 }
 
 .menu-item-hover::before {
@@ -297,9 +297,9 @@
   top: 0;
   bottom: 0;
   width: 3px;
-  background: var(--color-accent-primary);
+  background: var(--primary);
   transform: scaleY(0);
-  transition: transform var(--duration-fast) var(--ease-out);
+  transition: transform var(--transition-fast) var(--ease-out);
 }
 
 .menu-item-hover:hover::before,
@@ -320,10 +320,10 @@
   left: 0;
   width: 100%;
   height: 2px;
-  background: var(--color-accent-primary);
+  background: var(--primary);
   transform: scaleX(0);
   transform-origin: right;
-  transition: transform var(--duration-fast) var(--ease-out);
+  transition: transform var(--transition-fast) var(--ease-out);
 }
 
 .link-animated:hover::after {
@@ -333,7 +333,7 @@
 
 /* ----- Count Badge Bounce ----- */
 .count-badge-bounce {
-  animation: countBounce var(--duration-normal) var(--ease-bounce);
+  animation: countBounce var(--transition-normal) var(--ease-bounce);
 }
 
 @keyframes countBounce {
