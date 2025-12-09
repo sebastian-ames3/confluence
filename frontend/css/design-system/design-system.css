@@ -1,0 +1,15 @@
+/* ============================================
+   Design System Master Import
+   Macro Confluence Hub
+   ============================================ */
+
+/* Foundation */
+@import '_reset.css';
+@import '_tokens.css';
+@import '_colors.css';
+
+/* Core Systems */
+@import '_typography.css';
+@import '_spacing.css';
+@import '_effects.css';
+@import '_layout.css';

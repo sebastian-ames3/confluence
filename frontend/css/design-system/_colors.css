@@ -1,0 +1,109 @@
+/* ============================================
+   Color System
+   WCAG 2.1 AA compliant color palette
+   ============================================ */
+
+:root {
+  /* ----- Background Colors ----- */
+  --color-bg-primary: #0F172A;
+  --color-bg-secondary: #1E293B;
+  --color-bg-tertiary: #334155;
+  --color-bg-elevated: #1E293B;
+  --color-bg-hover: rgba(255, 255, 255, 0.05);
+  --color-bg-active: rgba(255, 255, 255, 0.1);
+
+  /* ----- Text Colors ----- */
+  --color-text-primary: #F8FAFC;
+  --color-text-secondary: #CBD5E1;
+  --color-text-tertiary: #94A3B8;
+  --color-text-disabled: #64748B;
+  --color-text-inverse: #0F172A;
+
+  /* ----- Border Colors ----- */
+  --color-border-primary: rgba(255, 255, 255, 0.1);
+  --color-border-secondary: rgba(255, 255, 255, 0.05);
+  --color-border-focus: #60A5FA;
+  --color-border-error: #EF4444;
+
+  /* ----- Accent Colors ----- */
+  --color-accent-primary: #60A5FA;
+  --color-accent-primary-hover: #93C5FD;
+  --color-accent-primary-active: #3B82F6;
+  --color-accent-primary-rgb: 96, 165, 250;
+
+  --color-accent-secondary: #A78BFA;
+  --color-accent-secondary-hover: #C4B5FD;
+  --color-accent-secondary-active: #8B5CF6;
+
+  /* ----- Semantic Colors ----- */
+  /* Success */
+  --color-success: #10B981;
+  --color-success-light: #34D399;
+  --color-success-dark: #059669;
+  --color-success-bg: rgba(16, 185, 129, 0.15);
+  --color-success-border: rgba(16, 185, 129, 0.3);
+
+  /* Warning */
+  --color-warning: #F59E0B;
+  --color-warning-light: #FBBF24;
+  --color-warning-dark: #D97706;
+  --color-warning-bg: rgba(245, 158, 11, 0.15);
+  --color-warning-border: rgba(245, 158, 11, 0.3);
+
+  /* Error */
+  --color-error: #EF4444;
+  --color-error-light: #F87171;
+  --color-error-dark: #DC2626;
+  --color-error-bg: rgba(239, 68, 68, 0.15);
+  --color-error-border: rgba(239, 68, 68, 0.3);
+
+  /* Info */
+  --color-info: #3B82F6;
+  --color-info-light: #60A5FA;
+  --color-info-dark: #2563EB;
+  --color-info-bg: rgba(59, 130, 246, 0.15);
+  --color-info-border: rgba(59, 130, 246, 0.3);
+
+  /* ----- Sentiment Colors ----- */
+  --color-bullish: #34D399;
+  --color-bullish-bg: rgba(52, 211, 153, 0.15);
+  --color-bearish: #F87171;
+  --color-bearish-bg: rgba(248, 113, 113, 0.15);
+  --color-neutral: #94A3B8;
+  --color-neutral-bg: rgba(148, 163, 184, 0.15);
+
+  /* ----- Source Colors ----- */
+  --color-source-discord: #7289DA;
+  --color-source-42macro: #F59E0B;
+  --color-source-kt: #10B981;
+  --color-source-youtube: #F87171;
+  --color-source-substack: #FF7F50;
+
+  /* ----- Theme Status Colors ----- */
+  --color-status-emerging: #FBBF24;
+  --color-status-active: #34D399;
+  --color-status-evolved: #60A5FA;
+  --color-status-dormant: #94A3B8;
+
+  /* ----- Conviction Colors ----- */
+  --color-conviction-high: #10B981;
+  --color-conviction-medium: #F59E0B;
+  --color-conviction-low: #94A3B8;
+}
+
+/* ----- Dark Theme (Default) ----- */
+[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+/* ----- High Contrast Mode ----- */
+@media (prefers-contrast: high) {
+  :root {
+    --color-text-primary: #ffffff;
+    --color-text-secondary: #e0e0e0;
+    --color-text-tertiary: #c0c0c0;
+    --color-bg-primary: #000000;
+    --color-bg-secondary: #1a1a1a;
+    --color-border-primary: #ffffff;
+  }
+}

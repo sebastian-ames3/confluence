@@ -1,0 +1,234 @@
+/* ============================================
+   Accessibility Styles
+   WCAG 2.1 AA compliant styles
+   ============================================ */
+
+/* ----- Screen Reader Only ----- */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.sr-only-focusable:focus,
+.sr-only-focusable:active {
+  position: static;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+}
+
+/* ----- Skip Links ----- */
+.skip-link {
+  position: fixed;
+  top: -100px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: var(--space-3) var(--space-6);
+  background: var(--color-accent-primary);
+  color: var(--color-text-inverse);
+  font-weight: var(--font-semibold);
+  border-radius: var(--radius-md);
+  z-index: 9999;
+  transition: top var(--duration-fast) var(--ease-out);
+  text-decoration: none;
+}
+
+.skip-link:focus {
+  top: var(--space-4);
+  outline: 2px solid white;
+  outline-offset: 2px;
+}
+
+/* ----- Focus Styles ----- */
+:focus {
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: 2px;
+}
+
+/* Remove focus ring for mouse users */
+.using-mouse *:focus {
+  outline: none;
+}
+
+/* Restore focus ring for keyboard */
+*:focus-visible {
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: 2px;
+}
+
+/* Enhanced focus for buttons */
+.btn:focus-visible {
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.3);
+}
+
+/* Focus within for card containers */
+.card:focus-within {
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: 2px;
+}
+
+/* ----- High Contrast Mode ----- */
+@media (prefers-contrast: high) {
+  :root {
+    --color-text-primary: #ffffff;
+    --color-text-secondary: #e0e0e0;
+    --color-bg-primary: #000000;
+    --color-bg-secondary: #1a1a1a;
+    --color-border-primary: #ffffff;
+  }
+
+  .btn {
+    border: 2px solid currentColor;
+  }
+
+  .card {
+    border: 2px solid var(--color-border-primary);
+  }
+}
+
+/* ----- Reduced Motion ----- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.reduce-motion *,
+.reduce-motion *::before,
+.reduce-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
+/* ----- Color Blind Friendly ----- */
+.badge-bullish::before {
+  content: '↑';
+  margin-right: var(--space-1);
+}
+
+.badge-bearish::before {
+  content: '↓';
+  margin-right: var(--space-1);
+}
+
+.badge-neutral::before {
+  content: '→';
+  margin-right: var(--space-1);
+}
+
+/* ----- Minimum Touch Targets ----- */
+.btn,
+[role="button"],
+input[type="checkbox"],
+input[type="radio"],
+.toggle {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+@media (max-width: 768px) {
+  .btn,
+  [role="button"],
+  a {
+    min-height: 48px;
+  }
+}
+
+/* ----- Text Spacing ----- */
+body {
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+}
+
+/* ----- Link Styling ----- */
+a:not(.btn):not(.card) {
+  text-decoration: underline;
+  text-decoration-color: var(--color-accent-primary);
+  text-underline-offset: 2px;
+}
+
+a:not(.btn):not(.card):hover {
+  text-decoration-thickness: 2px;
+}
+
+/* ----- Form Labels ----- */
+label {
+  display: block;
+  margin-bottom: var(--space-1);
+  font-weight: var(--font-medium);
+}
+
+.required::after {
+  content: ' *';
+  color: var(--color-error);
+}
+
+/* Error messages */
+.field-error {
+  color: var(--color-error-light);
+  font-size: var(--text-sm);
+  margin-top: var(--space-1);
+}
+
+.field-error::before {
+  content: '⚠ ';
+}
+
+/* Input error state */
+input[aria-invalid="true"],
+select[aria-invalid="true"],
+textarea[aria-invalid="true"] {
+  border-color: var(--color-error);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+}
+
+/* ----- Selection Highlight ----- */
+::selection {
+  background: var(--color-accent-primary);
+  color: white;
+}
+
+/* ----- Print Styles ----- */
+@media print {
+  nav,
+  .skip-link,
+  .btn,
+  .modal,
+  .drawer {
+    display: none !important;
+  }
+
+  body {
+    font-size: 12pt;
+    line-height: 1.5;
+    color: #000;
+    background: #fff;
+  }
+
+  a[href]::after {
+    content: ' (' attr(href) ')';
+    font-size: 10pt;
+    color: #666;
+  }
+
+  .card {
+    break-inside: avoid;
+  }
+}

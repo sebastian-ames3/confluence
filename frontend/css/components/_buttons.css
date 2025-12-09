@@ -1,0 +1,310 @@
+/* ============================================
+   Button Components
+   Primary, secondary, ghost, and icon buttons
+   ============================================ */
+
+/* ----- Base Button ----- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  border-radius: var(--radius-lg);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+  position: relative;
+  overflow: hidden;
+  min-height: 44px;
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: 2px;
+}
+
+.btn:disabled,
+.btn.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ----- Primary Button ----- */
+.btn-primary {
+  background: var(--color-accent-primary);
+  color: var(--color-text-inverse);
+  border-color: var(--color-accent-primary);
+}
+
+.btn-primary:hover {
+  background: var(--color-accent-primary-hover);
+  border-color: var(--color-accent-primary-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md), var(--shadow-glow-accent);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ----- Secondary Button ----- */
+.btn-secondary {
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  border-color: var(--color-border-primary);
+}
+
+.btn-secondary:hover {
+  background: var(--color-bg-tertiary);
+  border-color: var(--color-accent-primary);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-secondary:active {
+  transform: translateY(0);
+}
+
+/* ----- Ghost Button ----- */
+.btn-ghost {
+  background: transparent;
+  color: var(--color-text-secondary);
+  border-color: transparent;
+}
+
+.btn-ghost:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.btn-ghost:active {
+  background: var(--color-bg-active);
+}
+
+/* ----- Danger Button ----- */
+.btn-danger {
+  background: var(--color-error);
+  color: white;
+  border-color: var(--color-error);
+}
+
+.btn-danger:hover {
+  background: var(--color-error-light);
+  border-color: var(--color-error-light);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md), var(--shadow-glow-error);
+}
+
+.btn-danger:active {
+  transform: translateY(0);
+}
+
+/* ----- Success Button ----- */
+.btn-success {
+  background: var(--color-success);
+  color: var(--color-text-inverse);
+  border-color: var(--color-success);
+}
+
+.btn-success:hover {
+  background: var(--color-success-light);
+  border-color: var(--color-success-light);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md), var(--shadow-glow-success);
+}
+
+/* ----- Glass Button ----- */
+.btn-glass {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  color: var(--color-text-primary);
+  border-color: var(--glass-border);
+}
+
+.btn-glass:hover {
+  background: var(--glass-bg-heavy);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* ----- Neumorphic Button ----- */
+.btn-neu {
+  background: var(--neu-bg);
+  color: var(--color-text-primary);
+  border: none;
+  box-shadow:
+    4px 4px 8px var(--neu-shadow-dark),
+    -4px -4px 8px var(--neu-shadow-light);
+}
+
+.btn-neu:hover {
+  box-shadow:
+    6px 6px 12px var(--neu-shadow-dark),
+    -6px -6px 12px var(--neu-shadow-light);
+}
+
+.btn-neu:active {
+  box-shadow:
+    inset 2px 2px 5px var(--neu-shadow-dark),
+    inset -2px -2px 5px var(--neu-shadow-light);
+}
+
+/* ----- Button Sizes ----- */
+.btn-xs {
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-xs);
+  min-height: 32px;
+}
+
+.btn-sm {
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+  min-height: 36px;
+}
+
+.btn-lg {
+  padding: var(--space-4) var(--space-8);
+  font-size: var(--text-base);
+  min-height: 52px;
+}
+
+.btn-xl {
+  padding: var(--space-5) var(--space-10);
+  font-size: var(--text-lg);
+  min-height: 60px;
+}
+
+/* ----- Icon Button ----- */
+.btn-icon {
+  padding: var(--space-3);
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: var(--radius-lg);
+}
+
+.btn-icon-sm {
+  padding: var(--space-2);
+  min-width: 36px;
+  min-height: 36px;
+}
+
+.btn-icon-lg {
+  padding: var(--space-4);
+  min-width: 52px;
+  min-height: 52px;
+}
+
+.btn-icon-circle {
+  border-radius: var(--radius-full);
+}
+
+/* ----- Full Width Button ----- */
+.btn-full {
+  width: 100%;
+}
+
+/* ----- Button Group ----- */
+.btn-group {
+  display: inline-flex;
+}
+
+.btn-group .btn {
+  border-radius: 0;
+}
+
+.btn-group .btn:first-child {
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+}
+
+.btn-group .btn:last-child {
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+}
+
+.btn-group .btn:not(:last-child) {
+  border-right: none;
+}
+
+/* ----- Loading State ----- */
+.btn.loading {
+  color: transparent;
+  pointer-events: none;
+}
+
+.btn.loading::after {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: btn-spin 0.75s linear infinite;
+}
+
+.btn-primary.loading::after {
+  border-color: var(--color-text-inverse);
+  border-right-color: transparent;
+}
+
+@keyframes btn-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ----- Ripple Effect ----- */
+.btn .ripple-effect {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(0);
+  animation: ripple 0.6s linear;
+  pointer-events: none;
+}
+
+@keyframes ripple {
+  to {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+/* ----- Button with Icon ----- */
+.btn svg,
+.btn .icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.btn-lg svg,
+.btn-lg .icon {
+  width: 20px;
+  height: 20px;
+}
+
+.btn-sm svg,
+.btn-sm .icon {
+  width: 16px;
+  height: 16px;
+}
+
+/* Icon only buttons hide text on mobile */
+@media (max-width: 640px) {
+  .btn-responsive-icon .btn-text {
+    display: none;
+  }
+
+  .btn-responsive-icon {
+    padding: var(--space-3);
+    min-width: 44px;
+  }
+}

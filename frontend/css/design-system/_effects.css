@@ -1,0 +1,256 @@
+/* ============================================
+   Effects System
+   Shadows, glassmorphism, and neumorphism
+   ============================================ */
+
+:root {
+  /* ----- Box Shadows ----- */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.3), 0 4px 8px rgba(0, 0, 0, 0.2);
+  --shadow-xl: 0 16px 32px rgba(0, 0, 0, 0.3), 0 8px 16px rgba(0, 0, 0, 0.2);
+  --shadow-2xl: 0 24px 48px rgba(0, 0, 0, 0.4);
+
+  /* Inner shadows for neumorphism */
+  --shadow-inner: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+  --shadow-inner-lg: inset 0 4px 8px rgba(0, 0, 0, 0.3);
+
+  /* Glow effects */
+  --shadow-glow-accent: 0 0 20px rgba(96, 165, 250, 0.3);
+  --shadow-glow-success: 0 0 20px rgba(16, 185, 129, 0.3);
+  --shadow-glow-error: 0 0 20px rgba(239, 68, 68, 0.3);
+  --shadow-glow-warning: 0 0 20px rgba(245, 158, 11, 0.3);
+
+  /* ----- Glassmorphism ----- */
+  --glass-bg: rgba(30, 41, 59, 0.7);
+  --glass-bg-light: rgba(30, 41, 59, 0.5);
+  --glass-bg-heavy: rgba(30, 41, 59, 0.9);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-blur: blur(12px);
+  --glass-blur-light: blur(8px);
+  --glass-blur-heavy: blur(20px);
+
+  /* ----- Neumorphism ----- */
+  --neu-bg: #1E293B;
+  --neu-shadow-light: rgba(255, 255, 255, 0.05);
+  --neu-shadow-dark: rgba(0, 0, 0, 0.5);
+}
+
+/* ----- Shadow Utilities ----- */
+.shadow-xs { box-shadow: var(--shadow-xs); }
+.shadow-sm { box-shadow: var(--shadow-sm); }
+.shadow-md { box-shadow: var(--shadow-md); }
+.shadow-lg { box-shadow: var(--shadow-lg); }
+.shadow-xl { box-shadow: var(--shadow-xl); }
+.shadow-2xl { box-shadow: var(--shadow-2xl); }
+.shadow-inner { box-shadow: var(--shadow-inner); }
+.shadow-none { box-shadow: none; }
+
+/* ----- Glow Effects ----- */
+.glow-accent { box-shadow: var(--shadow-glow-accent); }
+.glow-success { box-shadow: var(--shadow-glow-success); }
+.glow-error { box-shadow: var(--shadow-glow-error); }
+.glow-warning { box-shadow: var(--shadow-glow-warning); }
+
+/* ----- Glass Effect Classes ----- */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+}
+
+.glass-light {
+  background: var(--glass-bg-light);
+  backdrop-filter: var(--glass-blur-light);
+  -webkit-backdrop-filter: var(--glass-blur-light);
+  border: 1px solid var(--glass-border);
+}
+
+.glass-heavy {
+  background: var(--glass-bg-heavy);
+  backdrop-filter: var(--glass-blur-heavy);
+  -webkit-backdrop-filter: var(--glass-blur-heavy);
+  border: 1px solid var(--glass-border);
+}
+
+/* Glass card variant */
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+}
+
+/* ----- Neumorphic Effects ----- */
+.neu {
+  background: var(--neu-bg);
+  box-shadow:
+    8px 8px 16px var(--neu-shadow-dark),
+    -8px -8px 16px var(--neu-shadow-light);
+  border-radius: var(--radius-lg);
+}
+
+.neu-sm {
+  background: var(--neu-bg);
+  box-shadow:
+    4px 4px 8px var(--neu-shadow-dark),
+    -4px -4px 8px var(--neu-shadow-light);
+  border-radius: var(--radius-md);
+}
+
+.neu-inset {
+  background: var(--neu-bg);
+  box-shadow:
+    inset 4px 4px 8px var(--neu-shadow-dark),
+    inset -4px -4px 8px var(--neu-shadow-light);
+  border-radius: var(--radius-lg);
+}
+
+.neu-flat {
+  background: linear-gradient(145deg, #1a2536, #212e45);
+  box-shadow:
+    6px 6px 12px var(--neu-shadow-dark),
+    -6px -6px 12px var(--neu-shadow-light);
+  border-radius: var(--radius-lg);
+}
+
+/* Neumorphic button (pressed state) */
+.neu-pressed {
+  background: var(--neu-bg);
+  box-shadow:
+    inset 2px 2px 5px var(--neu-shadow-dark),
+    inset -2px -2px 5px var(--neu-shadow-light);
+}
+
+/* ----- Gradient Overlays ----- */
+.gradient-fade-down {
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    var(--color-bg-primary) 100%
+  );
+}
+
+.gradient-fade-up {
+  background: linear-gradient(
+    to top,
+    transparent 0%,
+    var(--color-bg-primary) 100%
+  );
+}
+
+.gradient-accent {
+  background: linear-gradient(
+    135deg,
+    var(--color-accent-primary) 0%,
+    var(--color-accent-secondary) 100%
+  );
+}
+
+.gradient-success {
+  background: linear-gradient(
+    135deg,
+    var(--color-success) 0%,
+    var(--color-success-light) 100%
+  );
+}
+
+/* ----- Border Utilities ----- */
+.border { border: 1px solid var(--color-border-primary); }
+.border-0 { border: 0; }
+.border-t { border-top: 1px solid var(--color-border-primary); }
+.border-r { border-right: 1px solid var(--color-border-primary); }
+.border-b { border-bottom: 1px solid var(--color-border-primary); }
+.border-l { border-left: 1px solid var(--color-border-primary); }
+
+.border-accent { border-color: var(--color-accent-primary); }
+.border-success { border-color: var(--color-success); }
+.border-warning { border-color: var(--color-warning); }
+.border-error { border-color: var(--color-error); }
+
+/* ----- Rounded Utilities ----- */
+.rounded-none { border-radius: var(--radius-none); }
+.rounded-xs { border-radius: var(--radius-xs); }
+.rounded-sm { border-radius: var(--radius-sm); }
+.rounded { border-radius: var(--radius-md); }
+.rounded-lg { border-radius: var(--radius-lg); }
+.rounded-xl { border-radius: var(--radius-xl); }
+.rounded-2xl { border-radius: var(--radius-2xl); }
+.rounded-full { border-radius: var(--radius-full); }
+
+/* ----- Opacity Utilities ----- */
+.opacity-0 { opacity: 0; }
+.opacity-25 { opacity: 0.25; }
+.opacity-50 { opacity: 0.5; }
+.opacity-75 { opacity: 0.75; }
+.opacity-100 { opacity: 1; }
+
+/* ----- Blur Utilities ----- */
+.blur-sm { filter: blur(4px); }
+.blur { filter: blur(8px); }
+.blur-lg { filter: blur(16px); }
+.blur-xl { filter: blur(24px); }
+.blur-none { filter: blur(0); }
+
+/* ----- Backdrop Blur ----- */
+.backdrop-blur-sm {
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+.backdrop-blur {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.backdrop-blur-lg {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.backdrop-blur-xl {
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+/* ----- Ring Utilities (Focus states) ----- */
+.ring {
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.3);
+}
+
+.ring-accent {
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.3);
+}
+
+.ring-success {
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.3);
+}
+
+.ring-error {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.3);
+}
+
+/* ----- Divider ----- */
+.divider {
+  height: 1px;
+  background: var(--color-border-primary);
+  margin: var(--space-4) 0;
+}
+
+.divider-vertical {
+  width: 1px;
+  height: 100%;
+  background: var(--color-border-primary);
+  margin: 0 var(--space-4);
+}
+
+/* ----- Fallback for no backdrop-filter support ----- */
+@supports not (backdrop-filter: blur(12px)) {
+  .glass,
+  .glass-light,
+  .glass-heavy,
+  .glass-card {
+    background: var(--color-bg-secondary);
+  }
+}

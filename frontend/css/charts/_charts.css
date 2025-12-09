@@ -1,0 +1,279 @@
+/* ============================================
+   Chart & Visualization Styles
+   ============================================ */
+
+/* ----- Chart Container ----- */
+.chart-container {
+  position: relative;
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-4);
+}
+
+.chart-container-sm {
+  height: 200px;
+}
+
+.chart-container-md {
+  height: 300px;
+}
+
+.chart-container-lg {
+  height: 400px;
+}
+
+.chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+}
+
+.chart-title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-primary);
+}
+
+.chart-subtitle {
+  font-size: var(--text-sm);
+  color: var(--color-text-tertiary);
+}
+
+.chart-canvas-wrapper {
+  position: relative;
+  width: 100%;
+  height: calc(100% - 60px);
+}
+
+/* ----- Chart Loading State ----- */
+.chart-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+}
+
+.chart-loading::after {
+  content: '';
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--color-bg-tertiary);
+  border-top-color: var(--color-accent-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* ----- Chart Empty State ----- */
+.chart-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  color: var(--color-text-tertiary);
+  text-align: center;
+  padding: var(--space-8);
+}
+
+.chart-empty-icon {
+  font-size: 48px;
+  margin-bottom: var(--space-4);
+  opacity: 0.3;
+}
+
+.chart-empty-text {
+  font-size: var(--text-sm);
+}
+
+/* ----- Heatmap Styles ----- */
+.heatmap-wrapper {
+  overflow-x: auto;
+}
+
+.heatmap-header {
+  display: flex;
+  align-items: flex-end;
+}
+
+.heatmap-source-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.heatmap-source-text {
+  transform: rotate(-45deg);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.heatmap-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.heatmap-row {
+  display: flex;
+  align-items: center;
+  opacity: 0;
+  animation: fadeSlideIn var(--duration-normal) var(--ease-out) forwards;
+}
+
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.heatmap-theme-label {
+  flex-shrink: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  padding-right: var(--space-3);
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.heatmap-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin: 2px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  cursor: pointer;
+  transition: transform var(--duration-fast) var(--ease-out),
+              box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.heatmap-cell:hover {
+  transform: scale(1.1);
+  z-index: 1;
+}
+
+.cell-bullish {
+  background: rgba(16, 185, 129, 0.3);
+  color: var(--color-success);
+  border: 1px solid rgba(16, 185, 129, 0.5);
+}
+
+.cell-bullish:hover {
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
+}
+
+.cell-bearish {
+  background: rgba(239, 68, 68, 0.3);
+  color: var(--color-error);
+  border: 1px solid rgba(239, 68, 68, 0.5);
+}
+
+.cell-bearish:hover {
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
+}
+
+.cell-neutral {
+  background: rgba(107, 114, 128, 0.2);
+  color: var(--color-text-tertiary);
+  border: 1px solid rgba(107, 114, 128, 0.3);
+}
+
+.heatmap-legend {
+  display: flex;
+  gap: var(--space-4);
+  justify-content: center;
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border-primary);
+}
+
+.heatmap-legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
+.heatmap-cell-preview {
+  width: 16px;
+  height: 16px;
+  border-radius: var(--radius-xs);
+}
+
+/* ----- Confluence Meter ----- */
+.confluence-meter {
+  position: relative;
+  height: 24px;
+  background: var(--color-bg-tertiary);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.confluence-meter-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: linear-gradient(90deg, var(--color-warning), var(--color-success));
+  transition: width var(--duration-slow) var(--ease-out);
+}
+
+.confluence-meter-label {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: var(--text-sm);
+  font-weight: var(--font-bold);
+  color: var(--color-text-primary);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* ----- Mini Sparkline ----- */
+.sparkline-container {
+  width: 80px;
+  height: 24px;
+}
+
+.sparkline-container canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* ----- Responsive Charts ----- */
+@media (max-width: 768px) {
+  .chart-container {
+    padding: var(--space-3);
+  }
+
+  .chart-container-lg {
+    height: 300px;
+  }
+
+  .heatmap-source-label {
+    width: 32px !important;
+  }
+
+  .heatmap-cell {
+    width: 32px !important;
+    height: 32px !important;
+  }
+
+  .heatmap-theme-label {
+    width: 80px !important;
+    font-size: var(--text-xs);
+  }
+}

@@ -1,0 +1,184 @@
+/* ============================================
+   Page Transitions
+   Smooth transitions between views and tabs
+   ============================================ */
+
+/* ----- Page Load Animation ----- */
+.page-loading {
+  opacity: 0;
+}
+
+.page-ready {
+  animation: fadeIn var(--duration-slow) var(--ease-out) forwards;
+}
+
+/* ----- Tab Content Transitions ----- */
+.tab-panel {
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity var(--duration-normal) var(--ease-out),
+              transform var(--duration-normal) var(--ease-out);
+  pointer-events: none;
+}
+
+.tab-panel.active,
+.tab-panel[aria-hidden="false"] {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+/* ----- Hero Section Entrance ----- */
+.hero-section {
+  opacity: 0;
+  transform: translateY(30px);
+}
+
+.hero-section.animate {
+  animation: slideInUp var(--duration-slow) var(--ease-out) forwards;
+}
+
+/* ----- KPI Cards Stagger ----- */
+.kpi-grid .card-kpi {
+  opacity: 0;
+  transform: translateY(20px) scale(0.95);
+}
+
+.kpi-grid.animate .card-kpi:nth-child(1) { animation: kpiEnter var(--duration-normal) var(--ease-spring) 100ms forwards; }
+.kpi-grid.animate .card-kpi:nth-child(2) { animation: kpiEnter var(--duration-normal) var(--ease-spring) 150ms forwards; }
+.kpi-grid.animate .card-kpi:nth-child(3) { animation: kpiEnter var(--duration-normal) var(--ease-spring) 200ms forwards; }
+.kpi-grid.animate .card-kpi:nth-child(4) { animation: kpiEnter var(--duration-normal) var(--ease-spring) 250ms forwards; }
+.kpi-grid.animate .card-kpi:nth-child(5) { animation: kpiEnter var(--duration-normal) var(--ease-spring) 300ms forwards; }
+
+@keyframes kpiEnter {
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ----- Content Section Entrance ----- */
+.content-section {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.content-section.animate {
+  animation: slideInUp var(--duration-normal) var(--ease-out) forwards;
+}
+
+/* ----- Card List Stagger ----- */
+.card-list > .card {
+  opacity: 0;
+  transform: translateX(-20px);
+}
+
+.card-list.animate > .card {
+  animation: slideInLeft var(--duration-normal) var(--ease-out) forwards;
+}
+
+.card-list.animate > .card:nth-child(1) { animation-delay: 0ms; }
+.card-list.animate > .card:nth-child(2) { animation-delay: 50ms; }
+.card-list.animate > .card:nth-child(3) { animation-delay: 100ms; }
+.card-list.animate > .card:nth-child(4) { animation-delay: 150ms; }
+.card-list.animate > .card:nth-child(5) { animation-delay: 200ms; }
+
+/* ----- Accordion/Collapse ----- */
+.collapse-content {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--duration-normal) var(--ease-out);
+}
+
+.collapse-content.expanded {
+  grid-template-rows: 1fr;
+}
+
+.collapse-content > .collapse-inner {
+  overflow: hidden;
+}
+
+/* ----- Fade Transition Helper ----- */
+.fade-enter {
+  opacity: 0;
+}
+
+.fade-enter-active {
+  opacity: 1;
+  transition: opacity var(--duration-normal) var(--ease-out);
+}
+
+.fade-exit {
+  opacity: 1;
+}
+
+.fade-exit-active {
+  opacity: 0;
+  transition: opacity var(--duration-normal) var(--ease-in);
+}
+
+/* ----- Slide Transition Helper ----- */
+.slide-enter {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.slide-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity var(--duration-normal) var(--ease-out),
+              transform var(--duration-normal) var(--ease-out);
+}
+
+.slide-exit {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.slide-exit-active {
+  opacity: 0;
+  transform: translateY(-20px);
+  transition: opacity var(--duration-normal) var(--ease-in),
+              transform var(--duration-normal) var(--ease-in);
+}
+
+/* ----- Scale Transition Helper ----- */
+.scale-enter {
+  opacity: 0;
+  transform: scale(0.95);
+}
+
+.scale-enter-active {
+  opacity: 1;
+  transform: scale(1);
+  transition: opacity var(--duration-normal) var(--ease-out),
+              transform var(--duration-normal) var(--ease-out);
+}
+
+.scale-exit {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.scale-exit-active {
+  opacity: 0;
+  transform: scale(0.95);
+  transition: opacity var(--duration-normal) var(--ease-in),
+              transform var(--duration-normal) var(--ease-in);
+}
+
+/* ----- View Transitions (if supported) ----- */
+@supports (view-transition-name: main) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: var(--duration-normal);
+  }
+
+  .hero-section {
+    view-transition-name: hero;
+  }
+
+  .main-content {
+    view-transition-name: main;
+  }
+}

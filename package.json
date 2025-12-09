@@ -1,0 +1,15 @@
+{
+  "name": "macro-confluence-hub",
+  "version": "1.6.0",
+  "description": "AI-powered investment research synthesis dashboard",
+  "scripts": {
+    "test": "npx playwright test",
+    "test:ui": "npx playwright test --ui",
+    "test:headed": "npx playwright test --headed",
+    "test:chromium": "npx playwright test --project=chromium"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.57.0",
+    "playwright": "^1.57.0"
+  }
+}

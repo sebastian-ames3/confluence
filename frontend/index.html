@@ -1,11 +1,43 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="fonts-loading">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="AI-powered investment research synthesis and confluence analysis">
+    <meta name="theme-color" content="#0F172A">
     <title>Macro Confluence Hub - Research Synthesis</title>
+
+    <!-- Preconnect to external resources -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <!-- New Modern Design System -->
+    <link rel="stylesheet" href="css/main.css">
+
+    <!-- Legacy styles (keeping for backward compatibility during transition) -->
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/mobile.css">
+
+    <!-- Font loading detection -->
+    <script>
+        if ('fonts' in document) {
+            Promise.all([
+                document.fonts.load('400 1em Inter'),
+                document.fonts.load('600 1em Inter')
+            ]).then(() => {
+                document.documentElement.classList.remove('fonts-loading');
+                document.documentElement.classList.add('fonts-loaded');
+            }).catch(() => {
+                document.documentElement.classList.remove('fonts-loading');
+                document.documentElement.classList.add('fonts-failed');
+            });
+        } else {
+            document.documentElement.classList.remove('fonts-loading');
+        }
+    </script>
     <style>
         /* Simple Dashboard Specific Styles */
         .synthesis-panel {
@@ -1271,7 +1303,10 @@
         }
     </style>
 </head>
-<body>
+<body class="page-loading">
+    <!-- Skip to main content (accessibility) -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
     <!-- Header -->
     <header class="header">
         <div class="header-content">
@@ -1280,7 +1315,7 @@
     </header>
 
     <!-- Main Content -->
-    <div class="container">
+    <main id="main-content" class="container" role="main">
         <div class="simple-header">
             <h1>Macro Confluence Hub</h1>
             <p>AI-powered investment research synthesis</p>
@@ -1529,7 +1564,7 @@
             </div>
         </div><!-- End Themes Tab -->
 
-    </div>
+    </main>
 
     <script>
         // API Base URL
@@ -2708,5 +2743,11 @@
             return (date.getMonth() + 1) + '/' + date.getDate();
         }
     </script>
+
+    <!-- Modern UI Enhancement Scripts -->
+    <script src="js/charts/chartConfig.js"></script>
+    <script src="js/accessibility.js"></script>
+    <script src="js/animations.js"></script>
+    <script src="js/toast.js"></script>
 </body>
 </html>
