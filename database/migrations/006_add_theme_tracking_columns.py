@@ -23,42 +23,47 @@ def upgrade(db):
     """
     print("Applying migration 006: Add theme tracking columns (PRD-024)...")
 
+    def safe_add_column(conn, column_name, column_def):
+        """Add column if it doesn't exist."""
+        try:
+            # Check if column exists
+            cursor = conn.execute("PRAGMA table_info(themes)")
+            columns = [row[1] for row in cursor.fetchall()]
+            if column_name not in columns:
+                conn.execute(f"ALTER TABLE themes ADD COLUMN {column_name} {column_def}")
+                print(f"  Added column: {column_name}")
+            else:
+                print(f"  Column already exists: {column_name}")
+        except Exception as e:
+            print(f"  Error adding {column_name}: {e}")
+
     with db.get_connection() as conn:
         # Add aliases column (JSON array)
-        conn.execute("""
-            ALTER TABLE themes ADD COLUMN aliases TEXT
-        """)
+        safe_add_column(conn, "aliases", "TEXT")
 
         # Add evolved_from_theme_id column (self-reference)
-        conn.execute("""
-            ALTER TABLE themes ADD COLUMN evolved_from_theme_id INTEGER REFERENCES themes(id)
-        """)
+        safe_add_column(conn, "evolved_from_theme_id", "INTEGER REFERENCES themes(id)")
 
         # Add source_evidence column (JSON: per-source evidence)
-        conn.execute("""
-            ALTER TABLE themes ADD COLUMN source_evidence TEXT
-        """)
+        safe_add_column(conn, "source_evidence", "TEXT")
 
         # Add catalysts column (JSON array)
-        conn.execute("""
-            ALTER TABLE themes ADD COLUMN catalysts TEXT
-        """)
+        safe_add_column(conn, "catalysts", "TEXT")
 
         # Add first_source column
-        conn.execute("""
-            ALTER TABLE themes ADD COLUMN first_source TEXT
-        """)
+        safe_add_column(conn, "first_source", "TEXT")
 
         # Add last_updated_at column
-        conn.execute("""
-            ALTER TABLE themes ADD COLUMN last_updated_at TIMESTAMP
-        """)
+        safe_add_column(conn, "last_updated_at", "TIMESTAMP")
 
         # Update existing themes status values to new lifecycle
         # Map old values to new: active->active, acted_upon->dormant, invalidated->dormant, archived->dormant
-        conn.execute("""
-            UPDATE themes SET status = 'dormant' WHERE status IN ('acted_upon', 'invalidated', 'archived')
-        """)
+        try:
+            conn.execute("""
+                UPDATE themes SET status = 'dormant' WHERE status IN ('acted_upon', 'invalidated', 'archived')
+            """)
+        except Exception as e:
+            print(f"  Status update skipped: {e}")
 
     print("SUCCESS: Migration 006 applied successfully")
     print("   - Added aliases column (JSON array)")
