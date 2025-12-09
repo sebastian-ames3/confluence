@@ -6,7 +6,8 @@
 nixPkgs = ["python311", "python311Packages.pip", "ffmpeg", "chromium", "chromedriver"]
 
 [phases.install]
-cmds = ["python3.11 -m pip install --user -r requirements.txt"]
+# Use pip command directly (not python -m pip) since that's how nix installs it
+cmds = ["pip install -r requirements.txt"]
 
 [start]
 cmd = "python3.11 scripts/run_migrations.py --auto && python3.11 -m uvicorn backend.app:app --host 0.0.0.0 --port $PORT"
