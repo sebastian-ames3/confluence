@@ -1,5 +1,5 @@
 /* ============================================
-   Layout Utilities
+   Layout Utilities (PRD-026 Compliant)
    Flexbox, Grid, and positioning utilities
    ============================================ */
 
@@ -189,13 +189,13 @@
 .invisible { visibility: hidden; }
 .collapse { visibility: collapse; }
 
-/* ----- Container ----- */
+/* ----- Container (PRD-026 uses --spacing-md) ----- */
 .container {
   width: 100%;
   margin-left: auto;
   margin-right: auto;
-  padding-left: var(--space-4);
-  padding-right: var(--space-4);
+  padding-left: var(--spacing-md);
+  padding-right: var(--spacing-md);
 }
 
 @media (min-width: 640px) {
@@ -248,29 +248,29 @@
 .isolate { isolation: isolate; }
 .isolation-auto { isolation: auto; }
 
-/* ----- Stack Layout Helper ----- */
+/* ----- Stack Layout Helper (PRD-026 uses --spacing-md) ----- */
 .stack {
   display: flex;
   flex-direction: column;
 }
 
 .stack > * + * {
-  margin-top: var(--space-4);
+  margin-top: var(--spacing-md);
 }
 
-.stack-sm > * + * { margin-top: var(--space-2); }
-.stack-lg > * + * { margin-top: var(--space-6); }
-.stack-xl > * + * { margin-top: var(--space-8); }
+.stack-sm > * + * { margin-top: var(--spacing-sm); }
+.stack-lg > * + * { margin-top: var(--spacing-lg); }
+.stack-xl > * + * { margin-top: var(--spacing-xl); }
 
 /* ----- Cluster Layout Helper ----- */
 .cluster {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-4);
+  gap: var(--spacing-md);
 }
 
-.cluster-sm { gap: var(--space-2); }
-.cluster-lg { gap: var(--space-6); }
+.cluster-sm { gap: var(--spacing-sm); }
+.cluster-lg { gap: var(--spacing-lg); }
 
 /* ----- Center Layout Helper ----- */
 .center {
@@ -283,7 +283,7 @@
 .with-sidebar {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-6);
+  gap: var(--spacing-lg);
 }
 
 .with-sidebar > :first-child {

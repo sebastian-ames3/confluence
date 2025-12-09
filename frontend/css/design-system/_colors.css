@@ -1,94 +1,98 @@
 /* ============================================
-   Color System
+   Color System (PRD-026 Compliant)
    WCAG 2.1 AA compliant color palette
    ============================================ */
 
 :root {
-  /* ----- Background Colors ----- */
-  --color-bg-primary: #0F172A;
-  --color-bg-secondary: #1E293B;
-  --color-bg-tertiary: #334155;
-  --color-bg-elevated: #1E293B;
-  --color-bg-hover: rgba(255, 255, 255, 0.05);
-  --color-bg-active: rgba(255, 255, 255, 0.1);
+  /* ----- Primary Palette ----- */
+  --primary: #3b82f6;
+  --primary-light: #60a5fa;
+  --primary-dark: #2563eb;
+  --primary-glow: rgba(59, 130, 246, 0.4);
+
+  /* ----- Accent Gradients ----- */
+  --gradient-primary: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  --gradient-success: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  --gradient-warning: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  --gradient-danger: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+
+  /* ----- Background Layers ----- */
+  --bg-base: #0f172a;
+  --bg-surface: #1e293b;
+  --bg-elevated: #334155;
+  --bg-glass: rgba(255, 255, 255, 0.05);
+  --bg-glass-hover: rgba(255, 255, 255, 0.08);
 
   /* ----- Text Colors ----- */
-  --color-text-primary: #F8FAFC;
-  --color-text-secondary: #CBD5E1;
-  --color-text-tertiary: #94A3B8;
-  --color-text-disabled: #64748B;
-  --color-text-inverse: #0F172A;
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #64748b;
 
   /* ----- Border Colors ----- */
-  --color-border-primary: rgba(255, 255, 255, 0.1);
-  --color-border-secondary: rgba(255, 255, 255, 0.05);
-  --color-border-focus: #60A5FA;
-  --color-border-error: #EF4444;
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-medium: rgba(255, 255, 255, 0.12);
+  --border-accent: rgba(59, 130, 246, 0.5);
 
-  /* ----- Accent Colors ----- */
-  --color-accent-primary: #60A5FA;
-  --color-accent-primary-hover: #93C5FD;
-  --color-accent-primary-active: #3B82F6;
-  --color-accent-primary-rgb: 96, 165, 250;
-
-  --color-accent-secondary: #A78BFA;
-  --color-accent-secondary-hover: #C4B5FD;
-  --color-accent-secondary-active: #8B5CF6;
+  /* ----- Shadows ----- */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 20px var(--primary-glow);
 
   /* ----- Semantic Colors ----- */
   /* Success */
-  --color-success: #10B981;
-  --color-success-light: #34D399;
-  --color-success-dark: #059669;
-  --color-success-bg: rgba(16, 185, 129, 0.15);
-  --color-success-border: rgba(16, 185, 129, 0.3);
+  --success: #10b981;
+  --success-light: #34d399;
+  --success-dark: #059669;
+  --success-bg: rgba(16, 185, 129, 0.15);
+  --success-border: rgba(16, 185, 129, 0.3);
 
   /* Warning */
-  --color-warning: #F59E0B;
-  --color-warning-light: #FBBF24;
-  --color-warning-dark: #D97706;
-  --color-warning-bg: rgba(245, 158, 11, 0.15);
-  --color-warning-border: rgba(245, 158, 11, 0.3);
+  --warning: #f59e0b;
+  --warning-light: #fbbf24;
+  --warning-dark: #d97706;
+  --warning-bg: rgba(245, 158, 11, 0.15);
+  --warning-border: rgba(245, 158, 11, 0.3);
 
-  /* Error */
-  --color-error: #EF4444;
-  --color-error-light: #F87171;
-  --color-error-dark: #DC2626;
-  --color-error-bg: rgba(239, 68, 68, 0.15);
-  --color-error-border: rgba(239, 68, 68, 0.3);
+  /* Danger/Error */
+  --danger: #ef4444;
+  --danger-light: #f87171;
+  --danger-dark: #dc2626;
+  --danger-bg: rgba(239, 68, 68, 0.15);
+  --danger-border: rgba(239, 68, 68, 0.3);
 
   /* Info */
-  --color-info: #3B82F6;
-  --color-info-light: #60A5FA;
-  --color-info-dark: #2563EB;
-  --color-info-bg: rgba(59, 130, 246, 0.15);
-  --color-info-border: rgba(59, 130, 246, 0.3);
+  --info: #3b82f6;
+  --info-light: #60a5fa;
+  --info-dark: #2563eb;
+  --info-bg: rgba(59, 130, 246, 0.15);
+  --info-border: rgba(59, 130, 246, 0.3);
 
   /* ----- Sentiment Colors ----- */
-  --color-bullish: #34D399;
-  --color-bullish-bg: rgba(52, 211, 153, 0.15);
-  --color-bearish: #F87171;
-  --color-bearish-bg: rgba(248, 113, 113, 0.15);
-  --color-neutral: #94A3B8;
-  --color-neutral-bg: rgba(148, 163, 184, 0.15);
+  --bullish: #34d399;
+  --bullish-bg: rgba(52, 211, 153, 0.15);
+  --bearish: #f87171;
+  --bearish-bg: rgba(248, 113, 113, 0.15);
+  --neutral: #94a3b8;
+  --neutral-bg: rgba(148, 163, 184, 0.15);
 
-  /* ----- Source Colors ----- */
-  --color-source-discord: #7289DA;
-  --color-source-42macro: #F59E0B;
-  --color-source-kt: #10B981;
-  --color-source-youtube: #F87171;
-  --color-source-substack: #FF7F50;
+  /* ----- Source Brand Colors ----- */
+  --source-discord: #7289da;
+  --source-youtube: #ff4444;
+  --source-substack: #ff6600;
+  --source-42macro: #3b82f6;
+  --source-kt: #eab308;
 
   /* ----- Theme Status Colors ----- */
-  --color-status-emerging: #FBBF24;
-  --color-status-active: #34D399;
-  --color-status-evolved: #60A5FA;
-  --color-status-dormant: #94A3B8;
+  --status-emerging: #fbbf24;
+  --status-active: #34d399;
+  --status-evolved: #60a5fa;
+  --status-dormant: #94a3b8;
 
   /* ----- Conviction Colors ----- */
-  --color-conviction-high: #10B981;
-  --color-conviction-medium: #F59E0B;
-  --color-conviction-low: #94A3B8;
+  --conviction-high: #10b981;
+  --conviction-medium: #f59e0b;
+  --conviction-low: #94a3b8;
 }
 
 /* ----- Dark Theme (Default) ----- */
@@ -99,11 +103,11 @@
 /* ----- High Contrast Mode ----- */
 @media (prefers-contrast: high) {
   :root {
-    --color-text-primary: #ffffff;
-    --color-text-secondary: #e0e0e0;
-    --color-text-tertiary: #c0c0c0;
-    --color-bg-primary: #000000;
-    --color-bg-secondary: #1a1a1a;
-    --color-border-primary: #ffffff;
+    --text-primary: #ffffff;
+    --text-secondary: #e0e0e0;
+    --text-muted: #c0c0c0;
+    --bg-base: #000000;
+    --bg-surface: #1a1a1a;
+    --border-subtle: #ffffff;
   }
 }

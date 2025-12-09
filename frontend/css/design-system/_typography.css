@@ -1,11 +1,11 @@
 /* ============================================
-   Typography System
+   Typography System (PRD-026 Compliant)
    Font families, sizes, and text utilities
    ============================================ */
 
 :root {
-  /* ----- Font Families ----- */
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  /* ----- Font Families (PRD-026) ----- */
+  --font-display: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', Monaco, 'Cascadia Code', monospace;
 }
 
@@ -18,20 +18,20 @@ html {
 }
 
 body {
-  font-family: var(--font-sans);
+  font-family: var(--font-display);
   font-size: var(--text-base);
   font-weight: var(--font-normal);
   line-height: var(--leading-normal);
-  color: var(--color-text-primary);
+  color: var(--text-primary);
 }
 
 /* ----- Headings ----- */
 h1, h2, h3, h4, h5, h6,
 .h1, .h2, .h3, .h4, .h5, .h6 {
-  font-family: var(--font-sans);
+  font-family: var(--font-display);
   font-weight: var(--font-semibold);
   line-height: var(--leading-tight);
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   margin: 0;
 }
 
@@ -82,7 +82,6 @@ p:last-child {
 .text-2xl { font-size: var(--text-2xl); }
 .text-3xl { font-size: var(--text-3xl); }
 .text-4xl { font-size: var(--text-4xl); }
-.text-5xl { font-size: var(--text-5xl); }
 
 /* ----- Text Weight Utilities ----- */
 .font-normal { font-weight: var(--font-normal); }
@@ -91,14 +90,13 @@ p:last-child {
 .font-bold { font-weight: var(--font-bold); }
 
 /* ----- Text Color Utilities ----- */
-.text-primary { color: var(--color-text-primary); }
-.text-secondary { color: var(--color-text-secondary); }
-.text-tertiary { color: var(--color-text-tertiary); }
-.text-disabled { color: var(--color-text-disabled); }
-.text-accent { color: var(--color-accent-primary); }
-.text-success { color: var(--color-success-light); }
-.text-warning { color: var(--color-warning-light); }
-.text-error { color: var(--color-error-light); }
+.text-primary { color: var(--text-primary); }
+.text-secondary { color: var(--text-secondary); }
+.text-muted { color: var(--text-muted); }
+.text-accent { color: var(--primary); }
+.text-success { color: var(--success); }
+.text-warning { color: var(--warning); }
+.text-danger { color: var(--danger); }
 
 /* ----- Text Alignment ----- */
 .text-left { text-align: left; }
@@ -128,13 +126,13 @@ code, kbd, pre, samp {
 
 code {
   padding: 0.2em 0.4em;
-  background: var(--color-bg-tertiary);
+  background: var(--bg-elevated);
   border-radius: var(--radius-sm);
 }
 
 pre {
-  padding: var(--space-4);
-  background: var(--color-bg-secondary);
+  padding: var(--spacing-md);
+  background: var(--bg-surface);
   border-radius: var(--radius-lg);
   overflow-x: auto;
 }
@@ -202,12 +200,12 @@ pre code {
 
 /* ----- Lists ----- */
 ul, ol {
-  padding-left: var(--space-6);
+  padding-left: var(--spacing-lg);
   margin: 0 0 1em;
 }
 
 li {
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--spacing-sm);
 }
 
 li:last-child {
@@ -216,19 +214,19 @@ li:last-child {
 
 /* ----- Links ----- */
 a {
-  color: var(--color-accent-primary);
+  color: var(--primary);
   text-decoration: none;
-  transition: color var(--duration-fast) var(--ease-out);
+  transition: color var(--transition-fast);
 }
 
 a:hover {
-  color: var(--color-accent-primary-hover);
+  color: var(--primary-light);
 }
 
 /* Underlined links for accessibility */
 .link-underline {
   text-decoration: underline;
-  text-decoration-color: var(--color-accent-primary);
+  text-decoration-color: var(--primary);
   text-underline-offset: 2px;
 }
 
@@ -238,8 +236,8 @@ a:hover {
 
 /* ----- Selection ----- */
 ::selection {
-  background: var(--color-accent-primary);
-  color: var(--color-text-inverse);
+  background: var(--primary);
+  color: var(--bg-base);
 }
 
 /* ----- Responsive Typography ----- */
