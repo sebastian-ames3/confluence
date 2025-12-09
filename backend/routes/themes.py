@@ -87,6 +87,45 @@ class ThemeCreate(BaseModel):
 # API Endpoints
 # ============================================================================
 
+@router.post("/migrate")
+async def migrate_themes_schema(db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """
+    Migrate themes table to add missing columns (PRD-024).
+    Adds aliases, source_evidence, catalysts, first_source columns if missing.
+    """
+    from sqlalchemy import text
+
+    migrations = []
+
+    # Columns to check and add
+    columns_to_add = [
+        ("aliases", "TEXT"),
+        ("source_evidence", "TEXT"),
+        ("catalysts", "TEXT"),
+        ("first_source", "VARCHAR"),
+        ("evolved_from_theme_id", "INTEGER"),
+        ("last_updated_at", "DATETIME"),
+    ]
+
+    for col_name, col_type in columns_to_add:
+        try:
+            db.execute(text(f"SELECT {col_name} FROM themes LIMIT 1"))
+            migrations.append({"column": col_name, "status": "exists"})
+        except Exception:
+            try:
+                db.execute(text(f"ALTER TABLE themes ADD COLUMN {col_name} {col_type}"))
+                db.commit()
+                migrations.append({"column": col_name, "status": "added"})
+                logger.info(f"Added column {col_name} to themes table")
+            except Exception as e:
+                migrations.append({"column": col_name, "status": "error", "error": str(e)})
+
+    return {
+        "status": "success",
+        "migrations": migrations
+    }
+
+
 @router.get("")
 async def list_themes(
     status: Optional[str] = Query(None, description="Filter by status: emerging, active, evolved, dormant"),
@@ -491,45 +530,6 @@ async def add_evidence(
         db.rollback()
         logger.error(f"Error adding evidence: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post("/migrate")
-async def migrate_themes_schema(db: Session = Depends(get_db)) -> Dict[str, Any]:
-    """
-    Migrate themes table to add missing columns (PRD-024).
-    Adds aliases, source_evidence, catalysts, first_source columns if missing.
-    """
-    from sqlalchemy import text
-
-    migrations = []
-
-    # Columns to check and add
-    columns_to_add = [
-        ("aliases", "TEXT"),
-        ("source_evidence", "TEXT"),
-        ("catalysts", "TEXT"),
-        ("first_source", "VARCHAR"),
-        ("evolved_from_theme_id", "INTEGER"),
-        ("last_updated_at", "DATETIME"),
-    ]
-
-    for col_name, col_type in columns_to_add:
-        try:
-            db.execute(text(f"SELECT {col_name} FROM themes LIMIT 1"))
-            migrations.append({"column": col_name, "status": "exists"})
-        except Exception:
-            try:
-                db.execute(text(f"ALTER TABLE themes ADD COLUMN {col_name} {col_type}"))
-                db.commit()
-                migrations.append({"column": col_name, "status": "added"})
-                logger.info(f"Added column {col_name} to themes table")
-            except Exception as e:
-                migrations.append({"column": col_name, "status": "error", "error": str(e)})
-
-    return {
-        "status": "success",
-        "migrations": migrations
-    }
 
 
 @router.get("/summary")
