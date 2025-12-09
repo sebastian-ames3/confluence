@@ -1,5 +1,5 @@
 /* ============================================
-   Loader Components
+   Loader Components (PRD-026 Compliant)
    Spinners, skeletons, and loading states
    ============================================ */
 
@@ -8,8 +8,8 @@
   display: inline-block;
   width: 24px;
   height: 24px;
-  border: 3px solid var(--color-bg-tertiary);
-  border-top-color: var(--color-accent-primary);
+  border: 3px solid var(--bg-elevated);
+  border-top-color: var(--primary);
   border-radius: 50%;
   animation: spinner-rotate 0.8s linear infinite;
 }
@@ -50,16 +50,17 @@
 }
 
 .spinner-dark {
-  border-color: var(--color-bg-tertiary);
-  border-top-color: var(--color-text-primary);
+  border-color: var(--bg-elevated);
+  border-top-color: var(--text-primary);
 }
 
 .spinner-success {
-  border-top-color: var(--color-success);
+  border-top-color: var(--success);
 }
 
-.spinner-error {
-  border-top-color: var(--color-error);
+.spinner-error,
+.spinner-danger {
+  border-top-color: var(--danger);
 }
 
 /* ----- Dots Loader ----- */
@@ -72,7 +73,7 @@
 .loader-dots span {
   width: 8px;
   height: 8px;
-  background: var(--color-accent-primary);
+  background: var(--primary);
   border-radius: 50%;
   animation: dots-bounce 1.4s ease-in-out infinite;
 }
@@ -102,7 +103,7 @@
 .loader-pulse {
   width: 40px;
   height: 40px;
-  background: var(--color-accent-primary);
+  background: var(--primary);
   border-radius: 50%;
   animation: pulse-expand 1.5s ease-in-out infinite;
 }
@@ -122,7 +123,7 @@
 .loader-bar {
   width: 100%;
   height: 4px;
-  background: var(--color-bg-tertiary);
+  background: var(--bg-elevated);
   border-radius: 2px;
   overflow: hidden;
 }
@@ -132,7 +133,7 @@
   display: block;
   width: 40%;
   height: 100%;
-  background: var(--color-accent-primary);
+  background: var(--primary);
   border-radius: 2px;
   animation: bar-slide 1.5s ease-in-out infinite;
 }
@@ -146,7 +147,7 @@
 .skeleton {
   position: relative;
   overflow: hidden;
-  background: var(--color-bg-secondary);
+  background: var(--bg-surface);
   border-radius: var(--radius-md);
 }
 
@@ -243,22 +244,22 @@
 
 /* ----- Skeleton Card Layout ----- */
 .skeleton-card-content {
-  padding: var(--space-4);
+  padding: var(--spacing-md);
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--spacing-sm);
 }
 
 .skeleton-card-header {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--spacing-sm);
 }
 
 .skeleton-card-body {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--spacing-sm);
 }
 
 /* Pre-built skeleton patterns */
@@ -270,8 +271,8 @@
 .skeleton-list-item {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3) 0;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) 0;
 }
 
 .skeleton-list-item .skeleton-avatar {
@@ -282,7 +283,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--spacing-sm);
 }
 
 /* ----- Loading Overlay ----- */
@@ -301,12 +302,12 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-4);
+  gap: var(--spacing-md);
 }
 
 .loading-overlay-text {
   font-size: var(--text-sm);
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
 /* ----- Page Loader ----- */
@@ -317,10 +318,10 @@
   align-items: center;
   justify-content: center;
   flex-direction: column;
-  gap: var(--space-4);
-  background: var(--color-bg-primary);
+  gap: var(--spacing-md);
+  background: var(--bg-base);
   z-index: 9999;
-  transition: opacity var(--duration-normal) var(--ease-out);
+  transition: opacity var(--transition-normal);
 }
 
 .page-loader.hidden {
@@ -338,7 +339,7 @@
 }
 
 .page-loader-text {
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   animation: pulse 2s ease-in-out infinite;
 }
 
@@ -360,7 +361,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: var(--color-bg-secondary);
+  background: var(--bg-surface);
   border-radius: var(--radius-xl);
   opacity: 0.5;
 }
@@ -371,17 +372,17 @@
   top: 80px;
   left: 50%;
   transform: translateX(-50%) translateY(-100%);
-  padding: var(--space-2) var(--space-4);
+  padding: var(--spacing-sm) var(--spacing-md);
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur);
   border-radius: var(--radius-full);
   border: 1px solid var(--glass-border);
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--spacing-sm);
   font-size: var(--text-sm);
-  color: var(--color-text-secondary);
-  transition: transform var(--duration-normal) var(--ease-spring);
+  color: var(--text-secondary);
+  transition: transform var(--transition-bounce);
   z-index: var(--z-toast);
   box-shadow: var(--shadow-lg);
 }
@@ -402,30 +403,30 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: var(--space-12);
+  padding: var(--spacing-3xl);
   text-align: center;
 }
 
 .empty-state-icon {
   width: 64px;
   height: 64px;
-  margin-bottom: var(--space-4);
-  color: var(--color-text-disabled);
+  margin-bottom: var(--spacing-md);
+  color: var(--text-muted);
   opacity: 0.5;
 }
 
 .empty-state-title {
   font-size: var(--text-lg);
   font-weight: var(--font-semibold);
-  color: var(--color-text-primary);
-  margin-bottom: var(--space-2);
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-sm);
 }
 
 .empty-state-description {
   font-size: var(--text-sm);
-  color: var(--color-text-tertiary);
+  color: var(--text-muted);
   max-width: 400px;
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--spacing-lg);
 }
 
 /* ----- Error State ----- */
@@ -434,26 +435,26 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: var(--space-8);
+  padding: var(--spacing-xl);
   text-align: center;
 }
 
 .error-state-icon {
   width: 48px;
   height: 48px;
-  color: var(--color-error);
-  margin-bottom: var(--space-4);
+  color: var(--danger);
+  margin-bottom: var(--spacing-md);
 }
 
 .error-state-title {
   font-size: var(--text-lg);
   font-weight: var(--font-semibold);
-  color: var(--color-text-primary);
-  margin-bottom: var(--space-2);
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-sm);
 }
 
 .error-state-message {
   font-size: var(--text-sm);
-  color: var(--color-text-tertiary);
-  margin-bottom: var(--space-4);
+  color: var(--text-muted);
+  margin-bottom: var(--spacing-md);
 }

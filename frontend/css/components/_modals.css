@@ -1,5 +1,5 @@
 /* ============================================
-   Modal Components
+   Modal Components (PRD-026 Compliant)
    Dialogs, drawers, and overlays
    ============================================ */
 
@@ -13,8 +13,8 @@
   z-index: var(--z-modal-backdrop);
   opacity: 0;
   visibility: hidden;
-  transition: opacity var(--duration-normal) var(--ease-out),
-              visibility var(--duration-normal) var(--ease-out);
+  transition: opacity var(--transition-normal),
+              visibility var(--transition-normal);
 }
 
 .modal-backdrop.active {
@@ -30,7 +30,7 @@
   align-items: center;
   justify-content: center;
   z-index: var(--z-modal);
-  padding: var(--space-4);
+  padding: var(--spacing-md);
   pointer-events: none;
 }
 
@@ -39,9 +39,9 @@
   position: relative;
   width: 100%;
   max-width: 500px;
-  max-height: calc(100vh - var(--space-8));
-  background: var(--color-bg-secondary);
-  border: 1px solid var(--color-border-primary);
+  max-height: calc(100vh - var(--spacing-xl));
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-2xl);
   box-shadow: var(--shadow-2xl);
   overflow: hidden;
@@ -50,8 +50,8 @@
   pointer-events: auto;
   opacity: 0;
   transform: scale(0.95) translateY(20px);
-  transition: opacity var(--duration-normal) var(--ease-out),
-              transform var(--duration-normal) var(--ease-out);
+  transition: opacity var(--transition-normal),
+              transform var(--transition-normal);
 }
 
 .modal-backdrop.active .modal-content {
@@ -81,8 +81,8 @@
 }
 
 .modal-full .modal-content {
-  max-width: calc(100vw - var(--space-8));
-  max-height: calc(100vh - var(--space-8));
+  max-width: calc(100vw - var(--spacing-xl));
+  max-height: calc(100vh - var(--spacing-xl));
 }
 
 /* ----- Modal Header ----- */
@@ -90,15 +90,15 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-5) var(--space-6);
-  border-bottom: 1px solid var(--color-border-primary);
+  padding: var(--spacing-lg) var(--spacing-lg);
+  border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
 
 .modal-title {
   font-size: var(--text-lg);
   font-weight: var(--font-semibold);
-  color: var(--color-text-primary);
+  color: var(--text-primary);
 }
 
 .modal-close {
@@ -110,14 +110,14 @@
   border-radius: var(--radius-lg);
   background: transparent;
   border: none;
-  color: var(--color-text-tertiary);
+  color: var(--text-muted);
   cursor: pointer;
-  transition: all var(--duration-fast) var(--ease-out);
+  transition: all var(--transition-fast);
 }
 
 .modal-close:hover {
-  background: var(--color-bg-hover);
-  color: var(--color-text-primary);
+  background: var(--bg-glass-hover);
+  color: var(--text-primary);
 }
 
 .modal-close svg {
@@ -128,7 +128,7 @@
 /* ----- Modal Body ----- */
 .modal-body {
   flex: 1;
-  padding: var(--space-6);
+  padding: var(--spacing-lg);
   overflow-y: auto;
 }
 
@@ -141,9 +141,9 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: var(--space-3);
-  padding: var(--space-5) var(--space-6);
-  border-top: 1px solid var(--color-border-primary);
+  gap: var(--spacing-sm);
+  padding: var(--spacing-lg) var(--spacing-lg);
+  border-top: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
 
@@ -169,8 +169,8 @@
   z-index: var(--z-modal-backdrop);
   opacity: 0;
   visibility: hidden;
-  transition: opacity var(--duration-normal) var(--ease-out),
-              visibility var(--duration-normal) var(--ease-out);
+  transition: opacity var(--transition-normal),
+              visibility var(--transition-normal);
 }
 
 .drawer-backdrop.active {
@@ -184,13 +184,13 @@
   bottom: 0;
   width: 320px;
   max-width: 100%;
-  background: var(--color-bg-secondary);
-  border-right: 1px solid var(--color-border-primary);
+  background: var(--bg-surface);
+  border-right: 1px solid var(--border-subtle);
   z-index: var(--z-modal);
   display: flex;
   flex-direction: column;
   transform: translateX(-100%);
-  transition: transform var(--duration-normal) var(--ease-out);
+  transition: transform var(--transition-normal);
 }
 
 /* Left drawer (default) */
@@ -208,7 +208,7 @@
   right: 0;
   left: auto;
   border-right: none;
-  border-left: 1px solid var(--color-border-primary);
+  border-left: 1px solid var(--border-subtle);
   transform: translateX(100%);
 }
 
@@ -242,15 +242,15 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-4) var(--space-5);
-  border-bottom: 1px solid var(--color-border-primary);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
 
 .drawer-title {
   font-size: var(--text-lg);
   font-weight: var(--font-semibold);
-  color: var(--color-text-primary);
+  color: var(--text-primary);
 }
 
 .drawer-close {
@@ -262,27 +262,27 @@
   border-radius: var(--radius-lg);
   background: transparent;
   border: none;
-  color: var(--color-text-tertiary);
+  color: var(--text-muted);
   cursor: pointer;
-  transition: all var(--duration-fast) var(--ease-out);
+  transition: all var(--transition-fast);
 }
 
 .drawer-close:hover {
-  background: var(--color-bg-hover);
-  color: var(--color-text-primary);
+  background: var(--bg-glass-hover);
+  color: var(--text-primary);
 }
 
 /* Drawer body */
 .drawer-body {
   flex: 1;
-  padding: var(--space-5);
+  padding: var(--spacing-lg);
   overflow-y: auto;
 }
 
 /* Drawer footer */
 .drawer-footer {
-  padding: var(--space-4) var(--space-5);
-  border-top: 1px solid var(--color-border-primary);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-top: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
 
@@ -293,36 +293,36 @@
 }
 
 .confirm-dialog .modal-body {
-  padding: var(--space-8) var(--space-6);
+  padding: var(--spacing-xl) var(--spacing-lg);
 }
 
 .confirm-dialog-icon {
   width: 48px;
   height: 48px;
-  margin: 0 auto var(--space-4);
+  margin: 0 auto var(--spacing-md);
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-full);
-  background: var(--color-warning-bg);
-  color: var(--color-warning);
+  background: var(--warning-bg);
+  color: var(--warning);
 }
 
 .confirm-dialog-icon.danger {
-  background: var(--color-error-bg);
-  color: var(--color-error);
+  background: var(--danger-bg);
+  color: var(--danger);
 }
 
 .confirm-dialog-title {
   font-size: var(--text-lg);
   font-weight: var(--font-semibold);
-  color: var(--color-text-primary);
-  margin-bottom: var(--space-2);
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-sm);
 }
 
 .confirm-dialog-message {
   font-size: var(--text-sm);
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   line-height: var(--leading-relaxed);
 }
 
@@ -337,63 +337,63 @@
 }
 
 .search-modal .modal-header {
-  padding: var(--space-4);
+  padding: var(--spacing-md);
   border-bottom: none;
 }
 
 .search-modal-input {
   width: 100%;
-  padding: var(--space-4);
-  padding-left: calc(var(--space-4) + 24px);
+  padding: var(--spacing-md);
+  padding-left: calc(var(--spacing-md) + 24px);
   font-size: var(--text-base);
-  background: var(--color-bg-tertiary);
+  background: var(--bg-elevated);
   border: none;
   border-radius: var(--radius-lg);
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   outline: none;
 }
 
 .search-modal-input::placeholder {
-  color: var(--color-text-tertiary);
+  color: var(--text-muted);
 }
 
 .search-modal-icon {
   position: absolute;
-  left: var(--space-4);
+  left: var(--spacing-md);
   top: 50%;
   transform: translateY(-50%);
-  color: var(--color-text-tertiary);
+  color: var(--text-muted);
   pointer-events: none;
 }
 
 .search-modal .modal-body {
   padding: 0;
-  border-top: 1px solid var(--color-border-primary);
+  border-top: 1px solid var(--border-subtle);
 }
 
 .search-results {
-  padding: var(--space-2);
+  padding: var(--spacing-sm);
 }
 
 .search-result-item {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
   border-radius: var(--radius-lg);
   cursor: pointer;
-  transition: background var(--duration-fast) var(--ease-out);
+  transition: background var(--transition-fast);
 }
 
 .search-result-item:hover,
 .search-result-item.focused {
-  background: var(--color-bg-hover);
+  background: var(--bg-glass-hover);
 }
 
 .search-result-icon {
   width: 20px;
   height: 20px;
-  color: var(--color-text-tertiary);
+  color: var(--text-muted);
   flex-shrink: 0;
 }
 
@@ -405,19 +405,19 @@
 .search-result-title {
   font-size: var(--text-sm);
   font-weight: var(--font-medium);
-  color: var(--color-text-primary);
+  color: var(--text-primary);
 }
 
 .search-result-meta {
   font-size: var(--text-xs);
-  color: var(--color-text-tertiary);
+  color: var(--text-muted);
 }
 
 .search-result-kbd {
   font-size: var(--text-xs);
-  color: var(--color-text-tertiary);
-  padding: var(--space-1) var(--space-2);
-  background: var(--color-bg-tertiary);
+  color: var(--text-muted);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: var(--bg-elevated);
   border-radius: var(--radius-sm);
 }
 
@@ -425,22 +425,22 @@
 .search-modal-footer {
   display: flex;
   align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-3) var(--space-4);
-  border-top: 1px solid var(--color-border-primary);
+  gap: var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-top: 1px solid var(--border-subtle);
   font-size: var(--text-xs);
-  color: var(--color-text-tertiary);
+  color: var(--text-muted);
 }
 
 .search-shortcut {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--spacing-sm);
 }
 
 .search-shortcut kbd {
   padding: 2px 6px;
-  background: var(--color-bg-tertiary);
+  background: var(--bg-elevated);
   border-radius: var(--radius-sm);
   font-family: var(--font-mono);
 }

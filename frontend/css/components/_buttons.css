@@ -1,5 +1,5 @@
 /* ============================================
-   Button Components
+   Button Components (PRD-026 Compliant)
    Primary, secondary, ghost, and icon buttons
    ============================================ */
 
@@ -8,9 +8,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-5);
-  font-family: var(--font-sans);
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  font-family: var(--font-display);
   font-size: var(--text-sm);
   font-weight: var(--font-medium);
   line-height: 1;
@@ -19,14 +19,14 @@
   border-radius: var(--radius-lg);
   border: 1px solid transparent;
   cursor: pointer;
-  transition: all var(--duration-fast) var(--ease-out);
+  transition: all var(--transition-fast);
   position: relative;
   overflow: hidden;
   min-height: 44px;
 }
 
 .btn:focus-visible {
-  outline: 2px solid var(--color-accent-primary);
+  outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
 
@@ -39,16 +39,16 @@
 
 /* ----- Primary Button ----- */
 .btn-primary {
-  background: var(--color-accent-primary);
-  color: var(--color-text-inverse);
-  border-color: var(--color-accent-primary);
+  background: var(--primary);
+  color: var(--bg-base);
+  border-color: var(--primary);
 }
 
 .btn-primary:hover {
-  background: var(--color-accent-primary-hover);
-  border-color: var(--color-accent-primary-hover);
+  background: var(--primary-light);
+  border-color: var(--primary-light);
   transform: translateY(-2px);
-  box-shadow: var(--shadow-md), var(--shadow-glow-accent);
+  box-shadow: var(--shadow-md), var(--shadow-glow);
 }
 
 .btn-primary:active {
@@ -58,14 +58,14 @@
 
 /* ----- Secondary Button ----- */
 .btn-secondary {
-  background: var(--color-bg-secondary);
-  color: var(--color-text-primary);
-  border-color: var(--color-border-primary);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border-color: var(--border-subtle);
 }
 
 .btn-secondary:hover {
-  background: var(--color-bg-tertiary);
-  border-color: var(--color-accent-primary);
+  background: var(--bg-elevated);
+  border-color: var(--primary);
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }
@@ -77,29 +77,29 @@
 /* ----- Ghost Button ----- */
 .btn-ghost {
   background: transparent;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   border-color: transparent;
 }
 
 .btn-ghost:hover {
-  background: var(--color-bg-hover);
-  color: var(--color-text-primary);
+  background: var(--bg-glass-hover);
+  color: var(--text-primary);
 }
 
 .btn-ghost:active {
-  background: var(--color-bg-active);
+  background: var(--bg-glass);
 }
 
 /* ----- Danger Button ----- */
 .btn-danger {
-  background: var(--color-error);
+  background: var(--danger);
   color: white;
-  border-color: var(--color-error);
+  border-color: var(--danger);
 }
 
 .btn-danger:hover {
-  background: var(--color-error-light);
-  border-color: var(--color-error-light);
+  background: var(--danger-light);
+  border-color: var(--danger-light);
   transform: translateY(-2px);
   box-shadow: var(--shadow-md), var(--shadow-glow-error);
 }
@@ -110,14 +110,14 @@
 
 /* ----- Success Button ----- */
 .btn-success {
-  background: var(--color-success);
-  color: var(--color-text-inverse);
-  border-color: var(--color-success);
+  background: var(--success);
+  color: var(--bg-base);
+  border-color: var(--success);
 }
 
 .btn-success:hover {
-  background: var(--color-success-light);
-  border-color: var(--color-success-light);
+  background: var(--success-light);
+  border-color: var(--success-light);
   transform: translateY(-2px);
   box-shadow: var(--shadow-md), var(--shadow-glow-success);
 }
@@ -127,7 +127,7 @@
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   border-color: var(--glass-border);
 }
 
@@ -140,7 +140,7 @@
 /* ----- Neumorphic Button ----- */
 .btn-neu {
   background: var(--neu-bg);
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   border: none;
   box-shadow:
     4px 4px 8px var(--neu-shadow-dark),
@@ -159,47 +159,71 @@
     inset -2px -2px 5px var(--neu-shadow-light);
 }
 
+/* ----- Modern Button with Gradient (PRD-026) ----- */
+.btn-modern {
+  position: relative;
+  overflow: hidden;
+  background: var(--gradient-primary);
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 14px 28px;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+}
+
+.btn-modern:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+}
+
+.btn-modern:active {
+  transform: translateY(0);
+}
+
 /* ----- Button Sizes ----- */
 .btn-xs {
-  padding: var(--space-1) var(--space-3);
+  padding: var(--spacing-xs) var(--spacing-sm);
   font-size: var(--text-xs);
   min-height: 32px;
 }
 
 .btn-sm {
-  padding: var(--space-2) var(--space-4);
+  padding: var(--spacing-xs) var(--spacing-md);
   font-size: var(--text-sm);
   min-height: 36px;
 }
 
 .btn-lg {
-  padding: var(--space-4) var(--space-8);
+  padding: var(--spacing-md) var(--spacing-xl);
   font-size: var(--text-base);
   min-height: 52px;
 }
 
 .btn-xl {
-  padding: var(--space-5) var(--space-10);
+  padding: var(--spacing-lg) var(--spacing-2xl);
   font-size: var(--text-lg);
   min-height: 60px;
 }
 
 /* ----- Icon Button ----- */
 .btn-icon {
-  padding: var(--space-3);
+  padding: var(--spacing-sm);
   min-width: 44px;
   min-height: 44px;
   border-radius: var(--radius-lg);
 }
 
 .btn-icon-sm {
-  padding: var(--space-2);
+  padding: var(--spacing-xs);
   min-width: 36px;
   min-height: 36px;
 }
 
 .btn-icon-lg {
-  padding: var(--space-4);
+  padding: var(--spacing-md);
   min-width: 52px;
   min-height: 52px;
 }
@@ -252,7 +276,7 @@
 }
 
 .btn-primary.loading::after {
-  border-color: var(--color-text-inverse);
+  border-color: var(--bg-base);
   border-right-color: transparent;
 }
 
@@ -304,7 +328,7 @@
   }
 
   .btn-responsive-icon {
-    padding: var(--space-3);
+    padding: var(--spacing-sm);
     min-width: 44px;
   }
 }
