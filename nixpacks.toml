@@ -11,6 +11,6 @@ cmds = ["python3.11 -m venv /app/.venv && /app/.venv/bin/pip install --no-cache-
 [start]
 cmd = "/app/.venv/bin/python scripts/run_migrations.py --auto && /app/.venv/bin/python -m uvicorn backend.app:app --host 0.0.0.0 --port $PORT"
 
-# Force rebuild v2
+# Force rebuild v3
 [variables]
-NIXPACKS_FORCE_REBUILD = "2"
+NIXPACKS_FORCE_REBUILD = "3"
