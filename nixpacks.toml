@@ -1,0 +1,14 @@
+# Nixpacks configuration for Railway deployment
+# Explicitly use Python provider (package.json for Playwright tests was causing Node.js detection)
+
+# Force Python provider - this is the key fix
+providers = ["python"]
+
+[phases.setup]
+nixPkgs = ["ffmpeg", "chromium", "chromedriver"]
+
+[phases.install]
+cmds = ["pip install -r requirements.txt"]
+
+[start]
+cmd = "python3 scripts/run_migrations.py --auto && python3 -m uvicorn backend.app:app --host 0.0.0.0 --port $PORT"
