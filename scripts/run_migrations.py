@@ -47,17 +47,23 @@ def check_tables_exist(db) -> bool:
         return False
 
 
-def initialize_database(db, schema_file: str = "database/schema.sql"):
+def initialize_database(db, schema_file: str = None):
     """
     Initialize database with schema from SQL file.
 
     Args:
         db: DatabaseManager instance
-        schema_file: Path to schema.sql file
+        schema_file: Path to schema.sql file (defaults to project's database/schema.sql)
     """
     print("Initializing database schema...")
 
-    schema_path = Path(schema_file)
+    # Use absolute path relative to script location
+    project_root = Path(__file__).parent.parent
+    if schema_file is None:
+        schema_path = project_root / "database" / "schema.sql"
+    else:
+        schema_path = Path(schema_file)
+
     if not schema_path.exists():
         print(f"WARNING: Schema file not found: {schema_file}")
         print("Attempting to create tables via SQLAlchemy ORM...")
@@ -109,8 +115,11 @@ def get_migration_files():
     Returns:
         List of (version_number, file_path) tuples, sorted by version
     """
-    migrations_dir = Path("database/migrations")
+    # Use absolute path relative to script location
+    project_root = Path(__file__).parent.parent
+    migrations_dir = project_root / "database" / "migrations"
     if not migrations_dir.exists():
+        print(f"WARNING: Migrations directory not found: {migrations_dir}")
         return []
 
     migration_files = []
