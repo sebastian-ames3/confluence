@@ -18,7 +18,8 @@
 }
 
 .chart-container-md {
-  height: 300px;
+  min-height: 180px;
+  height: auto;
 }
 
 .chart-container-lg {
@@ -285,7 +286,7 @@
 
 .charts-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(2, 1fr);
   gap: var(--spacing-lg);
   margin-bottom: var(--spacing-lg);
 }

@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.7.1] - 2025-12-10
+
+### Changed
+- **Dashboard Layout Restructure** - Above-the-fold optimization
+  - Moved Market Visualization charts to top of Overview tab (2x2 grid layout)
+  - Created new "Key Takeaways" compact card (max 5 bullets, replaces verbose synthesis)
+  - Added "View Full Synthesis" collapsible panel (hidden by default)
+  - Reordered sections: Charts → Takeaways → Focus → Confluence → Conflicts → Full Synthesis
+  - Made Source Perspectives sidebar scrollable (`max-height: 400px`)
+
+- **CSS Updates**
+  - `.charts-grid`: Changed to `repeat(2, 1fr)` for 2x2 layout
+  - `.chart-container-md`: Updated to `min-height: 180px; height: auto`
+
+- **JavaScript Updates**
+  - Added `toggleFullSynthesis()` function to show/hide synthesis panel
+  - Updated `displaySynthesis()` to populate Key Takeaways list (from `key_takeaways` or fallback sentences)
+  - Updated `showEmptySynthesis()` to handle new takeaways section
+
+---
+
 ## [1.7.0] - 2025-12-10
 
 ### Added

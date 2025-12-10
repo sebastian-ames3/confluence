@@ -170,6 +170,39 @@ All UI modernization PRDs (026-032) are fully implemented and tested with Playwr
 
 CSS Structure: `frontend/css/main.css` imports design-system, components, animations, charts, dashboard
 
+### Dashboard Layout (Above-the-Fold Optimization)
+
+The Overview tab layout prioritizes actionable data above the fold:
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│ 1. MARKET VISUALIZATION (2x2 chart grid)                     │
+│    ┌─────────────┐ ┌─────────────┐                          │
+│    │  Sentiment  │ │   Sources   │                          │
+│    │   Gauge     │ │    Donut    │                          │
+│    └─────────────┘ └─────────────┘                          │
+│    ┌─────────────┐ ┌─────────────┐                          │
+│    │ Conviction  │ │ Confluence  │                          │
+│    │    Bar      │ │   Heatmap   │                          │
+│    └─────────────┘ └─────────────┘                          │
+├──────────────────────────────────────────────────────────────┤
+│ 2. KEY TAKEAWAYS (compact, max 5 bullets)                    │
+│    • [View Full Synthesis] button                            │
+├──────────────────────────────────────────────────────────────┤
+│ 3. This Week's Focus (priorities)                            │
+├──────────────────────────────────────────────────────────────┤
+│ 4. Confluence Zones                                          │
+├──────────────────────────────────────────────────────────────┤
+│ 5. Conflicts to Monitor                                      │
+├──────────────────────────────────────────────────────────────┤
+│ 6. Full Synthesis (collapsible, hidden by default)           │
+└──────────────────────────────────────────────────────────────┘
+```
+
+Key functions:
+- `toggleFullSynthesis()`: Show/hide full synthesis panel
+- `displaySynthesis(data)`: Populates takeaways + full synthesis from API data
+
 ---
 
 ## Development Notes
