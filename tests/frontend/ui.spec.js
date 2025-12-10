@@ -284,6 +284,176 @@ test.describe('UI Modernization - Components (PRD-028)', () => {
     const tabs = await page.$$('.tab-btn, [role="tab"]');
     expect(tabs.length).toBeGreaterThan(0);
   });
+
+  test('should have button CSS classes defined', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasBtnStyles = await page.evaluate(() => {
+      const testEl = document.createElement('button');
+      testEl.className = 'btn btn-primary';
+      document.body.appendChild(testEl);
+      testEl.offsetHeight;
+      const styles = getComputedStyle(testEl);
+      const hasStyles = styles.display === 'inline-flex' || styles.cursor === 'pointer';
+      testEl.remove();
+      return hasStyles;
+    });
+    expect(hasBtnStyles).toBeTruthy();
+  });
+
+  test('should have badge CSS classes defined', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasBadgeStyles = await page.evaluate(() => {
+      const testEl = document.createElement('span');
+      testEl.className = 'badge badge-success';
+      document.body.appendChild(testEl);
+      testEl.offsetHeight;
+      const styles = getComputedStyle(testEl);
+      const hasStyles = styles.display === 'inline-flex';
+      testEl.remove();
+      return hasStyles;
+    });
+    expect(hasBadgeStyles).toBeTruthy();
+  });
+
+  test('should have input CSS classes defined', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasInputStyles = await page.evaluate(() => {
+      const testEl = document.createElement('input');
+      testEl.className = 'input';
+      testEl.type = 'text';
+      document.body.appendChild(testEl);
+      testEl.offsetHeight;
+      const styles = getComputedStyle(testEl);
+      const hasStyles = styles.width === '100%' || styles.borderRadius !== '0px';
+      testEl.remove();
+      return hasStyles;
+    });
+    expect(hasInputStyles).toBeTruthy();
+  });
+
+  test('should have progress bar CSS classes defined', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasProgressStyles = await page.evaluate(() => {
+      const testEl = document.createElement('div');
+      testEl.className = 'progress';
+      document.body.appendChild(testEl);
+      testEl.offsetHeight;
+      const styles = getComputedStyle(testEl);
+      const hasStyles = styles.overflow === 'hidden' || styles.borderRadius !== '0px';
+      testEl.remove();
+      return hasStyles;
+    });
+    expect(hasProgressStyles).toBeTruthy();
+  });
+
+  test('should have loader/spinner CSS classes defined', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasSpinnerStyles = await page.evaluate(() => {
+      const testEl = document.createElement('div');
+      testEl.className = 'spinner';
+      document.body.appendChild(testEl);
+      testEl.offsetHeight;
+      const styles = getComputedStyle(testEl);
+      const hasStyles = styles.borderRadius === '50%' || styles.animation !== 'none';
+      testEl.remove();
+      return hasStyles;
+    });
+    expect(hasSpinnerStyles).toBeTruthy();
+  });
+
+  test('should have toast CSS classes defined', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasToastStyles = await page.evaluate(() => {
+      const testEl = document.createElement('div');
+      testEl.className = 'toast';
+      document.body.appendChild(testEl);
+      testEl.offsetHeight;
+      const styles = getComputedStyle(testEl);
+      const hasStyles = styles.display === 'flex' || styles.borderRadius !== '0px';
+      testEl.remove();
+      return hasStyles;
+    });
+    expect(hasToastStyles).toBeTruthy();
+  });
+
+  test('should have modal CSS classes defined', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasModalStyles = await page.evaluate(() => {
+      const testEl = document.createElement('div');
+      testEl.className = 'modal';
+      document.body.appendChild(testEl);
+      testEl.offsetHeight;
+      const styles = getComputedStyle(testEl);
+      const hasStyles = styles.position === 'fixed' || styles.zIndex !== 'auto';
+      testEl.remove();
+      return hasStyles;
+    });
+    expect(hasModalStyles).toBeTruthy();
+  });
+
+  test('should have table CSS classes defined', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasTableStyles = await page.evaluate(() => {
+      const testEl = document.createElement('table');
+      testEl.className = 'table';
+      document.body.appendChild(testEl);
+      testEl.offsetHeight;
+      const styles = getComputedStyle(testEl);
+      const hasStyles = styles.width === '100%' || styles.borderCollapse === 'collapse';
+      testEl.remove();
+      return hasStyles;
+    });
+    expect(hasTableStyles).toBeTruthy();
+  });
+
+  test('should have tooltip CSS classes defined', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasTooltipStyles = await page.evaluate(() => {
+      const testEl = document.createElement('div');
+      testEl.className = 'tooltip';
+      document.body.appendChild(testEl);
+      testEl.offsetHeight;
+      const styles = getComputedStyle(testEl);
+      const hasStyles = styles.position === 'relative' || styles.display === 'inline-block';
+      testEl.remove();
+      return hasStyles;
+    });
+    expect(hasTooltipStyles).toBeTruthy();
+  });
+
+  test('should have skeleton loading CSS classes defined', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasSkeletonStyles = await page.evaluate(() => {
+      const testEl = document.createElement('div');
+      testEl.className = 'skeleton';
+      document.body.appendChild(testEl);
+      testEl.offsetHeight;
+      const styles = getComputedStyle(testEl);
+      const hasStyles = styles.animation !== 'none' || styles.background !== 'rgba(0, 0, 0, 0)';
+      testEl.remove();
+      return hasStyles;
+    });
+    expect(hasSkeletonStyles).toBeTruthy();
+  });
+
+  test('should have KPI card styling', async ({ page }) => {
+    const kpiCards = await page.$$('.kpi-card');
+    expect(kpiCards.length).toBeGreaterThan(0);
+
+    // Verify KPI card has glassmorphism
+    const hasGlass = await page.evaluate(() => {
+      const card = document.querySelector('.kpi-card');
+      if (!card) return false;
+      const styles = getComputedStyle(card);
+      return styles.backdropFilter !== 'none' || styles.background.includes('rgba');
+    });
+    expect(hasGlass).toBeTruthy();
+  });
+
+  test('should have regime badge on page', async ({ page }) => {
+    const regimeBadge = await page.$('.regime-badge, #hero-regime-badge');
+    expect(regimeBadge).not.toBeNull();
+  });
 });
 
 test.describe('UI Modernization - Accessibility (PRD-032)', () => {
