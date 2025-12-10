@@ -176,76 +176,98 @@
                     <div class="content-grid">
                         <!-- Main Column -->
                         <div class="content-main">
-                            <!-- Synthesis Panel -->
-                            <div class="sidebar-card" id="synthesis-panel">
-                                <div class="synthesis-header" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--spacing-md); padding-bottom: var(--spacing-md); border-bottom: 1px solid var(--border-subtle);">
-                                    <div>
-                                        <div class="section-title" style="margin-bottom: var(--spacing-xs);">Research Synthesis</div>
-                                        <div class="synthesis-meta" style="font-size: var(--text-sm); color: var(--text-muted);">
-                                            <span id="synthesis-window">-</span> analysis |
-                                            <span id="synthesis-count">0</span> items |
-                                            <span id="synthesis-time">-</span>
-                                        </div>
+                            <!-- 1. FIRST: Market Visualization Charts (above the fold) -->
+                            <div class="sidebar-card charts-section">
+                                <div class="section-title">Market Visualization</div>
+                                <div class="charts-grid">
+                                    <div class="chart-container chart-container-md" data-chart="sentiment-gauge" data-chart-type="sentiment-gauge">
+                                        <div class="chart-header"><span class="chart-title">Sentiment</span></div>
+                                        <div class="chart-canvas-wrapper"><canvas id="sentiment-gauge-canvas"></canvas></div>
                                     </div>
-                                    <div id="market-regime-badge"></div>
+                                    <div class="chart-container chart-container-md" data-chart="source-donut" data-chart-type="source-donut">
+                                        <div class="chart-header"><span class="chart-title">Sources</span></div>
+                                        <div class="chart-canvas-wrapper"><canvas id="source-donut-canvas"></canvas></div>
+                                    </div>
+                                    <div class="chart-container chart-container-md" data-chart="conviction-bar" data-chart-type="conviction-bar">
+                                        <div class="chart-header"><span class="chart-title">Conviction</span></div>
+                                        <div class="chart-canvas-wrapper"><canvas id="conviction-bar-canvas"></canvas></div>
+                                    </div>
+                                    <div class="chart-container chart-container-md" data-chart="confluence-heatmap" data-chart-type="confluence-heatmap" id="confluence-heatmap">
+                                        <div class="chart-header"><span class="chart-title">Confluence</span></div>
+                                        <div class="chart-canvas-wrapper"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 2. SECOND: Key Takeaways (compact, extracted from synthesis) -->
+                            <div class="sidebar-card" id="takeaways-section">
+                                <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-md);">
+                                    <div class="section-title" style="margin-bottom: 0;">Key Takeaways</div>
+                                    <div style="display: flex; align-items: center; gap: var(--spacing-sm);">
+                                        <span class="synthesis-meta" style="font-size: var(--text-xs); color: var(--text-muted);">
+                                            <span id="synthesis-window">-</span> |
+                                            <span id="synthesis-count">0</span> items
+                                        </span>
+                                        <div id="market-regime-badge"></div>
+                                    </div>
                                 </div>
 
                                 <!-- Empty State -->
-                                <div id="synthesis-empty" style="text-align: center; padding: var(--spacing-xl); color: var(--text-muted);">
-                                    <div style="font-size: 48px; margin-bottom: var(--spacing-md);">📊</div>
-                                    <h3 style="margin-bottom: var(--spacing-sm);">No Synthesis Available</h3>
-                                    <p>Click "Generate Synthesis" to create an AI summary.</p>
+                                <div id="synthesis-empty" style="text-align: center; padding: var(--spacing-lg); color: var(--text-muted);">
+                                    <div style="font-size: 32px; margin-bottom: var(--spacing-sm);">📊</div>
+                                    <p style="margin: 0;">Click "Generate Synthesis" to see key takeaways.</p>
                                 </div>
 
-                                <!-- Synthesis Content (hidden initially) -->
-                                <div id="synthesis-content" style="display: none;">
+                                <!-- Takeaways Content -->
+                                <div id="takeaways-content" style="display: none;">
+                                    <ol id="takeaways-list" style="margin: 0; padding-left: var(--spacing-lg); color: var(--text-secondary);"></ol>
+                                    <button id="view-full-synthesis-btn" class="fab-btn fab-btn-ghost" style="width: 100%; margin-top: var(--spacing-md); justify-content: center;" onclick="toggleFullSynthesis()">
+                                        <span class="icon">📄</span>
+                                        <span>View Full Synthesis</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- 3. THIRD: This Week's Focus (priorities) -->
+                            <div class="sidebar-card" id="priorities-section" style="display: none;">
+                                <div class="section-title">This Week's Focus</div>
+                                <div id="v3-priorities-list"></div>
+                            </div>
+
+                            <!-- 4. FOURTH: Confluence Zones -->
+                            <div class="sidebar-card" id="confluence-section" style="display: none;">
+                                <div class="section-title">Confluence Zones</div>
+                                <div id="v3-confluence-list"></div>
+                            </div>
+
+                            <!-- 5. LAST: Conflicts to Monitor -->
+                            <div class="sidebar-card" id="conflict-section" style="display: none;">
+                                <div class="section-title">Conflicts to Monitor</div>
+                                <div id="v3-conflict-list"></div>
+                            </div>
+
+                            <!-- Full Synthesis Panel (collapsible, hidden by default) -->
+                            <div class="sidebar-card" id="synthesis-panel" style="display: none;">
+                                <div class="synthesis-header" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--spacing-md); padding-bottom: var(--spacing-md); border-bottom: 1px solid var(--border-subtle);">
+                                    <div>
+                                        <div class="section-title" style="margin-bottom: var(--spacing-xs);">Full Research Synthesis</div>
+                                        <div class="synthesis-meta" style="font-size: var(--text-sm); color: var(--text-muted);">
+                                            <span id="synthesis-time">-</span>
+                                        </div>
+                                    </div>
+                                    <button class="fab-btn fab-btn-ghost" style="padding: var(--spacing-xs) var(--spacing-sm);" onclick="toggleFullSynthesis()">
+                                        <span>Collapse</span>
+                                    </button>
+                                </div>
+
+                                <!-- Synthesis Content -->
+                                <div id="synthesis-content">
                                     <div class="synthesis-text" id="synthesis-text"></div>
                                     <div class="theme-tags" id="theme-tags" style="display: flex; flex-wrap: wrap; gap: var(--spacing-sm); margin-top: var(--spacing-md);"></div>
 
                                     <!-- V3 Content -->
                                     <div id="v3-content" style="display: none;">
                                         <div id="v3-executive-section" class="v3-executive-summary"></div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Confluence Zones -->
-                            <div class="sidebar-card" id="confluence-section" style="display: none;">
-                                <div class="section-title">Confluence Zones</div>
-                                <div id="v3-confluence-list"></div>
-                            </div>
-
-                            <!-- Attention Priorities (in main for V3) -->
-                            <div class="sidebar-card" id="priorities-section" style="display: none;">
-                                <div class="section-title">This Week's Focus</div>
-                                <div id="v3-priorities-list"></div>
-                            </div>
-
-                            <!-- Conflict Watch -->
-                            <div class="sidebar-card" id="conflict-section" style="display: none;">
-                                <div class="section-title">Conflicts to Monitor</div>
-                                <div id="v3-conflict-list"></div>
-                            </div>
-
-                            <!-- Charts Section (PRD-031) -->
-                            <div class="sidebar-card charts-section">
-                                <div class="section-title">Market Visualization</div>
-                                <div class="charts-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--spacing-md);">
-                                    <div class="chart-container chart-container-sm" data-chart="sentiment-gauge" data-chart-type="sentiment-gauge">
-                                        <div class="chart-header"><span class="chart-title">Sentiment</span></div>
-                                        <div class="chart-canvas-wrapper"><canvas id="sentiment-gauge-canvas"></canvas></div>
-                                    </div>
-                                    <div class="chart-container chart-container-sm" data-chart="source-donut" data-chart-type="source-donut">
-                                        <div class="chart-header"><span class="chart-title">Sources</span></div>
-                                        <div class="chart-canvas-wrapper"><canvas id="source-donut-canvas"></canvas></div>
-                                    </div>
-                                    <div class="chart-container chart-container-sm" data-chart="conviction-bar" data-chart-type="conviction-bar">
-                                        <div class="chart-header"><span class="chart-title">Conviction</span></div>
-                                        <div class="chart-canvas-wrapper"><canvas id="conviction-bar-canvas"></canvas></div>
-                                    </div>
-                                    <div class="chart-container chart-container-sm" data-chart="confluence-heatmap" data-chart-type="confluence-heatmap" id="confluence-heatmap">
-                                        <div class="chart-header"><span class="chart-title">Confluence</span></div>
-                                        <div class="chart-canvas-wrapper"></div>
                                     </div>
                                 </div>
                             </div>
@@ -283,10 +305,10 @@
                                 </div>
                             </div>
 
-                            <!-- Source Stances -->
+                            <!-- Source Stances (scrollable) -->
                             <div class="sidebar-card" id="stances-section" style="display: none;">
                                 <div class="sidebar-title">Source Perspectives</div>
-                                <div id="v3-stances-list"></div>
+                                <div id="v3-stances-list" style="max-height: 400px; overflow-y: auto;"></div>
                             </div>
                         </aside>
                     </div>
@@ -482,6 +504,7 @@
         // Display synthesis content
         function displaySynthesis(data) {
             document.getElementById('synthesis-empty').style.display = 'none';
+            document.getElementById('takeaways-content').style.display = 'block';
             document.getElementById('synthesis-content').style.display = 'block';
 
             // Check version
@@ -491,6 +514,28 @@
             document.getElementById('synthesis-window').textContent = data.time_window;
             document.getElementById('synthesis-count').textContent = data.content_count;
             document.getElementById('synthesis-time').textContent = data.generated_at ? formatDateTime(parseUTCDate(data.generated_at)) : '-';
+
+            // Populate Key Takeaways (max 5 bullets)
+            const takeawaysList = document.getElementById('takeaways-list');
+            const execSummary = data.executive_summary || {};
+            const keyTakeaways = execSummary.key_takeaways || [];
+
+            if (keyTakeaways.length > 0) {
+                takeawaysList.innerHTML = keyTakeaways.slice(0, 5).map(t =>
+                    `<li style="margin-bottom: var(--spacing-xs); line-height: var(--leading-relaxed);">${t}</li>`
+                ).join('');
+            } else {
+                // Fallback: extract from synthesis summary
+                const synthesisSummary = data.synthesis_summary || data.synthesis || '';
+                const sentences = synthesisSummary.split(/[.!?]/).filter(s => s.trim().length > 20).slice(0, 5);
+                if (sentences.length > 0) {
+                    takeawaysList.innerHTML = sentences.map(s =>
+                        `<li style="margin-bottom: var(--spacing-xs); line-height: var(--leading-relaxed);">${s.trim()}.</li>`
+                    ).join('');
+                } else {
+                    takeawaysList.innerHTML = '<li style="color: var(--text-muted);">No key takeaways available.</li>';
+                }
+            }
 
             // Update hero section
             let regimeValue = data.market_regime;
@@ -686,7 +731,28 @@
         // Show empty synthesis state
         function showEmptySynthesis() {
             document.getElementById('synthesis-empty').style.display = 'block';
-            document.getElementById('synthesis-content').style.display = 'none';
+            document.getElementById('takeaways-content').style.display = 'none';
+            document.getElementById('synthesis-panel').style.display = 'none';
+        }
+
+        // Toggle full synthesis panel visibility
+        function toggleFullSynthesis() {
+            const panel = document.getElementById('synthesis-panel');
+            const btn = document.getElementById('view-full-synthesis-btn');
+            const isHidden = panel.style.display === 'none';
+
+            panel.style.display = isHidden ? 'block' : 'none';
+
+            if (btn) {
+                btn.innerHTML = isHidden
+                    ? '<span class="icon">📄</span><span>Hide Full Synthesis</span>'
+                    : '<span class="icon">📄</span><span>View Full Synthesis</span>';
+            }
+
+            // Scroll to panel when opening
+            if (isHidden) {
+                panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
         }
 
         // Trigger collection
