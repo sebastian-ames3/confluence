@@ -128,14 +128,27 @@ curl -X POST -u sames3:Spotswood1 \
 
 | PRD | Feature | Status |
 |-----|---------|--------|
-| 001-023 | Foundation through cleanup | Complete |
+| 001-017 | Foundation, agents, dashboard, deployment, security | Complete |
+| 018 | Video Transcription (Whisper + Claude analysis) | Complete |
+| 019 | Duplicate Detection (deduplication across collectors) | Complete |
+| 020 | Actionable Synthesis V2 (levels, conviction, entry/stop/target) | Complete |
+| 021 | Research Consumption Hub V3 (confluence zones, conflict watch) | Complete |
+| 022 | MCP Server (Claude Desktop SSE/stdio integration) | Complete |
+| 023 | Final Cleanup (archive scripts, consolidate docs) | Complete |
 | 024 | Theme Tracking System | Complete |
 | 025 | Enhanced Synthesis Summary | Complete |
 | 026-032 | UI/UX Modernization | Complete |
 
+**018**: `agents/transcript_harvester.py` - yt-dlp download, Whisper transcription, Claude analysis with priority tiers
+**019**: `backend/utils/deduplication.py` - check_duplicate() used in collect.py and trigger.py endpoints
+**020**: Synthesis V2 with specific prices/strikes, weighted conviction scoring, trade structures
+**021**: Synthesis V3 with confluence_zones, conflict_watch, attention_priorities, re_review_recommendations
+**022**: `mcp/server.py` - 12 tools for Claude Desktop, SSE and stdio modes
 **024**: Theme tracking with source-level evidence, lifecycle (emerging→active→evolved→dormant), MCP tools
 **025**: Enhanced executive summary with per-source highlights, synthesis narrative, key takeaways
 **026-032**: Modern UI design system (glassmorphism, animations, accessibility, Chart.js theming)
+**031**: Chart visualization system - 7 Chart.js components (radar, donut, timeline, gauge, bar, heatmap) with ChartsManager
+**032**: Accessibility (WCAG 2.1 AA) and performance (Web Vitals, lazy loading, caching)
 
 ---
 
