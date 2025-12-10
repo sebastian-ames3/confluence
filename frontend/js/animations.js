@@ -22,10 +22,89 @@ const AnimationController = {
 
     this.setupScrollAnimations();
     this.setupRippleEffects();
+    this.setupCardTiltEffects();
     this.animatePageLoad();
     this.setupTabTransitions();
 
     console.log('[Animations] Controller initialized');
+  },
+
+  /**
+   * Setup card tilt 3D effect on hover (PRD-026)
+   */
+  setupCardTiltEffects() {
+    if (this.config.reducedMotion) return;
+
+    document.querySelectorAll('.card-tilt').forEach(card => {
+      card.addEventListener('mousemove', (e) => {
+        const rect = card.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        const centerX = rect.width / 2;
+        const centerY = rect.height / 2;
+
+        const rotateX = (y - centerY) / 20;
+        const rotateY = (centerX - x) / 20;
+
+        card.style.setProperty('--tilt-x', `${rotateX}deg`);
+        card.style.setProperty('--tilt-y', `${rotateY}deg`);
+      });
+
+      card.addEventListener('mouseleave', () => {
+        card.style.setProperty('--tilt-x', '0deg');
+        card.style.setProperty('--tilt-y', '0deg');
+      });
+    });
+  },
+
+  /**
+   * Animate numbers counting up (PRD-026)
+   * @param {HTMLElement} element - Element containing the number
+   * @param {number} start - Starting value
+   * @param {number} end - Ending value
+   * @param {number} duration - Animation duration in ms
+   * @param {string} suffix - Optional suffix (e.g., '%', 'k')
+   */
+  animateValue(element, start, end, duration = 1000, suffix = '') {
+    if (this.config.reducedMotion) {
+      element.textContent = end + suffix;
+      return;
+    }
+
+    const range = end - start;
+    const startTime = performance.now();
+
+    const update = (currentTime) => {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3); // Ease out cubic
+      const value = Math.round(start + range * eased);
+      element.textContent = value + suffix;
+
+      if (progress < 1) {
+        requestAnimationFrame(update);
+      }
+    };
+
+    requestAnimationFrame(update);
+  },
+
+  /**
+   * Animate all KPI values on the page
+   */
+  animateKPIValues() {
+    if (this.config.reducedMotion) return;
+
+    document.querySelectorAll('[data-animate-value]').forEach(el => {
+      const end = parseInt(el.dataset.animateValue, 10);
+      const suffix = el.dataset.valueSuffix || '';
+      const duration = parseInt(el.dataset.animateDuration, 10) || 1000;
+
+      if (!isNaN(end)) {
+        this.animateValue(el, 0, end, duration, suffix);
+      }
+    });
   },
 
   /**

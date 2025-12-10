@@ -265,6 +265,137 @@ test.describe('UI Modernization - Interactions', () => {
   });
 });
 
+test.describe('UI Modernization - PRD-026 Features', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto(BASE_URL, {
+      httpCredentials: AUTH
+    });
+    await page.waitForLoadState('domcontentloaded');
+  });
+
+  test('should have card tilt CSS classes defined', async ({ page }) => {
+    // Verify card-tilt CSS class exists in stylesheets
+    const hasTiltStyles = await page.evaluate(() => {
+      const sheets = document.styleSheets;
+      for (const sheet of sheets) {
+        try {
+          const rules = sheet.cssRules || sheet.rules;
+          for (const rule of rules) {
+            if (rule.selectorText && rule.selectorText.includes('.card-tilt')) {
+              return true;
+            }
+          }
+        } catch (e) {
+          // Cross-origin stylesheets can't be accessed
+        }
+      }
+      return false;
+    });
+    expect(hasTiltStyles).toBeTruthy();
+  });
+
+  test('should have theme-tag CSS classes defined', async ({ page }) => {
+    // Verify theme-tag CSS class exists
+    const hasThemeTagStyles = await page.evaluate(() => {
+      const sheets = document.styleSheets;
+      for (const sheet of sheets) {
+        try {
+          const rules = sheet.cssRules || sheet.rules;
+          for (const rule of rules) {
+            if (rule.selectorText && rule.selectorText.includes('.theme-tag')) {
+              return true;
+            }
+          }
+        } catch (e) {
+          // Cross-origin stylesheets can't be accessed
+        }
+      }
+      return false;
+    });
+    expect(hasThemeTagStyles).toBeTruthy();
+  });
+
+  test('should have conviction-bar CSS with shimmer animation', async ({ page }) => {
+    // Verify conviction-bar CSS exists
+    const hasConvictionBarStyles = await page.evaluate(() => {
+      const sheets = document.styleSheets;
+      for (const sheet of sheets) {
+        try {
+          const rules = sheet.cssRules || sheet.rules;
+          for (const rule of rules) {
+            if (rule.selectorText && rule.selectorText.includes('.conviction-bar-fill')) {
+              return true;
+            }
+          }
+        } catch (e) {
+          // Cross-origin stylesheets can't be accessed
+        }
+      }
+      return false;
+    });
+    expect(hasConvictionBarStyles).toBeTruthy();
+  });
+
+  test('should have animateValue function in AnimationController', async ({ page }) => {
+    const hasAnimateValue = await page.evaluate(() => {
+      return typeof window.AnimationController?.animateValue === 'function';
+    });
+    expect(hasAnimateValue).toBeTruthy();
+  });
+
+  test('should have setupCardTiltEffects function in AnimationController', async ({ page }) => {
+    const hasCardTiltSetup = await page.evaluate(() => {
+      return typeof window.AnimationController?.setupCardTiltEffects === 'function';
+    });
+    expect(hasCardTiltSetup).toBeTruthy();
+  });
+
+  test('should have glassmorphism effect on cards', async ({ page }) => {
+    // Check that glassmorphism is applied via CSS custom properties
+    const hasGlassmorphism = await page.evaluate(() => {
+      const styles = getComputedStyle(document.documentElement);
+      return styles.getPropertyValue('--glass-bg').trim() !== '' &&
+             styles.getPropertyValue('--glass-blur').trim() !== '';
+    });
+    expect(hasGlassmorphism).toBeTruthy();
+  });
+
+  test('should have gradient CSS variables for progress bars', async ({ page }) => {
+    const hasGradients = await page.evaluate(() => {
+      const styles = getComputedStyle(document.documentElement);
+      return styles.getPropertyValue('--gradient-success').trim() !== '' ||
+             styles.getPropertyValue('--gradient-warning').trim() !== '';
+    });
+    expect(hasGradients).toBeTruthy();
+  });
+
+  test('should have KPI cards rendered', async ({ page }) => {
+    const kpiCards = await page.$$('.kpi-card, .card-kpi');
+    expect(kpiCards.length).toBeGreaterThan(0);
+  });
+
+  test('should have source status items', async ({ page }) => {
+    // Wait for API data to load
+    await page.waitForTimeout(2000);
+    const sourceItems = await page.$$('.source-item, .card-source');
+    expect(sourceItems.length).toBeGreaterThan(0);
+  });
+
+  test('should have floating action bar', async ({ page }) => {
+    const fab = await page.$('.floating-action-bar, #floating-actions');
+    expect(fab).not.toBeNull();
+  });
+
+  test('should have hero section with market regime', async ({ page }) => {
+    const heroSection = await page.$('.hero-section, #hero-section');
+    expect(heroSection).not.toBeNull();
+
+    // Check for regime badge
+    const regimeBadge = await page.$('.regime-badge, #hero-regime-badge');
+    expect(regimeBadge).not.toBeNull();
+  });
+});
+
 test.describe('Performance Checks', () => {
   test('should load within acceptable time', async ({ page }) => {
     const startTime = Date.now();

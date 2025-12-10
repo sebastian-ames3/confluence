@@ -137,7 +137,13 @@ curl -X POST -u sames3:Spotswood1 \
 | 023 | Final Cleanup (archive scripts, consolidate docs) | Complete |
 | 024 | Theme Tracking System | Complete |
 | 025 | Enhanced Synthesis Summary | Complete |
-| 026-032 | UI/UX Modernization | Complete |
+| 026 | UI/UX Modernization | **In Progress** (85%) |
+| 027 | Design System Foundation | Complete (100%) |
+| 028 | Component Library | Partial (90%) - missing tooltips, tables |
+| 029 | Layout & Navigation | **Complete** (Playwright tested) |
+| 030 | Animations & Microinteractions | Partial (95%) |
+| 031 | Data Visualization & Charts | Complete (files exist, not Playwright tested) |
+| 032 | Accessibility & Performance | Complete (files exist, not Playwright tested) |
 
 **018**: `agents/transcript_harvester.py` - yt-dlp download, Whisper transcription, Claude analysis with priority tiers
 **019**: `backend/utils/deduplication.py` - check_duplicate() used in collect.py and trigger.py endpoints
@@ -146,14 +152,22 @@ curl -X POST -u sames3:Spotswood1 \
 **022**: `mcp/server.py` - 12 tools for Claude Desktop, SSE and stdio modes
 **024**: Theme tracking with source-level evidence, lifecycle (emerging→active→evolved→dormant), MCP tools
 **025**: Enhanced executive summary with per-source highlights, synthesis narrative, key takeaways
-**026-032**: Modern UI design system (glassmorphism, animations, accessibility, Chart.js theming)
-**029**: Layout restructure - Two-column layout (60/40), sticky header/sidebar, hero section, floating action bar, 4 tabs (Overview/Themes/Sources/History), search modal (⌘K)
-- CSS Structure: `frontend/css/main.css` imports design-system, components, animations, charts, dashboard
-- Design tokens: `_tokens.css` (spacing, radius), `_colors.css` (semantic colors), `_effects.css` (glass, shadows)
-- Glassmorphism: Status cards, V3 sections use `var(--glass-bg)` + `backdrop-filter: blur(12px)`
-- Removed: Old `style.css` and `mobile.css` files with deprecated variables
-**031**: Chart visualization system - 7 Chart.js components (radar, donut, timeline, gauge, bar, heatmap) with ChartsManager
-**032**: Accessibility (WCAG 2.1 AA) and performance (Web Vitals, lazy loading, caching)
+
+### UI PRDs Implementation Notes (026-032)
+
+**PRD-029** is the only PRD that was fully implemented and tested with Playwright. The other UI PRDs have CSS/JS files created but were NOT properly tested or fully implemented.
+
+| PRD | What Exists | What's Missing |
+|-----|-------------|----------------|
+| 026 | Basic glassmorphism, some badges | Card tilt 3D effect, sparklines, animated counters, theme evolution timeline |
+| 027 | All design token files | None - Complete |
+| 028 | Most component CSS files | Tooltips (`_tooltips.css`), Tables (`_tables.css`) |
+| 029 | Full layout implementation | None - Complete and Playwright tested |
+| 030 | Animation CSS files | Some JS integration, drawer animations |
+| 031 | All 7 chart components | Not wired to real data, not visually tested |
+| 032 | accessibility.js, performance.js | Not integration tested |
+
+CSS Structure: `frontend/css/main.css` imports design-system, components, animations, charts, dashboard
 
 ---
 
