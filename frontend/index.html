@@ -227,17 +227,25 @@
                                 <div id="v3-conflict-list"></div>
                             </div>
 
-                            <!-- Charts Section -->
-                            <div class="sidebar-card charts-section" style="display: none;">
+                            <!-- Charts Section (PRD-031) -->
+                            <div class="sidebar-card charts-section">
                                 <div class="section-title">Market Visualization</div>
                                 <div class="charts-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--spacing-md);">
-                                    <div class="chart-container chart-container-sm" data-chart="sentiment-gauge">
+                                    <div class="chart-container chart-container-sm" data-chart="sentiment-gauge" data-chart-type="sentiment-gauge">
                                         <div class="chart-header"><span class="chart-title">Sentiment</span></div>
                                         <div class="chart-canvas-wrapper"><canvas id="sentiment-gauge-canvas"></canvas></div>
                                     </div>
-                                    <div class="chart-container chart-container-sm" data-chart="source-donut">
+                                    <div class="chart-container chart-container-sm" data-chart="source-donut" data-chart-type="source-donut">
                                         <div class="chart-header"><span class="chart-title">Sources</span></div>
                                         <div class="chart-canvas-wrapper"><canvas id="source-donut-canvas"></canvas></div>
+                                    </div>
+                                    <div class="chart-container chart-container-sm" data-chart="conviction-bar" data-chart-type="conviction-bar">
+                                        <div class="chart-header"><span class="chart-title">Conviction</span></div>
+                                        <div class="chart-canvas-wrapper"><canvas id="conviction-bar-canvas"></canvas></div>
+                                    </div>
+                                    <div class="chart-container chart-container-sm" data-chart="confluence-heatmap" data-chart-type="confluence-heatmap" id="confluence-heatmap">
+                                        <div class="chart-header"><span class="chart-title">Confluence</span></div>
+                                        <div class="chart-canvas-wrapper"></div>
                                     </div>
                                 </div>
                             </div>
@@ -879,8 +887,17 @@
     <script src="js/animations.js"></script>
     <script src="js/toast.js"></script>
 
-    <!-- Chart Scripts (lazy loaded) -->
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+    <!-- Chart Component Scripts -->
     <script src="js/charts/chartConfig.js"></script>
+    <script src="js/charts/confluenceRadar.js"></script>
+    <script src="js/charts/sourceDonut.js"></script>
+    <script src="js/charts/themeTimeline.js"></script>
+    <script src="js/charts/sentimentGauge.js"></script>
+    <script src="js/charts/convictionBar.js"></script>
+    <script src="js/charts/confluenceHeatmap.js"></script>
     <script src="js/charts/index.js"></script>
 </body>
 </html>
