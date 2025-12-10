@@ -138,7 +138,7 @@ curl -X POST -u sames3:Spotswood1 \
 | 024 | Theme Tracking System | Complete |
 | 025 | Enhanced Synthesis Summary | Complete |
 | 026 | UI/UX Modernization | **Complete** (Playwright tested) |
-| 027 | Design System Foundation | Complete (100%) |
+| 027 | Design System Foundation | **Complete** (Playwright tested) |
 | 028 | Component Library | Partial (90%) - missing tooltips, tables |
 | 029 | Layout & Navigation | **Complete** (Playwright tested) |
 | 030 | Animations & Microinteractions | Partial (95%) |
@@ -156,12 +156,12 @@ curl -X POST -u sames3:Spotswood1 \
 
 ### UI PRDs Implementation Notes (026-032)
 
-**PRD-026** and **PRD-029** are fully implemented and tested with Playwright. Other UI PRDs have files created but are NOT fully Playwright tested.
+**PRD-026**, **PRD-027**, and **PRD-029** are fully implemented and tested with Playwright. Other UI PRDs have files created but are NOT fully Playwright tested.
 
 | PRD | What Exists | What's Missing |
 |-----|-------------|----------------|
 | 026 | Card tilt 3D, theme tags with glow, conviction bar shimmer, animated counters, glassmorphism | None - Complete and Playwright tested |
-| 027 | All design token files | None - Complete |
+| 027 | All design tokens: colors, typography, spacing, radius, shadows, glass, z-index, transitions, gradients | None - Complete and Playwright tested |
 | 028 | Most component CSS files | Tooltips (`_tooltips.css`), Tables (`_tables.css`) |
 | 029 | Full layout implementation | None - Complete and Playwright tested |
 | 030 | Animation CSS files | Some JS integration, drawer animations |
