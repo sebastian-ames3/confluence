@@ -1,0 +1,124 @@
+/* ============================================
+   Critical CSS
+   Inline this in <head> for faster FCP
+   ============================================ */
+
+/* ----- Minimal Reset ----- */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ----- Critical Variables ----- */
+:root {
+  --color-bg-primary: #0F172A;
+  --color-text-primary: #F8FAFC;
+  --color-accent-primary: #60A5FA;
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* ----- Body ----- */
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  font-family: var(--font-family);
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+/* ----- Initial Loading State ----- */
+.page-loading {
+  opacity: 0;
+}
+
+.page-ready {
+  opacity: 1;
+  transition: opacity 0.3s ease;
+}
+
+/* ----- Header Skeleton ----- */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  height: 64px;
+  background: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* ----- Main Container ----- */
+main {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+/* ----- Content Placeholder ----- */
+.content-placeholder {
+  background: linear-gradient(90deg, #1E293B 25%, #334155 50%, #1E293B 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 12px;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ----- Hero Placeholder ----- */
+.hero-placeholder {
+  height: 200px;
+  margin-bottom: 24px;
+}
+
+/* ----- KPI Grid Placeholder ----- */
+.kpi-placeholder {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.kpi-placeholder > div {
+  height: 100px;
+}
+
+/* ----- Prevent FOUT (Flash of Unstyled Text) ----- */
+.fonts-loading body {
+  visibility: hidden;
+}
+
+.fonts-loaded body,
+.fonts-failed body {
+  visibility: visible;
+}
+
+/* ----- Skip Link ----- */
+.skip-link {
+  position: fixed;
+  top: -100px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 12px 24px;
+  background: var(--color-accent-primary);
+  color: var(--color-bg-primary);
+  font-weight: 600;
+  border-radius: 8px;
+  z-index: 9999;
+  transition: top 0.2s ease;
+  text-decoration: none;
+}
+
+.skip-link:focus {
+  top: 16px;
+  outline: 2px solid white;
+  outline-offset: 2px;
+}
