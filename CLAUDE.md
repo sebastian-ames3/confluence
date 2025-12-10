@@ -139,7 +139,7 @@ curl -X POST -u sames3:Spotswood1 \
 | 025 | Enhanced Synthesis Summary | Complete |
 | 026 | UI/UX Modernization | **Complete** (Playwright tested) |
 | 027 | Design System Foundation | **Complete** (Playwright tested) |
-| 028 | Component Library | Partial (90%) - missing tooltips, tables |
+| 028 | Component Library | **Complete** (Playwright tested) |
 | 029 | Layout & Navigation | **Complete** (Playwright tested) |
 | 030 | Animations & Microinteractions | Partial (95%) |
 | 031 | Data Visualization & Charts | Complete (files exist, not Playwright tested) |
@@ -162,7 +162,7 @@ curl -X POST -u sames3:Spotswood1 \
 |-----|-------------|----------------|
 | 026 | Card tilt 3D, theme tags with glow, conviction bar shimmer, animated counters, glassmorphism | None - Complete and Playwright tested |
 | 027 | All design tokens: colors, typography, spacing, radius, shadows, glass, z-index, transitions, gradients | None - Complete and Playwright tested |
-| 028 | Most component CSS files | Tooltips (`_tooltips.css`), Tables (`_tables.css`) |
+| 028 | All component CSS files: buttons, cards, badges, inputs, tabs, tables, tooltips, progress, loaders, toasts, modals | None - Complete and Playwright tested |
 | 029 | Full layout implementation | None - Complete and Playwright tested |
 | 030 | Animation CSS files | Some JS integration, drawer animations |
 | 031 | All 7 chart components | Not wired to real data, not visually tested |
