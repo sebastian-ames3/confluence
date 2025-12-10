@@ -2,7 +2,7 @@
 
 Personal investment research aggregation system. Collects from 5 sources, applies AI analysis, surfaces confluence via web dashboard and Claude Desktop MCP.
 
-**Version**: 1.6.0 (Dec 2025) | **Status**: Production
+**Version**: 1.7.0 (Dec 2025) | **Status**: Production
 
 ---
 
@@ -143,7 +143,7 @@ curl -X POST -u sames3:Spotswood1 \
 | 029 | Layout & Navigation | **Complete** (Playwright tested) |
 | 030 | Animations & Microinteractions | **Complete** (Playwright tested) |
 | 031 | Data Visualization & Charts | **Complete** (Playwright tested) |
-| 032 | Accessibility & Performance | Complete (files exist, not Playwright tested) |
+| 032 | Accessibility & Performance | **Complete** (Playwright tested) |
 
 **018**: `agents/transcript_harvester.py` - yt-dlp download, Whisper transcription, Claude analysis with priority tiers
 **019**: `backend/utils/deduplication.py` - check_duplicate() used in collect.py and trigger.py endpoints
@@ -156,17 +156,17 @@ curl -X POST -u sames3:Spotswood1 \
 
 ### UI PRDs Implementation Notes (026-032)
 
-**PRD-026**, **PRD-027**, **PRD-028**, **PRD-029**, **PRD-030**, and **PRD-031** are fully implemented and tested with Playwright. PRD-032 has files created but is NOT fully Playwright tested.
+All UI modernization PRDs (026-032) are fully implemented and tested with Playwright (124 total tests).
 
-| PRD | What Exists | What's Missing |
-|-----|-------------|----------------|
-| 026 | Card tilt 3D, theme tags with glow, conviction bar shimmer, animated counters, glassmorphism | None - Complete and Playwright tested |
-| 027 | All design tokens: colors, typography, spacing, radius, shadows, glass, z-index, transitions, gradients | None - Complete and Playwright tested |
-| 028 | All component CSS files: buttons, cards, badges, inputs, tabs, tables, tooltips, progress, loaders, toasts, modals | None - Complete and Playwright tested |
-| 029 | Full layout implementation | None - Complete and Playwright tested |
-| 030 | All animation files: utilities, page-transitions, microinteractions, loading states, AnimationController JS | None - Complete and Playwright tested |
-| 031 | All chart components: ChartTheme, ChartsManager, radar, donut, timeline, gauge, bar, heatmap + Chart.js CDN | None - Complete and Playwright tested |
-| 032 | accessibility.js, performance.js | Not integration tested |
+| PRD | What Exists | Status |
+|-----|-------------|--------|
+| 026 | Card tilt 3D, theme tags with glow, conviction bar shimmer, animated counters, glassmorphism | Complete - Playwright tested |
+| 027 | All design tokens: colors, typography, spacing, radius, shadows, glass, z-index, transitions, gradients | Complete - Playwright tested |
+| 028 | All component CSS files: buttons, cards, badges, inputs, tabs, tables, tooltips, progress, loaders, toasts, modals | Complete - Playwright tested |
+| 029 | Full layout implementation | Complete - Playwright tested |
+| 030 | All animation files: utilities, page-transitions, microinteractions, loading states, AnimationController JS | Complete - Playwright tested |
+| 031 | All chart components: ChartTheme, ChartsManager, radar, donut, timeline, gauge, bar, heatmap + Chart.js CDN | Complete - Playwright tested |
+| 032 | AccessibilityManager (ARIA live regions, keyboard nav, focus management, reduced motion), PerformanceManager (Web Vitals, lazy loading, caching) | Complete - Playwright tested |
 
 CSS Structure: `frontend/css/main.css` imports design-system, components, animations, charts, dashboard
 

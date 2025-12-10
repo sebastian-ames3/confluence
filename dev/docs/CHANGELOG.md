@@ -1,15 +1,43 @@
 # Changelog
 
+## [1.7.0] - 2025-12-10
+
+### Added
+- **[PRD-026 to PRD-032] UI/UX Modernization** - Complete with Playwright Tests
+  - **PRD-026**: Modern UI design with glassmorphism, 3D card tilt, animated counters
+  - **PRD-027**: Design system foundation with all tokens (colors, typography, spacing, shadows, gradients)
+  - **PRD-028**: Component library (buttons, cards, badges, inputs, tabs, tables, tooltips, progress, loaders, toasts, modals)
+  - **PRD-029**: Layout & navigation system with responsive grid
+  - **PRD-030**: Animations & microinteractions (page transitions, loading states, skeleton loaders, easing functions)
+  - **PRD-031**: Data visualization with Chart.js (radar, donut, timeline, gauge, bar, heatmap)
+  - **PRD-032**: Accessibility & performance (WCAG 2.1 AA, ARIA live regions, Web Vitals, lazy loading, caching)
+
+- **124 Playwright Tests** for frontend UI verification
+  - 26 tests for PRD-026 (glassmorphism, animations)
+  - 20 tests for PRD-027 (design tokens)
+  - 13 tests for PRD-028 (components)
+  - 3 tests for PRD-029 (layout)
+  - 19 tests for PRD-030 (animations)
+  - 21 tests for PRD-031 (charts)
+  - 22 tests for PRD-032 (accessibility/performance)
+
+### Changed
+- `frontend/css/main.css` - Added all CSS module imports
+- `frontend/index.html` - Added Chart.js CDN and all chart scripts
+- `frontend/css/design-system/_effects.css` - Added easing CSS variables
+
+---
+
 ## [1.6.0] - 2025-12-07
 
 ### Added
-- **[PRD-024] Theme Tracking System** (In Progress)
+- **[PRD-024] Theme Tracking System** - Complete
   - PRD created: structured theme tracking with source-level evidence
   - Theme lifecycle: emerging → active → evolved → dormant
   - Claude-based semantic matching for theme consolidation
   - Per-source evidence tracking without pseudo-Bayesian scores
 
-- **[PRD-025] Enhanced Synthesis Summary** (In Progress)
+- **[PRD-025] Enhanced Synthesis Summary** - Complete
   - Updated v3 synthesis prompt with comprehensive executive_summary
   - Added: macro_context, source_highlights, synthesis_narrative, key_takeaways
   - Increased max_tokens from 4000→5000 for expanded output
@@ -135,10 +163,8 @@
 
 | PRD | Status |
 |-----|--------|
-| 001-023 | Complete |
-| 024 | In Progress |
-| 025 | In Progress |
+| 001-032 | Complete |
 
 ---
 
-**Last Updated**: 2025-12-07
+**Last Updated**: 2025-12-10
