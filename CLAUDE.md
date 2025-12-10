@@ -147,6 +147,7 @@ curl -X POST -u sames3:Spotswood1 \
 **024**: Theme tracking with source-level evidence, lifecycle (emerging→active→evolved→dormant), MCP tools
 **025**: Enhanced executive summary with per-source highlights, synthesis narrative, key takeaways
 **026-032**: Modern UI design system (glassmorphism, animations, accessibility, Chart.js theming)
+**029**: Layout restructure - Two-column layout (60/40), sticky header/sidebar, hero section, floating action bar, 4 tabs (Overview/Themes/Sources/History), search modal (⌘K)
 - CSS Structure: `frontend/css/main.css` imports design-system, components, animations, charts, dashboard
 - Design tokens: `_tokens.css` (spacing, radius), `_colors.css` (semantic colors), `_effects.css` (glass, shadows)
 - Glassmorphism: Status cards, V3 sections use `var(--glass-bg)` + `backdrop-filter: blur(12px)`
