@@ -44,6 +44,215 @@ test.describe('UI Modernization - Design System (PRD-027)', () => {
     const mainCssLink = await page.$('link[href="css/main.css"]');
     expect(mainCssLink).not.toBeNull();
   });
+
+  test('should have color tokens defined', async ({ page }) => {
+    const colors = await page.evaluate(() => {
+      const styles = getComputedStyle(document.documentElement);
+      return {
+        primary: styles.getPropertyValue('--primary').trim(),
+        success: styles.getPropertyValue('--success').trim(),
+        warning: styles.getPropertyValue('--warning').trim(),
+        danger: styles.getPropertyValue('--danger').trim(),
+        textPrimary: styles.getPropertyValue('--text-primary').trim(),
+        textSecondary: styles.getPropertyValue('--text-secondary').trim(),
+        bgBase: styles.getPropertyValue('--bg-base').trim(),
+        bgSurface: styles.getPropertyValue('--bg-surface').trim()
+      };
+    });
+
+    expect(colors.primary).not.toBe('');
+    expect(colors.success).not.toBe('');
+    expect(colors.warning).not.toBe('');
+    expect(colors.danger).not.toBe('');
+    expect(colors.textPrimary).not.toBe('');
+    expect(colors.bgBase).not.toBe('');
+  });
+
+  test('should have typography tokens defined', async ({ page }) => {
+    const typography = await page.evaluate(() => {
+      const styles = getComputedStyle(document.documentElement);
+      return {
+        fontDisplay: styles.getPropertyValue('--font-display').trim(),
+        textBase: styles.getPropertyValue('--text-base').trim(),
+        textLg: styles.getPropertyValue('--text-lg').trim(),
+        fontNormal: styles.getPropertyValue('--font-normal').trim(),
+        fontSemibold: styles.getPropertyValue('--font-semibold').trim(),
+        leadingNormal: styles.getPropertyValue('--leading-normal').trim()
+      };
+    });
+
+    expect(typography.fontDisplay).not.toBe('');
+    expect(typography.textBase).not.toBe('');
+    expect(typography.fontNormal).not.toBe('');
+  });
+
+  test('should have spacing tokens defined', async ({ page }) => {
+    const spacing = await page.evaluate(() => {
+      const styles = getComputedStyle(document.documentElement);
+      return {
+        spacingXs: styles.getPropertyValue('--spacing-xs').trim(),
+        spacingSm: styles.getPropertyValue('--spacing-sm').trim(),
+        spacingMd: styles.getPropertyValue('--spacing-md').trim(),
+        spacingLg: styles.getPropertyValue('--spacing-lg').trim(),
+        spacingXl: styles.getPropertyValue('--spacing-xl').trim()
+      };
+    });
+
+    expect(spacing.spacingXs).not.toBe('');
+    expect(spacing.spacingSm).not.toBe('');
+    expect(spacing.spacingMd).not.toBe('');
+    expect(spacing.spacingLg).not.toBe('');
+  });
+
+  test('should have border radius tokens defined', async ({ page }) => {
+    const radius = await page.evaluate(() => {
+      const styles = getComputedStyle(document.documentElement);
+      return {
+        radiusSm: styles.getPropertyValue('--radius-sm').trim(),
+        radiusMd: styles.getPropertyValue('--radius-md').trim(),
+        radiusLg: styles.getPropertyValue('--radius-lg').trim(),
+        radiusXl: styles.getPropertyValue('--radius-xl').trim(),
+        radiusFull: styles.getPropertyValue('--radius-full').trim()
+      };
+    });
+
+    expect(radius.radiusSm).not.toBe('');
+    expect(radius.radiusMd).not.toBe('');
+    expect(radius.radiusLg).not.toBe('');
+    expect(radius.radiusFull).not.toBe('');
+  });
+
+  test('should have shadow tokens defined', async ({ page }) => {
+    const shadows = await page.evaluate(() => {
+      const styles = getComputedStyle(document.documentElement);
+      return {
+        shadowSm: styles.getPropertyValue('--shadow-sm').trim(),
+        shadowMd: styles.getPropertyValue('--shadow-md').trim(),
+        shadowLg: styles.getPropertyValue('--shadow-lg').trim(),
+        shadowGlow: styles.getPropertyValue('--shadow-glow').trim()
+      };
+    });
+
+    expect(shadows.shadowSm).not.toBe('');
+    expect(shadows.shadowMd).not.toBe('');
+    expect(shadows.shadowLg).not.toBe('');
+  });
+
+  test('should have glassmorphism tokens defined', async ({ page }) => {
+    const glass = await page.evaluate(() => {
+      const styles = getComputedStyle(document.documentElement);
+      return {
+        glassBg: styles.getPropertyValue('--glass-bg').trim(),
+        glassBorder: styles.getPropertyValue('--glass-border').trim(),
+        glassBlur: styles.getPropertyValue('--glass-blur').trim()
+      };
+    });
+
+    expect(glass.glassBg).not.toBe('');
+    expect(glass.glassBorder).not.toBe('');
+    expect(glass.glassBlur).not.toBe('');
+  });
+
+  test('should have z-index tokens defined', async ({ page }) => {
+    const zIndex = await page.evaluate(() => {
+      const styles = getComputedStyle(document.documentElement);
+      return {
+        zDropdown: styles.getPropertyValue('--z-dropdown').trim(),
+        zSticky: styles.getPropertyValue('--z-sticky').trim(),
+        zModal: styles.getPropertyValue('--z-modal').trim(),
+        zToast: styles.getPropertyValue('--z-toast').trim()
+      };
+    });
+
+    expect(zIndex.zDropdown).not.toBe('');
+    expect(zIndex.zSticky).not.toBe('');
+    expect(zIndex.zModal).not.toBe('');
+    expect(zIndex.zToast).not.toBe('');
+  });
+
+  test('should have transition tokens defined', async ({ page }) => {
+    const transitions = await page.evaluate(() => {
+      const styles = getComputedStyle(document.documentElement);
+      return {
+        transitionFast: styles.getPropertyValue('--transition-fast').trim(),
+        transitionNormal: styles.getPropertyValue('--transition-normal').trim(),
+        transitionSlow: styles.getPropertyValue('--transition-slow').trim()
+      };
+    });
+
+    expect(transitions.transitionFast).not.toBe('');
+    expect(transitions.transitionNormal).not.toBe('');
+    expect(transitions.transitionSlow).not.toBe('');
+  });
+
+  test('should have gradient tokens defined', async ({ page }) => {
+    const gradients = await page.evaluate(() => {
+      const styles = getComputedStyle(document.documentElement);
+      return {
+        gradientPrimary: styles.getPropertyValue('--gradient-primary').trim(),
+        gradientSuccess: styles.getPropertyValue('--gradient-success').trim(),
+        gradientWarning: styles.getPropertyValue('--gradient-warning').trim()
+      };
+    });
+
+    expect(gradients.gradientPrimary).not.toBe('');
+    expect(gradients.gradientSuccess).not.toBe('');
+  });
+
+  test('should have sentiment colors defined', async ({ page }) => {
+    const sentiment = await page.evaluate(() => {
+      const styles = getComputedStyle(document.documentElement);
+      return {
+        bullish: styles.getPropertyValue('--bullish').trim(),
+        bearish: styles.getPropertyValue('--bearish').trim(),
+        neutral: styles.getPropertyValue('--neutral').trim()
+      };
+    });
+
+    expect(sentiment.bullish).not.toBe('');
+    expect(sentiment.bearish).not.toBe('');
+    expect(sentiment.neutral).not.toBe('');
+  });
+
+  test('should have source brand colors defined', async ({ page }) => {
+    const sources = await page.evaluate(() => {
+      const styles = getComputedStyle(document.documentElement);
+      return {
+        discord: styles.getPropertyValue('--source-discord').trim(),
+        youtube: styles.getPropertyValue('--source-youtube').trim(),
+        substack: styles.getPropertyValue('--source-substack').trim()
+      };
+    });
+
+    expect(sources.discord).not.toBe('');
+    expect(sources.youtube).not.toBe('');
+    expect(sources.substack).not.toBe('');
+  });
+
+  test('should apply CSS reset (box-sizing border-box)', async ({ page }) => {
+    const boxSizing = await page.evaluate(() => {
+      const testEl = document.createElement('div');
+      document.body.appendChild(testEl);
+      const styles = getComputedStyle(testEl);
+      const result = styles.boxSizing;
+      testEl.remove();
+      return result;
+    });
+
+    expect(boxSizing).toBe('border-box');
+  });
+
+  test('should apply dark theme by default', async ({ page }) => {
+    const isDark = await page.evaluate(() => {
+      const html = document.documentElement;
+      const theme = html.getAttribute('data-theme');
+      const bgBase = getComputedStyle(document.documentElement).getPropertyValue('--bg-base').trim();
+      // Dark theme should have dark background color (low RGB values)
+      return theme === 'dark' || bgBase.includes('#0f') || bgBase.includes('rgb(15');
+    });
+
+    expect(isDark).toBeTruthy();
+  });
 });
 
 test.describe('UI Modernization - Components (PRD-028)', () => {
