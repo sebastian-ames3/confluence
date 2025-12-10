@@ -86,6 +86,58 @@
             </div>
         </div>
 
+        <!-- Charts Section (PRD-031) -->
+        <div class="charts-section">
+            <div class="charts-grid">
+                <!-- Sentiment Gauge -->
+                <div class="chart-container chart-container-sm"
+                     data-chart="sentiment-gauge"
+                     data-chart-type="sentiment-gauge">
+                    <div class="chart-header">
+                        <span class="chart-title">Market Sentiment</span>
+                    </div>
+                    <div class="chart-canvas-wrapper">
+                        <canvas id="sentiment-gauge-canvas"></canvas>
+                    </div>
+                </div>
+
+                <!-- Source Distribution -->
+                <div class="chart-container chart-container-sm"
+                     data-chart="source-donut"
+                     data-chart-type="source-donut">
+                    <div class="chart-header">
+                        <span class="chart-title">Content by Source</span>
+                    </div>
+                    <div class="chart-canvas-wrapper">
+                        <canvas id="source-donut-canvas"></canvas>
+                    </div>
+                </div>
+
+                <!-- Conviction Bar -->
+                <div class="chart-container chart-container-sm"
+                     data-chart="conviction-bar"
+                     data-chart-type="conviction-bar">
+                    <div class="chart-header">
+                        <span class="chart-title">Top Convictions</span>
+                    </div>
+                    <div class="chart-canvas-wrapper">
+                        <canvas id="conviction-bar-canvas"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Confluence Heatmap (full width) -->
+            <div class="chart-container"
+                 id="confluence-heatmap"
+                 data-chart="confluence-heatmap"
+                 data-chart-type="confluence-heatmap">
+                <div class="chart-header">
+                    <span class="chart-title">Source Confluence Matrix</span>
+                    <span class="chart-subtitle">How sources align on key themes</span>
+                </div>
+            </div>
+        </div>
+
         <!-- Collection Triggers -->
         <div class="collection-triggers">
             <div class="collection-triggers-header">
