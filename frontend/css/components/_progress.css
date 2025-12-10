@@ -193,20 +193,43 @@
 .conviction-bar-fill {
   height: 100%;
   border-radius: var(--radius-full);
-  transition: width var(--transition-slow);
+  transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
 }
 
-/* Conviction levels */
+/* Shimmer effect on conviction bars (PRD-026) */
+.conviction-bar-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  animation: conviction-shimmer 2s infinite;
+}
+
+@keyframes conviction-shimmer {
+  100% { left: 100%; }
+}
+
+/* Conviction levels with gradients (PRD-026) */
 .conviction-bar-fill.high {
-  background: var(--success);
+  background: var(--gradient-success);
 }
 
 .conviction-bar-fill.medium {
-  background: var(--warning);
+  background: var(--gradient-warning);
 }
 
 .conviction-bar-fill.low {
-  background: var(--text-muted);
+  background: var(--gradient-danger);
 }
 
 /* ----- Confluence Meter ----- */

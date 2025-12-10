@@ -335,3 +335,77 @@
   font-size: 14px;
   line-height: 1;
 }
+
+/* ----- Theme Tag with Hover Glow (PRD-026) ----- */
+.theme-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: var(--radius-full);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--primary-light);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.theme-tag:hover {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: var(--primary);
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+  transform: scale(1.05);
+}
+
+.theme-tag::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: theme-tag-pulse 2s ease-in-out infinite;
+}
+
+@keyframes theme-tag-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Theme tag variants */
+.theme-tag-success {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: var(--success);
+}
+
+.theme-tag-success:hover {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: var(--success);
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
+}
+
+.theme-tag-warning {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.3);
+  color: var(--warning);
+}
+
+.theme-tag-warning:hover {
+  background: rgba(245, 158, 11, 0.2);
+  border-color: var(--warning);
+  box-shadow: 0 0 15px rgba(245, 158, 11, 0.3);
+}
+
+.theme-tag-danger {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: var(--danger);
+}
+
+.theme-tag-danger:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: var(--danger);
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.3);
+}

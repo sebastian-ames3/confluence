@@ -413,6 +413,43 @@
   box-shadow: var(--shadow-lg);
 }
 
+/* ----- Card Tilt 3D Effect (PRD-026) ----- */
+.card-tilt {
+  transform-style: preserve-3d;
+  perspective: 1000px;
+  transition: transform var(--transition-fast);
+}
+
+.card-tilt:hover {
+  transform: rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg));
+}
+
+.card-tilt-content {
+  transform: translateZ(20px);
+  transition: transform var(--transition-fast);
+}
+
+/* Card glow effect on hover */
+.card-glow:hover {
+  --glow-color: var(--primary-glow);
+  box-shadow:
+    0 0 0 1px var(--primary),
+    0 0 20px var(--glow-color),
+    0 0 40px rgba(59, 130, 246, 0.2);
+}
+
+/* ----- KPI Card Sparkline Container (PRD-026) ----- */
+.card-kpi-sparkline {
+  height: 40px;
+  margin-top: var(--spacing-sm);
+  opacity: 0.8;
+}
+
+.card-kpi-sparkline canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
 /* ----- Responsive ----- */
 @media (max-width: 768px) {
   .card,
