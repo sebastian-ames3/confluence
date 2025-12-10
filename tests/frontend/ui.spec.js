@@ -1410,3 +1410,291 @@ test.describe('UI Modernization - Data Visualization & Charts (PRD-031)', () => 
     expect(hasKeyframe).toBeTruthy();
   });
 });
+
+test.describe('UI Modernization - Accessibility & Performance (PRD-032)', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto(BASE_URL, {
+      httpCredentials: AUTH
+    });
+    await page.waitForLoadState('domcontentloaded');
+  });
+
+  // Accessibility Tests
+  test('should have AccessibilityManager global object', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasAccessibilityManager = await page.evaluate(() => {
+      return typeof window.AccessibilityManager !== 'undefined' &&
+             typeof window.AccessibilityManager.init === 'function';
+    });
+    expect(hasAccessibilityManager).toBeTruthy();
+  });
+
+  test('should have AccessibilityManager.announce method', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasAnnounceMethod = await page.evaluate(() => {
+      return typeof window.AccessibilityManager?.announce === 'function';
+    });
+    expect(hasAnnounceMethod).toBeTruthy();
+  });
+
+  test('should create ARIA live region for screen reader announcements', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasLiveRegion = await page.evaluate(() => {
+      const announcer = document.getElementById('a11y-announcer');
+      if (!announcer) return false;
+      return announcer.getAttribute('role') === 'status' &&
+             announcer.getAttribute('aria-live') === 'polite';
+    });
+    expect(hasLiveRegion).toBeTruthy();
+  });
+
+  test('should have skip link for keyboard navigation', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasSkipLink = await page.evaluate(() => {
+      const skipLink = document.querySelector('.skip-link, a[href="#main-content"]');
+      return skipLink !== null;
+    });
+    expect(hasSkipLink).toBeTruthy();
+  });
+
+  test('should have sr-only CSS class for screen reader text', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasSrOnlyStyles = await page.evaluate(() => {
+      const testEl = document.createElement('div');
+      testEl.className = 'sr-only';
+      document.body.appendChild(testEl);
+      testEl.offsetHeight;
+      const styles = getComputedStyle(testEl);
+      // sr-only should position element off-screen
+      const hasStyles = styles.position === 'absolute' &&
+                        (styles.width === '1px' || styles.clip !== 'auto');
+      testEl.remove();
+      return hasStyles;
+    });
+    expect(hasSrOnlyStyles).toBeTruthy();
+  });
+
+  test('should have focus-visible styles for keyboard users', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasFocusStyles = await page.evaluate(() => {
+      // Check if :focus-visible is supported and styled
+      const testBtn = document.createElement('button');
+      testBtn.className = 'btn';
+      testBtn.textContent = 'Test';
+      document.body.appendChild(testBtn);
+      testBtn.focus();
+      const styles = getComputedStyle(testBtn);
+      // Focus should have outline
+      const hasOutline = styles.outline !== 'none' && styles.outline !== '';
+      testBtn.remove();
+      return hasOutline;
+    });
+    expect(hasFocusStyles).toBeTruthy();
+  });
+
+  test('should have ARIA roles on tab elements', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasAriaRoles = await page.evaluate(() => {
+      const tablist = document.querySelector('[role="tablist"]');
+      const tabs = document.querySelectorAll('[role="tab"]');
+      const tabpanels = document.querySelectorAll('[role="tabpanel"]');
+      return tablist !== null && tabs.length > 0 && tabpanels.length > 0;
+    });
+    expect(hasAriaRoles).toBeTruthy();
+  });
+
+  test('should have using-mouse class management for focus styles', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+
+    // Click to trigger mouse mode
+    await page.mouse.click(100, 100);
+
+    const hasMouseClass = await page.evaluate(() => {
+      return document.body.classList.contains('using-mouse');
+    });
+    expect(hasMouseClass).toBeTruthy();
+  });
+
+  // Performance Tests
+  test('should have PerformanceManager global object', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasPerformanceManager = await page.evaluate(() => {
+      return typeof window.PerformanceManager !== 'undefined' &&
+             typeof window.PerformanceManager.init === 'function';
+    });
+    expect(hasPerformanceManager).toBeTruthy();
+  });
+
+  test('should have PerformanceManager.getMetrics method', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasGetMetrics = await page.evaluate(() => {
+      return typeof window.PerformanceManager?.getMetrics === 'function';
+    });
+    expect(hasGetMetrics).toBeTruthy();
+  });
+
+  test('should have PerformanceManager.cachedFetch method', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasCachedFetch = await page.evaluate(() => {
+      return typeof window.PerformanceManager?.cachedFetch === 'function';
+    });
+    expect(hasCachedFetch).toBeTruthy();
+  });
+
+  test('should have PerformanceManager.debounce method', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasDebounce = await page.evaluate(() => {
+      return typeof window.PerformanceManager?.debounce === 'function';
+    });
+    expect(hasDebounce).toBeTruthy();
+  });
+
+  test('should have PerformanceManager.throttle method', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasThrottle = await page.evaluate(() => {
+      return typeof window.PerformanceManager?.throttle === 'function';
+    });
+    expect(hasThrottle).toBeTruthy();
+  });
+
+  test('should track Web Vitals metrics', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    // Wait a bit for metrics to be collected
+    await page.waitForTimeout(1000);
+
+    const hasMetrics = await page.evaluate(() => {
+      const metrics = window.PerformanceManager?.metrics;
+      if (!metrics) return false;
+      // At least some metrics should be tracked
+      return metrics.fcp !== undefined ||
+             metrics.lcp !== undefined ||
+             metrics.ttfb !== undefined;
+    });
+    expect(hasMetrics).toBeTruthy();
+  });
+
+  // Accessible Colors Tests
+  test('should have accessible color CSS variables defined', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasAccessibleColors = await page.evaluate(() => {
+      const styles = getComputedStyle(document.documentElement);
+      // Check for accessible color variables
+      const colorBgPrimary = styles.getPropertyValue('--color-bg-primary').trim();
+      const colorTextPrimary = styles.getPropertyValue('--color-text-primary').trim();
+      const colorAccentPrimary = styles.getPropertyValue('--color-accent-primary').trim();
+      return colorBgPrimary !== '' || colorTextPrimary !== '' || colorAccentPrimary !== '';
+    });
+    expect(hasAccessibleColors).toBeTruthy();
+  });
+
+  test('should have skip-link CSS styles', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasSkipLinkStyles = await page.evaluate(() => {
+      const testEl = document.createElement('a');
+      testEl.className = 'skip-link';
+      testEl.href = '#main-content';
+      document.body.appendChild(testEl);
+      testEl.offsetHeight;
+      const styles = getComputedStyle(testEl);
+      // Skip link should be positioned off-screen by default
+      const hasStyles = styles.position === 'fixed' ||
+                        parseInt(styles.top) < 0 ||
+                        styles.zIndex === '9999';
+      testEl.remove();
+      return hasStyles;
+    });
+    expect(hasSkipLinkStyles).toBeTruthy();
+  });
+
+  test('should have reduced-motion media query styles', async ({ page }) => {
+    // Emulate reduced motion preference
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+
+    const respectsReducedMotion = await page.evaluate(() => {
+      // Check if body has reduce-motion class or if animations are disabled
+      const hasClass = document.body.classList.contains('reduce-motion');
+
+      // Check if animation durations are minimized
+      const testEl = document.createElement('div');
+      testEl.className = 'animate-fade-in';
+      document.body.appendChild(testEl);
+      const styles = getComputedStyle(testEl);
+      const shortDuration = !styles.animationDuration ||
+                           parseFloat(styles.animationDuration) < 0.1;
+      testEl.remove();
+
+      return hasClass || shortDuration;
+    });
+    expect(respectsReducedMotion).toBeTruthy();
+  });
+
+  test('should have preconnect resource hints', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasPreconnect = await page.evaluate(() => {
+      const preconnects = document.querySelectorAll('link[rel="preconnect"]');
+      return preconnects.length > 0;
+    });
+    expect(hasPreconnect).toBeTruthy();
+  });
+
+  test('should have AccessibilityManager.setLoading method', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasSetLoading = await page.evaluate(() => {
+      return typeof window.AccessibilityManager?.setLoading === 'function';
+    });
+    expect(hasSetLoading).toBeTruthy();
+  });
+
+  test('should have AccessibilityManager.announceUpdate method', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasAnnounceUpdate = await page.evaluate(() => {
+      return typeof window.AccessibilityManager?.announceUpdate === 'function';
+    });
+    expect(hasAnnounceUpdate).toBeTruthy();
+  });
+
+  test('should have minimum touch target sizes in CSS', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasTouchTargets = await page.evaluate(() => {
+      const testBtn = document.createElement('button');
+      testBtn.className = 'btn';
+      testBtn.textContent = 'Test';
+      document.body.appendChild(testBtn);
+      testBtn.offsetHeight;
+      const styles = getComputedStyle(testBtn);
+      // WCAG requires 44x44px minimum
+      const minWidth = parseInt(styles.minWidth) >= 44 || parseInt(styles.width) >= 44;
+      const minHeight = parseInt(styles.minHeight) >= 44 || parseInt(styles.height) >= 44;
+      testBtn.remove();
+      return minWidth || minHeight;
+    });
+    expect(hasTouchTargets).toBeTruthy();
+  });
+
+  test('should have PerformanceManager.setupLazyLoading method', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasLazyLoading = await page.evaluate(() => {
+      return typeof window.PerformanceManager?.setupLazyLoading === 'function';
+    });
+    expect(hasLazyLoading).toBeTruthy();
+  });
+
+  test('should have content-placeholder CSS for loading states', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasPlaceholderStyles = await page.evaluate(() => {
+      const testEl = document.createElement('div');
+      testEl.className = 'content-placeholder';
+      document.body.appendChild(testEl);
+      testEl.offsetHeight;
+      const styles = getComputedStyle(testEl);
+      // Placeholder should have background (gradient or solid)
+      const hasBackground = styles.background !== 'none' ||
+                           styles.backgroundColor !== 'rgba(0, 0, 0, 0)';
+      testEl.remove();
+      return hasBackground;
+    });
+    expect(hasPlaceholderStyles).toBeTruthy();
+  });
+});
