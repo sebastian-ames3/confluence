@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="en" class="fonts-loading">
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="description" content="AI-powered investment research synthesis and confluence analysis">
     <meta name="theme-color" content="#0F172A">
-    <title>Macro Confluence Hub - Research Synthesis</title>
+    <title>Macro Confluence Hub</title>
 
     <!-- Preconnect to external resources -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -14,342 +14,388 @@
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 
-    <!-- Modern Design System -->
+    <!-- Modern Design System + Layout -->
     <link rel="stylesheet" href="css/main.css">
-
-    <!-- Font loading detection -->
-    <script>
-        if ('fonts' in document) {
-            Promise.all([
-                document.fonts.load('400 1em Inter'),
-                document.fonts.load('600 1em Inter')
-            ]).then(() => {
-                document.documentElement.classList.remove('fonts-loading');
-                document.documentElement.classList.add('fonts-loaded');
-            }).catch(() => {
-                document.documentElement.classList.remove('fonts-loading');
-                document.documentElement.classList.add('fonts-failed');
-            });
-        } else {
-            document.documentElement.classList.remove('fonts-loading');
-        }
-    </script>
-
+    <link rel="stylesheet" href="css/layout.css">
 </head>
-<body class="page-loading">
+<body>
     <!-- Skip to main content (accessibility) -->
     <a href="#main-content" class="skip-link">Skip to main content</a>
 
-    <!-- Header -->
-    <header class="header">
-        <div class="header-content">
-            <a href="/" class="logo">Macro Confluence Hub</a>
+    <!-- Header (Sticky, Glassmorphic) -->
+    <header class="site-header" id="site-header">
+        <div class="header-container">
+            <!-- Logo -->
+            <a href="/" class="header-logo">
+                <span class="logo-icon">📊</span>
+                <span class="logo-text">Confluence<span class="logo-accent">Hub</span></span>
+            </a>
+
+            <!-- Search (Desktop) -->
+            <div class="header-search desktop-only">
+                <button class="search-trigger" id="search-trigger">
+                    <span class="search-icon">🔍</span>
+                    <span class="search-placeholder">Search research...</span>
+                    <kbd class="search-shortcut">⌘K</kbd>
+                </button>
+            </div>
+
+            <!-- Header Actions -->
+            <div class="header-actions">
+                <!-- Connection Status -->
+                <div class="connection-status">
+                    <span class="live-dot"></span>
+                    <span class="status-text desktop-only">Live</span>
+                </div>
+
+                <!-- Mobile Menu Toggle -->
+                <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Menu">
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                </button>
+            </div>
         </div>
     </header>
 
+    <!-- Mobile Navigation Drawer -->
+    <nav class="mobile-nav" id="mobile-nav" aria-hidden="true">
+        <div class="mobile-nav-overlay"></div>
+        <div class="mobile-nav-panel">
+            <div class="mobile-nav-header">
+                <span class="logo-text">Confluence<span class="logo-accent">Hub</span></span>
+                <button class="mobile-nav-close" id="mobile-nav-close">✕</button>
+            </div>
+            <ul class="mobile-nav-links">
+                <li><a href="#overview" class="mobile-nav-link active" data-tab="overview">Overview</a></li>
+                <li><a href="#themes" class="mobile-nav-link" data-tab="themes">Themes</a></li>
+                <li><a href="#sources" class="mobile-nav-link" data-tab="sources">Sources</a></li>
+                <li><a href="#history" class="mobile-nav-link" data-tab="history">History</a></li>
+            </ul>
+            <div class="mobile-nav-actions">
+                <button class="fab-btn fab-btn-primary w-full" onclick="generateSynthesis('24h')">Generate Synthesis</button>
+            </div>
+        </div>
+    </nav>
+
     <!-- Main Content -->
-    <main id="main-content" class="container" role="main">
-        <div class="simple-header">
-            <p>AI-powered investment research synthesis</p>
-        </div>
+    <main class="main-content" id="main-content">
+        <div class="container">
 
-        <!-- Tab Navigation (PRD-024) -->
-        <div class="tab-navigation">
-            <button class="tab-btn active" onclick="switchTab('synthesis')">Research Synthesis</button>
-            <button class="tab-btn" onclick="switchTab('themes')">Themes</button>
-        </div>
-
-        <!-- Synthesis Tab Content -->
-        <div id="synthesis-tab" class="tab-content active">
-
-        <!-- Status Grid -->
-        <div class="status-grid">
-            <div class="status-card">
-                <div class="status-card-title">Last Collection</div>
-                <div class="status-card-value" id="last-collection-time">-</div>
-                <div class="status-card-meta" id="last-collection-type">-</div>
-            </div>
-            <div class="status-card">
-                <div class="status-card-title">Content (24h)</div>
-                <div class="status-card-value" id="content-24h">-</div>
-                <div class="status-card-meta">items collected</div>
-            </div>
-            <div class="status-card">
-                <div class="status-card-title">Content (7d)</div>
-                <div class="status-card-value" id="content-7d">-</div>
-                <div class="status-card-meta">items collected</div>
-            </div>
-            <div class="status-card">
-                <div class="status-card-title">Last Synthesis</div>
-                <div class="status-card-value" id="last-synthesis-time">-</div>
-                <div class="status-card-meta" id="last-synthesis-window">-</div>
-            </div>
-        </div>
-
-        <!-- Charts Section (PRD-031) -->
-        <div class="charts-section">
-            <div class="charts-grid">
-                <!-- Sentiment Gauge -->
-                <div class="chart-container chart-container-sm"
-                     data-chart="sentiment-gauge"
-                     data-chart-type="sentiment-gauge">
-                    <div class="chart-header">
-                        <span class="chart-title">Market Sentiment</span>
-                    </div>
-                    <div class="chart-canvas-wrapper">
-                        <canvas id="sentiment-gauge-canvas"></canvas>
-                    </div>
-                </div>
-
-                <!-- Source Distribution -->
-                <div class="chart-container chart-container-sm"
-                     data-chart="source-donut"
-                     data-chart-type="source-donut">
-                    <div class="chart-header">
-                        <span class="chart-title">Content by Source</span>
-                    </div>
-                    <div class="chart-canvas-wrapper">
-                        <canvas id="source-donut-canvas"></canvas>
-                    </div>
-                </div>
-
-                <!-- Conviction Bar -->
-                <div class="chart-container chart-container-sm"
-                     data-chart="conviction-bar"
-                     data-chart-type="conviction-bar">
-                    <div class="chart-header">
-                        <span class="chart-title">Top Convictions</span>
-                    </div>
-                    <div class="chart-canvas-wrapper">
-                        <canvas id="conviction-bar-canvas"></canvas>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Confluence Heatmap (full width) -->
-            <div class="chart-container"
-                 id="confluence-heatmap"
-                 data-chart="confluence-heatmap"
-                 data-chart-type="confluence-heatmap">
-                <div class="chart-header">
-                    <span class="chart-title">Source Confluence Matrix</span>
-                    <span class="chart-subtitle">How sources align on key themes</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Collection Triggers -->
-        <div class="collection-triggers">
-            <div class="collection-triggers-header">
-                <span class="collection-triggers-title">Manual Collection</span>
-            </div>
-            <div class="trigger-buttons">
-                <button class="btn-trigger" id="trigger-youtube" onclick="triggerCollection('youtube')">
-                    Collect YouTube
-                </button>
-                <button class="btn-trigger" id="trigger-substack" onclick="triggerCollection('substack')">
-                    Collect Substack
-                </button>
-                <button class="btn-trigger" id="trigger-kt_technical" onclick="triggerCollection('kt_technical')">
-                    Collect KT Technical
-                </button>
-                <span class="btn-trigger-local" onclick="showLocalInfo(event)" title="Click for instructions">
-                    Discord / 42 Macro (local)
-                </span>
-                <div class="local-info-tooltip" id="local-tooltip">
-                    <strong>These run locally on your laptop:</strong>
-                    <code>python dev/scripts/discord_local.py --railway-api</code>
-                    <code>python dev/scripts/macro42_local.py --railway-api</code>
-                    <div style="margin-top: 8px; color: var(--text-muted);">Scheduled: 6 AM & 6 PM daily</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Action Buttons -->
-        <div class="action-buttons">
-            <button class="btn-analyze" id="analyze-btn" onclick="analyzeContent()">
-                Analyze Content
-            </button>
-            <button class="btn-generate" id="generate-btn" onclick="generateSynthesis('24h')">
-                Generate 24h Synthesis
-            </button>
-            <button class="btn-generate" id="generate-7d-btn" onclick="generateSynthesis('7d')" style="background: var(--bg-surface); border: 1px solid var(--border-subtle);">
-                Generate 7-Day Synthesis
-            </button>
-        </div>
-
-        <!-- Synthesis Panel -->
-        <div class="synthesis-panel" id="synthesis-panel">
-            <div class="empty-state" id="synthesis-empty">
-                <div class="empty-state-icon">📊</div>
-                <h3>No Synthesis Available</h3>
-                <p>Click "Generate Synthesis" to create an AI summary of your research.</p>
-            </div>
-
-            <div id="synthesis-content" style="display: none;">
-                <div class="synthesis-header">
-                    <div>
-                        <div class="synthesis-title">Research Synthesis</div>
-                        <div class="synthesis-meta">
-                            <span id="synthesis-window">24h</span> analysis |
-                            <span id="synthesis-count">0</span> items analyzed |
-                            <span id="synthesis-time">-</span>
+            <!-- Hero Section -->
+            <section class="hero-section" id="hero-section">
+                <div class="hero-grid">
+                    <!-- Market Regime -->
+                    <div class="hero-regime">
+                        <div class="regime-label">Market Regime</div>
+                        <div class="regime-badge regime-badge-uncertain" id="hero-regime-badge">
+                            <span class="regime-icon">⚡</span>
+                            <span class="regime-text" id="hero-regime-text">Loading...</span>
+                        </div>
+                        <div class="regime-meta">
+                            <span>Last updated:</span>
+                            <span id="hero-last-updated">-</span>
                         </div>
                     </div>
-                    <div id="market-regime-badge"></div>
-                </div>
 
-                <div class="synthesis-content" id="synthesis-text">
-                    <!-- Synthesis paragraphs will be inserted here -->
-                </div>
-
-                <div class="theme-tags" id="theme-tags">
-                    <!-- Theme tags will be inserted here -->
-                </div>
-
-                <!-- V1 High-Conviction Ideas -->
-                <div class="conviction-ideas" id="conviction-ideas">
-                    <h4 style="margin-bottom: var(--spacing-md); color: var(--text-secondary);">High-Conviction Ideas</h4>
-                    <div id="conviction-ideas-list">
-                        <!-- V1 Conviction ideas will be inserted here -->
+                    <!-- Key Insight -->
+                    <div class="hero-insight">
+                        <div class="insight-label">Key Insight</div>
+                        <p class="insight-text" id="hero-key-insight">
+                            Loading latest synthesis...
+                        </p>
+                        <div class="insight-sources">
+                            <span style="color: var(--text-muted);">Primary:</span>
+                            <span id="hero-sources">-</span>
+                        </div>
                     </div>
                 </div>
+            </section>
 
-                <!-- V2 Sections (PRD-020) -->
-                <div id="v2-content" style="display: none;">
-                    <!-- Tactical Ideas -->
-                    <div class="v2-section" id="tactical-section">
-                        <div class="v2-section-title">Tactical Ideas (< 4 weeks)</div>
-                        <div id="tactical-ideas-list"></div>
+            <!-- KPI Grid -->
+            <section class="kpi-section" id="kpi-section">
+                <div class="kpi-grid">
+                    <div class="kpi-card">
+                        <div class="kpi-label">Content (24h)</div>
+                        <div class="kpi-value">
+                            <span class="data-large" id="content-24h">-</span>
+                        </div>
+                        <div class="kpi-meta">items collected</div>
                     </div>
 
-                    <!-- Strategic Ideas -->
-                    <div class="v2-section" id="strategic-section">
-                        <div class="v2-section-title">Strategic Ideas (1-6 months)</div>
-                        <div id="strategic-ideas-list"></div>
+                    <div class="kpi-card">
+                        <div class="kpi-label">Content (7d)</div>
+                        <div class="kpi-value">
+                            <span class="data-large" id="content-7d">-</span>
+                        </div>
+                        <div class="kpi-meta">items collected</div>
                     </div>
 
-                    <!-- Watch List -->
-                    <div class="v2-section" id="watch-section">
-                        <div class="v2-section-title">Watch List (Conflicting/Developing)</div>
-                        <div id="watch-list"></div>
+                    <div class="kpi-card">
+                        <div class="kpi-label">Active Themes</div>
+                        <div class="kpi-value">
+                            <span class="data-large" id="kpi-themes">-</span>
+                        </div>
+                        <div class="kpi-meta">across sources</div>
                     </div>
 
-                    <!-- Catalyst Calendar -->
-                    <div class="v2-section" id="catalyst-section">
-                        <div class="v2-section-title">Catalyst Calendar</div>
-                        <div id="catalyst-calendar"></div>
+                    <div class="kpi-card">
+                        <div class="kpi-label">Last Synthesis</div>
+                        <div class="kpi-value">
+                            <span class="data-large" id="last-synthesis-time">-</span>
+                        </div>
+                        <div class="kpi-meta" id="last-synthesis-window">-</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab Navigation -->
+            <section class="tabs-section">
+                <div class="tabs-header">
+                    <div class="tabs-nav" role="tablist">
+                        <button class="tab-btn active" role="tab" data-tab="overview" aria-selected="true">Overview</button>
+                        <button class="tab-btn" role="tab" data-tab="themes" aria-selected="false">Themes</button>
+                        <button class="tab-btn" role="tab" data-tab="sources" aria-selected="false">Sources</button>
+                        <button class="tab-btn" role="tab" data-tab="history" aria-selected="false">History</button>
                     </div>
 
-                    <!-- Source Summary -->
-                    <div class="v2-section" id="source-section">
-                        <div class="v2-section-title">Source Analysis</div>
-                        <div id="source-summary" class="source-summary"></div>
+                    <div class="tabs-filter">
+                        <select class="time-filter" id="time-filter">
+                            <option value="24h">Last 24 hours</option>
+                            <option value="7d" selected>Last 7 days</option>
+                            <option value="30d">Last 30 days</option>
+                        </select>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab Content -->
+            <section class="tab-content-area">
+                <!-- Overview Tab -->
+                <div class="tab-panel active" id="panel-overview" role="tabpanel">
+                    <div class="content-grid">
+                        <!-- Main Column -->
+                        <div class="content-main">
+                            <!-- Synthesis Panel -->
+                            <div class="sidebar-card" id="synthesis-panel">
+                                <div class="synthesis-header" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--spacing-md); padding-bottom: var(--spacing-md); border-bottom: 1px solid var(--border-subtle);">
+                                    <div>
+                                        <div class="section-title" style="margin-bottom: var(--spacing-xs);">Research Synthesis</div>
+                                        <div class="synthesis-meta" style="font-size: var(--text-sm); color: var(--text-muted);">
+                                            <span id="synthesis-window">-</span> analysis |
+                                            <span id="synthesis-count">0</span> items |
+                                            <span id="synthesis-time">-</span>
+                                        </div>
+                                    </div>
+                                    <div id="market-regime-badge"></div>
+                                </div>
+
+                                <!-- Empty State -->
+                                <div id="synthesis-empty" style="text-align: center; padding: var(--spacing-xl); color: var(--text-muted);">
+                                    <div style="font-size: 48px; margin-bottom: var(--spacing-md);">📊</div>
+                                    <h3 style="margin-bottom: var(--spacing-sm);">No Synthesis Available</h3>
+                                    <p>Click "Generate Synthesis" to create an AI summary.</p>
+                                </div>
+
+                                <!-- Synthesis Content (hidden initially) -->
+                                <div id="synthesis-content" style="display: none;">
+                                    <div class="synthesis-text" id="synthesis-text"></div>
+                                    <div class="theme-tags" id="theme-tags" style="display: flex; flex-wrap: wrap; gap: var(--spacing-sm); margin-top: var(--spacing-md);"></div>
+
+                                    <!-- V3 Content -->
+                                    <div id="v3-content" style="display: none;">
+                                        <div id="v3-executive-section" class="v3-executive-summary"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Confluence Zones -->
+                            <div class="sidebar-card" id="confluence-section" style="display: none;">
+                                <div class="section-title">Confluence Zones</div>
+                                <div id="v3-confluence-list"></div>
+                            </div>
+
+                            <!-- Attention Priorities (in main for V3) -->
+                            <div class="sidebar-card" id="priorities-section" style="display: none;">
+                                <div class="section-title">This Week's Focus</div>
+                                <div id="v3-priorities-list"></div>
+                            </div>
+
+                            <!-- Conflict Watch -->
+                            <div class="sidebar-card" id="conflict-section" style="display: none;">
+                                <div class="section-title">Conflicts to Monitor</div>
+                                <div id="v3-conflict-list"></div>
+                            </div>
+
+                            <!-- Charts Section -->
+                            <div class="sidebar-card charts-section" style="display: none;">
+                                <div class="section-title">Market Visualization</div>
+                                <div class="charts-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--spacing-md);">
+                                    <div class="chart-container chart-container-sm" data-chart="sentiment-gauge">
+                                        <div class="chart-header"><span class="chart-title">Sentiment</span></div>
+                                        <div class="chart-canvas-wrapper"><canvas id="sentiment-gauge-canvas"></canvas></div>
+                                    </div>
+                                    <div class="chart-container chart-container-sm" data-chart="source-donut">
+                                        <div class="chart-header"><span class="chart-title">Sources</span></div>
+                                        <div class="chart-canvas-wrapper"><canvas id="source-donut-canvas"></canvas></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sidebar -->
+                        <aside class="content-sidebar">
+                            <!-- Source Status -->
+                            <div class="sidebar-card">
+                                <div class="sidebar-title">Source Status</div>
+                                <div id="source-status-list" class="source-list">
+                                    <div style="color: var(--text-muted);">Loading...</div>
+                                </div>
+                            </div>
+
+                            <!-- Quick Actions -->
+                            <div class="sidebar-card">
+                                <div class="sidebar-title">Quick Actions</div>
+                                <div class="quick-actions" style="display: flex; flex-direction: column; gap: var(--spacing-sm);">
+                                    <button class="fab-btn fab-btn-secondary w-full" onclick="triggerCollection('youtube')">
+                                        <span class="icon">▶️</span>
+                                        <span>Collect YouTube</span>
+                                    </button>
+                                    <button class="fab-btn fab-btn-secondary w-full" onclick="triggerCollection('substack')">
+                                        <span class="icon">📰</span>
+                                        <span>Collect Substack</span>
+                                    </button>
+                                    <button class="fab-btn fab-btn-secondary w-full" onclick="triggerCollection('kt_technical')">
+                                        <span class="icon">📈</span>
+                                        <span>Collect KT Technical</span>
+                                    </button>
+                                    <div style="font-size: var(--text-xs); color: var(--text-muted); text-align: center; margin-top: var(--spacing-sm);">
+                                        Discord & 42 Macro run locally
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Source Stances -->
+                            <div class="sidebar-card" id="stances-section" style="display: none;">
+                                <div class="sidebar-title">Source Perspectives</div>
+                                <div id="v3-stances-list"></div>
+                            </div>
+                        </aside>
                     </div>
                 </div>
 
-                <!-- V3 Sections (PRD-021: Research Consumption Hub) -->
-                <div id="v3-content" style="display: none;">
-                    <!-- Executive Summary -->
-                    <div id="v3-executive-section" class="v3-executive-summary"></div>
-
-                    <!-- Attention Priorities -->
-                    <div class="v2-section" id="v3-priorities-section">
-                        <div class="v2-section-title">This Week's Focus</div>
-                        <div id="v3-priorities-list"></div>
+                <!-- Themes Tab -->
+                <div class="tab-panel" id="panel-themes" role="tabpanel">
+                    <!-- Themes Stats -->
+                    <div class="kpi-grid" style="margin-bottom: var(--spacing-lg);">
+                        <div class="kpi-card">
+                            <div class="kpi-label">Total Themes</div>
+                            <div class="kpi-value"><span class="data-large" id="themes-total">0</span></div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-label">Active</div>
+                            <div class="kpi-value"><span class="data-large" id="themes-active">0</span></div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-label">Emerging</div>
+                            <div class="kpi-value"><span class="data-large" id="themes-emerging">0</span></div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-label">Evolved</div>
+                            <div class="kpi-value"><span class="data-large" id="themes-evolved">0</span></div>
+                        </div>
                     </div>
 
-                    <!-- Confluence Zones -->
-                    <div class="v2-section" id="v3-confluence-section">
-                        <div class="v2-section-title">Where Your Sources Align</div>
-                        <div id="v3-confluence-list"></div>
+                    <!-- Themes Filters -->
+                    <div class="tabs-nav" style="margin-bottom: var(--spacing-lg);">
+                        <button class="tab-btn active" onclick="filterThemes('all', this)">All</button>
+                        <button class="tab-btn" onclick="filterThemes('active', this)">Active</button>
+                        <button class="tab-btn" onclick="filterThemes('emerging', this)">Emerging</button>
+                        <button class="tab-btn" onclick="filterThemes('evolved', this)">Evolved</button>
+                        <button class="tab-btn" onclick="filterThemes('dormant', this)">Dormant</button>
                     </div>
 
-                    <!-- Conflict Watch -->
-                    <div class="v2-section" id="v3-conflict-section">
-                        <div class="v2-section-title">Conflicts to Monitor</div>
-                        <div id="v3-conflict-list"></div>
-                    </div>
-
-                    <!-- Re-Review Recommendations -->
-                    <div class="v2-section" id="v3-rereview-section">
-                        <div class="v2-section-title">Worth Re-Reviewing</div>
-                        <div id="v3-rereview-list"></div>
-                    </div>
-
-                    <!-- Source Stances -->
-                    <div class="v2-section" id="v3-stances-section">
-                        <div class="v2-section-title">What Each Source Is Saying</div>
-                        <div id="v3-stances-list"></div>
-                    </div>
-
-                    <!-- Catalyst Calendar -->
-                    <div class="v2-section" id="v3-catalyst-section">
-                        <div class="v2-section-title">Upcoming Catalysts</div>
-                        <div id="v3-catalyst-calendar"></div>
+                    <!-- Themes List -->
+                    <div id="themes-list" class="content-main">
+                        <div class="sidebar-card" style="text-align: center; padding: var(--spacing-xl);">
+                            <div style="font-size: 48px; margin-bottom: var(--spacing-md);">📋</div>
+                            <h3>No Themes Yet</h3>
+                            <p style="color: var(--text-muted);">Themes will be extracted from synthesis.</p>
+                        </div>
                     </div>
                 </div>
-            </div>
+
+                <!-- Sources Tab -->
+                <div class="tab-panel" id="panel-sources" role="tabpanel">
+                    <div class="content-main">
+                        <div class="sidebar-card">
+                            <div class="section-title">Source Overview</div>
+                            <div id="sources-detail-list">
+                                <p style="color: var(--text-muted);">Loading source details...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- History Tab -->
+                <div class="tab-panel" id="panel-history" role="tabpanel">
+                    <div class="content-main">
+                        <div class="sidebar-card">
+                            <div class="section-title">Synthesis History</div>
+                            <div id="synthesis-history-list">
+                                <p style="color: var(--text-muted);">Coming soon...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
         </div>
-
-        <!-- Source Status -->
-        <div class="card">
-            <div class="card-header">
-                <h2 class="card-title">Source Status</h2>
-            </div>
-            <div class="card-body" id="source-status-list">
-                <div class="loading">Loading...</div>
-            </div>
-        </div>
-
-        </div><!-- End Synthesis Tab -->
-
-        <!-- Themes Tab Content (PRD-024) -->
-        <div id="themes-tab" class="tab-content">
-            <!-- Themes Stats -->
-            <div class="themes-stats">
-                <div class="theme-stat">
-                    <div class="theme-stat-value" id="themes-total">0</div>
-                    <div class="theme-stat-label">Total Themes</div>
-                </div>
-                <div class="theme-stat">
-                    <div class="theme-stat-value" id="themes-active">0</div>
-                    <div class="theme-stat-label">Active</div>
-                </div>
-                <div class="theme-stat">
-                    <div class="theme-stat-value" id="themes-emerging">0</div>
-                    <div class="theme-stat-label">Emerging</div>
-                </div>
-                <div class="theme-stat">
-                    <div class="theme-stat-value" id="themes-evolved">0</div>
-                    <div class="theme-stat-label">Evolved</div>
-                </div>
-            </div>
-
-            <!-- Themes Filters -->
-            <div class="themes-header">
-                <h2 style="margin: 0; font-size: 1.2rem;">Investment Themes</h2>
-                <div class="themes-filters">
-                    <button class="filter-btn active" onclick="filterThemes('all')">All</button>
-                    <button class="filter-btn" onclick="filterThemes('active')">Active</button>
-                    <button class="filter-btn" onclick="filterThemes('emerging')">Emerging</button>
-                    <button class="filter-btn" onclick="filterThemes('evolved')">Evolved</button>
-                    <button class="filter-btn" onclick="filterThemes('dormant')">Dormant</button>
-                </div>
-            </div>
-
-            <!-- Themes List -->
-            <div class="themes-list" id="themes-list">
-                <div class="themes-empty">
-                    <div class="themes-empty-icon">📋</div>
-                    <h3>No Themes Yet</h3>
-                    <p>Themes will be extracted automatically from synthesis.</p>
-                </div>
-            </div>
-        </div><!-- End Themes Tab -->
-
     </main>
 
+    <!-- Floating Action Bar -->
+    <div class="floating-action-bar" id="floating-actions">
+        <div class="fab-container">
+            <button class="fab-btn fab-btn-warning" id="btn-analyze" onclick="analyzeContent()">
+                <span class="icon">⚡</span>
+                <span class="btn-text">Analyze</span>
+            </button>
+            <button class="fab-btn fab-btn-primary" id="btn-generate-24h" onclick="generateSynthesis('24h')">
+                <span class="icon">📝</span>
+                <span class="btn-text">Generate 24h</span>
+            </button>
+            <button class="fab-btn fab-btn-secondary" id="btn-generate-7d" onclick="generateSynthesis('7d')">
+                <span class="icon">📊</span>
+                <span class="btn-text">Generate 7-Day</span>
+            </button>
+            <button class="fab-btn fab-btn-ghost" onclick="loadStatus(); loadLatestSynthesis();">
+                <span class="icon">🔄</span>
+                <span class="btn-text desktop-only">Refresh</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Search Modal -->
+    <div class="modal" id="search-modal" aria-hidden="true">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <div class="search-modal-header">
+                <span class="search-icon">🔍</span>
+                <input type="search" class="search-modal-input" placeholder="Search themes, sources, content..." autofocus>
+                <kbd class="search-modal-esc">ESC</kbd>
+            </div>
+            <div class="search-modal-results" id="search-results">
+                <p style="color: var(--text-muted); text-align: center; padding: var(--spacing-lg);">
+                    Type to search across your research...
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Application JavaScript -->
     <script>
         // API Base URL
         const API_BASE = '/api';
@@ -360,21 +406,20 @@
             loadLatestSynthesis();
         });
 
+        // Listen for tab changes
+        window.addEventListener('tabchange', (e) => {
+            if (e.detail.tab === 'themes') {
+                loadThemes();
+            }
+        });
+
         // Load status overview
         async function loadStatus() {
             try {
                 const response = await fetch(`${API_BASE}/synthesis/status/overview`);
                 const data = await response.json();
 
-                // Update status cards
-                if (data.last_collection) {
-                    const lastTime = parseUTCDate(data.last_collection.started_at);
-                    document.getElementById('last-collection-time').textContent = formatTimeAgo(lastTime);
-                    document.getElementById('last-collection-type').textContent = data.last_collection.run_type;
-                } else {
-                    document.getElementById('last-collection-time').textContent = 'Never';
-                }
-
+                // Update KPI cards
                 document.getElementById('content-24h').textContent = data.total_content_24h || 0;
                 document.getElementById('content-7d').textContent = data.total_content_7d || 0;
 
@@ -382,6 +427,7 @@
                     const synthTime = parseUTCDate(data.latest_synthesis.generated_at);
                     document.getElementById('last-synthesis-time').textContent = formatTimeAgo(synthTime);
                     document.getElementById('last-synthesis-window').textContent = data.latest_synthesis.time_window + ' window';
+                    document.getElementById('hero-last-updated').textContent = formatTimeAgo(synthTime);
                 } else {
                     document.getElementById('last-synthesis-time').textContent = 'Never';
                     document.getElementById('last-synthesis-window').textContent = '-';
@@ -391,98 +437,18 @@
                 const sourceList = document.getElementById('source-status-list');
                 if (data.sources_status && data.sources_status.length > 0) {
                     sourceList.innerHTML = data.sources_status.map(source => `
-                        <div class="source-status-row">
-                            <span class="source-name">${source.name}</span>
-                            <div class="source-stats">
-                                <span>${source.items_24h} (24h)</span>
-                                <span>${source.items_7d} (7d)</span>
-                                <span>${source.last_collected ? formatTimeAgo(parseUTCDate(source.last_collected)) : 'Never'}</span>
+                        <div class="source-item">
+                            <div class="source-icon ${source.name.toLowerCase().replace(' ', '')}">${source.name.charAt(0)}</div>
+                            <div class="source-info">
+                                <div class="source-name">${source.name}</div>
+                                <div class="source-count">${source.items_24h} (24h) | ${source.items_7d} (7d)</div>
                             </div>
                         </div>
                     `).join('');
-                } else {
-                    sourceList.innerHTML = '<div class="empty-state">No sources configured</div>';
                 }
 
             } catch (error) {
                 console.error('Error loading status:', error);
-            }
-        }
-
-        // Trigger manual collection for a source
-        async function triggerCollection(sourceName) {
-            const btn = document.getElementById(`trigger-${sourceName}`);
-            const originalText = btn.textContent;
-            btn.disabled = true;
-            btn.innerHTML = '<span class="loading-spinner"></span> Collecting...';
-            btn.classList.remove('success', 'error');
-
-            try {
-                const response = await fetch(`${API_BASE}/collect/trigger/${sourceName}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
-
-                const data = await response.json();
-
-                if (response.ok && (data.status === 'success' || data.status === 'info')) {
-                    btn.classList.add('success');
-                    const savedCount = data.saved || 0;
-                    btn.textContent = savedCount > 0 ? `Done (${savedCount} new)` : 'Done (0 new)';
-
-                    // Refresh status to show new content
-                    await loadStatus();
-
-                    // Reset button after 3 seconds
-                    setTimeout(() => {
-                        btn.textContent = originalText;
-                        btn.classList.remove('success');
-                    }, 3000);
-                } else {
-                    throw new Error(data.detail || data.message || 'Collection failed');
-                }
-
-            } catch (error) {
-                console.error('Error triggering collection:', error);
-                btn.classList.add('error');
-                btn.textContent = 'Error';
-
-                // Reset button after 3 seconds
-                setTimeout(() => {
-                    btn.textContent = originalText;
-                    btn.classList.remove('error');
-                }, 3000);
-            } finally {
-                btn.disabled = false;
-            }
-        }
-
-        // Show local collection info tooltip
-        function showLocalInfo(event) {
-            const tooltip = document.getElementById('local-tooltip');
-            tooltip.classList.toggle('show');
-
-            // Position tooltip near the clicked element
-            const rect = event.target.getBoundingClientRect();
-            tooltip.style.position = 'fixed';
-            tooltip.style.left = `${rect.left}px`;
-            tooltip.style.top = `${rect.bottom + 8}px`;
-
-            // Close when clicking elsewhere
-            if (tooltip.classList.contains('show')) {
-                setTimeout(() => {
-                    document.addEventListener('click', closeTooltipOnClickOutside, { once: true });
-                }, 0);
-            }
-        }
-
-        function closeTooltipOnClickOutside(event) {
-            const tooltip = document.getElementById('local-tooltip');
-            const localBtn = document.querySelector('.btn-trigger-local');
-            if (!tooltip.contains(event.target) && event.target !== localBtn) {
-                tooltip.classList.remove('show');
             }
         }
 
@@ -505,102 +471,6 @@
             }
         }
 
-        // Analyze unprocessed content
-        async function analyzeContent() {
-            const btn = document.getElementById('analyze-btn');
-            const originalText = btn.textContent;
-            btn.disabled = true;
-
-            let totalAnalyzed = 0;
-            let batchCount = 0;
-
-            try {
-                // Loop until all items are processed
-                while (true) {
-                    batchCount++;
-                    btn.innerHTML = `<span class="loading-spinner"></span> Analyzing... (${totalAnalyzed} done)`;
-
-                    const response = await fetch(`${API_BASE}/analyze/classify-batch?limit=50`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        }
-                    });
-
-                    const data = await response.json();
-
-                    // Check for HTTP errors
-                    if (!response.ok) {
-                        throw new Error(data.detail || `Server error: ${response.status}`);
-                    }
-
-                    if (data.count > 0) {
-                        totalAnalyzed += data.count;
-                    } else {
-                        // No more items to process
-                        break;
-                    }
-
-                    // Safety limit to prevent infinite loops
-                    if (batchCount > 20) {
-                        console.warn('Reached batch limit, stopping');
-                        break;
-                    }
-                }
-
-                if (totalAnalyzed > 0) {
-                    alert(`Successfully analyzed ${totalAnalyzed} items. You can now generate a synthesis.`);
-                    await loadStatus();
-                } else {
-                    alert('No new content to analyze.');
-                }
-
-            } catch (error) {
-                console.error('Error analyzing content:', error);
-                alert('Failed to analyze content: ' + error.message);
-            } finally {
-                btn.disabled = false;
-                btn.textContent = originalText;
-            }
-        }
-
-        // Generate new synthesis
-        async function generateSynthesis(timeWindow) {
-            const btn = timeWindow === '24h' ? document.getElementById('generate-btn') : document.getElementById('generate-7d-btn');
-            const originalText = btn.textContent;
-            btn.disabled = true;
-            btn.innerHTML = '<span class="loading-spinner"></span> Generating...';
-
-            try {
-                const response = await fetch(`${API_BASE}/synthesis/generate`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ time_window: timeWindow })
-                });
-
-                const data = await response.json();
-
-                if (data.status === 'success') {
-                    // Reload the synthesis
-                    await loadLatestSynthesis();
-                    await loadStatus();
-                } else if (data.status === 'no_content') {
-                    alert(data.message || 'No content available for synthesis');
-                } else {
-                    throw new Error(data.detail || 'Generation failed');
-                }
-
-            } catch (error) {
-                console.error('Error generating synthesis:', error);
-                alert('Failed to generate synthesis: ' + error.message);
-            } finally {
-                btn.disabled = false;
-                btn.textContent = originalText;
-            }
-        }
-
         // Display synthesis content
         function displaySynthesis(data) {
             document.getElementById('synthesis-empty').style.display = 'none';
@@ -608,473 +478,103 @@
 
             // Check version
             const isV3 = data.version === '3.0' || data.confluence_zones || data.attention_priorities;
-            const isV2 = !isV3 && (data.version === '2.0' || data.tactical_ideas || data.strategic_ideas);
 
             // Update meta info
             document.getElementById('synthesis-window').textContent = data.time_window;
             document.getElementById('synthesis-count').textContent = data.content_count;
             document.getElementById('synthesis-time').textContent = data.generated_at ? formatDateTime(parseUTCDate(data.generated_at)) : '-';
 
-            // Market regime badge (handle v2 object format)
-            const regimeBadge = document.getElementById('market-regime-badge');
+            // Update hero section
             let regimeValue = data.market_regime;
             if (typeof regimeValue === 'object' && regimeValue !== null) {
                 regimeValue = regimeValue.current;
             }
             if (regimeValue) {
+                const heroRegimeBadge = document.getElementById('hero-regime-badge');
+                heroRegimeBadge.className = `regime-badge regime-badge-${regimeValue.toLowerCase().replace(/[^a-z]/g, '-')}`;
+                document.getElementById('hero-regime-text').textContent = regimeValue;
+
                 const regimeClass = `regime-${regimeValue.replace('_', '-').replace(' ', '-')}`;
-                regimeBadge.innerHTML = `<span class="market-regime ${regimeClass}">${regimeValue}</span>`;
-            } else {
-                regimeBadge.innerHTML = '';
+                document.getElementById('market-regime-badge').innerHTML = `<span class="market-regime ${regimeClass}">${regimeValue}</span>`;
             }
 
-            // Synthesis text (v2 uses synthesis_summary, v1 uses synthesis)
+            // Update hero key insight
+            const execSummary = data.executive_summary;
+            if (execSummary) {
+                const insight = execSummary.synthesis_narrative || execSummary.narrative || '';
+                document.getElementById('hero-key-insight').textContent = insight.split('.')[0] + '.';
+            }
+
+            // Synthesis text
             const synthText = document.getElementById('synthesis-text');
             const synthesisContent = data.synthesis_summary || data.synthesis || '';
             const paragraphs = synthesisContent.split('\n\n').filter(p => p.trim());
-            synthText.innerHTML = paragraphs.map(p => `<p>${p}</p>`).join('');
+            synthText.innerHTML = paragraphs.map(p => `<p style="margin-bottom: var(--spacing-sm);">${p}</p>`).join('');
 
-            // Theme tags (v2 may have key_themes in different format)
+            // Theme tags
             const themeTags = document.getElementById('theme-tags');
             const themes = data.key_themes || [];
             if (themes.length > 0) {
                 themeTags.innerHTML = themes.map(theme =>
-                    `<span class="theme-tag">${theme}</span>`
+                    `<span class="badge" style="background: var(--glass-bg); padding: var(--spacing-xs) var(--spacing-sm); border-radius: var(--radius-full); font-size: var(--text-xs);">${theme}</span>`
                 ).join('');
-            } else {
-                themeTags.innerHTML = '';
             }
 
-            // Handle V1 vs V2 vs V3 display
+            // Handle V3 content
             if (isV3) {
-                // V3: Research Consumption Hub
-                document.getElementById('conviction-ideas').style.display = 'none';
-                document.getElementById('v2-content').style.display = 'none';
                 document.getElementById('v3-content').style.display = 'block';
                 document.getElementById('synthesis-text').style.display = 'none';
                 document.getElementById('theme-tags').style.display = 'none';
 
-                // Render V3 sections
                 displayV3ExecutiveSummary(data.executive_summary || {});
                 displayV3AttentionPriorities(data.attention_priorities || []);
                 displayV3ConfluenceZones(data.confluence_zones || []);
                 displayV3ConflictWatch(data.conflict_watch || []);
-                displayV3ReReviewRecommendations(data.re_review_recommendations || []);
                 displayV3SourceStances(data.source_stances || {});
-                displayV3CatalystCalendar(data.catalyst_calendar || []);
-
-            } else if (isV2) {
-                // Hide V1 conviction ideas, show V2 sections
-                document.getElementById('conviction-ideas').style.display = 'none';
-                document.getElementById('v2-content').style.display = 'block';
-                document.getElementById('v3-content').style.display = 'none';
-                document.getElementById('synthesis-text').style.display = 'block';
-                document.getElementById('theme-tags').style.display = 'flex';
-
-                // Render tactical ideas
-                displayTacticalIdeas(data.tactical_ideas || []);
-
-                // Render strategic ideas
-                displayStrategicIdeas(data.strategic_ideas || []);
-
-                // Render watch list
-                displayWatchList(data.watch_list || []);
-
-                // Render catalyst calendar
-                displayCatalystCalendar(data.catalyst_calendar || []);
-
-                // Render source summary
-                displaySourceSummary(data.source_summary || {});
-            } else {
-                // V1 format - show conviction ideas, hide V2/V3 sections
-                document.getElementById('v2-content').style.display = 'none';
-                document.getElementById('v3-content').style.display = 'none';
-                document.getElementById('synthesis-text').style.display = 'block';
-                document.getElementById('theme-tags').style.display = 'flex';
-
-                const convictionList = document.getElementById('conviction-ideas-list');
-                if (data.high_conviction_ideas && data.high_conviction_ideas.length > 0) {
-                    document.getElementById('conviction-ideas').style.display = 'block';
-                    convictionList.innerHTML = data.high_conviction_ideas.map(idea => {
-                        const badgeClass = `conviction-${idea.confidence || 'medium'}`;
-                        return `
-                            <div class="conviction-idea">
-                                <div class="conviction-idea-header">
-                                    <span class="conviction-idea-title">${idea.idea}</span>
-                                    <span class="conviction-badge ${badgeClass}">${idea.confidence || 'medium'}</span>
-                                </div>
-                                <div class="conviction-idea-sources">
-                                    Sources: ${(idea.sources || []).join(', ')}
-                                    ${idea.rationale ? ` - ${idea.rationale}` : ''}
-                                </div>
-                            </div>
-                        `;
-                    }).join('');
-                } else {
-                    document.getElementById('conviction-ideas').style.display = 'none';
-                }
             }
         }
 
-        // V2: Display tactical ideas
-        function displayTacticalIdeas(ideas) {
-            const container = document.getElementById('tactical-ideas-list');
-            if (!ideas || ideas.length === 0) {
-                document.getElementById('tactical-section').style.display = 'none';
-                return;
-            }
-            document.getElementById('tactical-section').style.display = 'block';
-
-            container.innerHTML = ideas.map(idea => {
-                const conviction = idea.conviction_score || {};
-                const weighted = conviction.weighted || 0;
-                const convictionClass = weighted >= 0.7 ? 'high' : weighted >= 0.5 ? 'medium' : 'low';
-                const trade = idea.trade_structure || {};
-
-                return `
-                    <div class="tactical-idea">
-                        <div class="idea-header">
-                            <span class="idea-title">${idea.idea || 'Untitled'}</span>
-                            <div class="conviction-pill">
-                                <span>${conviction.raw || '-'}</span>
-                                <div class="conviction-bar">
-                                    <div class="conviction-fill ${convictionClass}" style="width: ${weighted * 100}%"></div>
-                                </div>
-                                <span>${Math.round(weighted * 100)}%</span>
-                            </div>
-                        </div>
-
-                        ${trade.instrument ? `
-                        <div class="trade-structure">
-                            <div class="trade-field">
-                                <span class="trade-field-label">Instrument</span>
-                                <span class="trade-field-value">${trade.instrument}</span>
-                            </div>
-                            <div class="trade-field">
-                                <span class="trade-field-label">Direction</span>
-                                <span class="trade-field-value">${trade.direction || '-'}</span>
-                            </div>
-                            <div class="trade-field">
-                                <span class="trade-field-label">Structure</span>
-                                <span class="trade-field-value">${trade.structure || '-'}</span>
-                            </div>
-                            <div class="trade-field">
-                                <span class="trade-field-label">Entry</span>
-                                <span class="trade-field-value entry">${trade.entry_level || '-'}</span>
-                            </div>
-                            <div class="trade-field">
-                                <span class="trade-field-label">Stop</span>
-                                <span class="trade-field-value stop">${trade.stop_level || '-'}</span>
-                            </div>
-                            <div class="trade-field">
-                                <span class="trade-field-label">Target</span>
-                                <span class="trade-field-value target">${trade.target_level || '-'}</span>
-                            </div>
-                        </div>
-                        ` : ''}
-
-                        <div class="idea-meta">
-                            ${idea.time_horizon ? `<span class="idea-meta-item">${idea.time_horizon}</span>` : ''}
-                            ${idea.catalyst ? `<span class="idea-meta-item">${idea.catalyst}</span>` : ''}
-                        </div>
-
-                        ${idea.rationale ? `<div class="idea-rationale">${idea.rationale}</div>` : ''}
-
-                        ${idea.invalidation ? `<div class="idea-invalidation"><strong>Invalidation:</strong> ${idea.invalidation}</div>` : ''}
-                    </div>
-                `;
-            }).join('');
-        }
-
-        // V2: Display strategic ideas
-        function displayStrategicIdeas(ideas) {
-            const container = document.getElementById('strategic-ideas-list');
-            if (!ideas || ideas.length === 0) {
-                document.getElementById('strategic-section').style.display = 'none';
-                return;
-            }
-            document.getElementById('strategic-section').style.display = 'block';
-
-            container.innerHTML = ideas.map(idea => {
-                const conviction = idea.conviction_score || {};
-                const weighted = conviction.weighted || 0;
-                const convictionClass = weighted >= 0.7 ? 'high' : weighted >= 0.5 ? 'medium' : 'low';
-                const levels = idea.key_levels || {};
-
-                return `
-                    <div class="strategic-idea">
-                        <div class="idea-header">
-                            <span class="idea-title">${idea.idea || 'Untitled'}</span>
-                            <div class="conviction-pill">
-                                <span>${conviction.raw || '-'}</span>
-                                <div class="conviction-bar">
-                                    <div class="conviction-fill ${convictionClass}" style="width: ${weighted * 100}%"></div>
-                                </div>
-                                <span>${Math.round(weighted * 100)}%</span>
-                            </div>
-                        </div>
-
-                        ${idea.thesis ? `<div class="idea-rationale">${idea.thesis}</div>` : ''}
-
-                        ${(levels.support || levels.resistance) ? `
-                        <div class="trade-structure">
-                            ${levels.support ? `
-                            <div class="trade-field">
-                                <span class="trade-field-label">Support</span>
-                                <span class="trade-field-value">${levels.support.join(', ')}</span>
-                            </div>
-                            ` : ''}
-                            ${levels.resistance ? `
-                            <div class="trade-field">
-                                <span class="trade-field-label">Resistance</span>
-                                <span class="trade-field-value">${levels.resistance.join(', ')}</span>
-                            </div>
-                            ` : ''}
-                        </div>
-                        ` : ''}
-
-                        <div class="idea-meta">
-                            ${idea.time_horizon ? `<span class="idea-meta-item">${idea.time_horizon}</span>` : ''}
-                        </div>
-
-                        ${idea.triggers && idea.triggers.length > 0 ? `
-                        <div style="margin-top: var(--spacing-sm); font-size: 0.85rem; color: var(--text-secondary);">
-                            <strong>Triggers:</strong> ${idea.triggers.join('; ')}
-                        </div>
-                        ` : ''}
-
-                        ${idea.risks && idea.risks.length > 0 ? `
-                        <div class="idea-invalidation">
-                            <strong>Risks:</strong> ${idea.risks.join('; ')}
-                        </div>
-                        ` : ''}
-                    </div>
-                `;
-            }).join('');
-        }
-
-        // V2: Display watch list
-        function displayWatchList(items) {
-            const container = document.getElementById('watch-list');
-            if (!items || items.length === 0) {
-                document.getElementById('watch-section').style.display = 'none';
-                return;
-            }
-            document.getElementById('watch-section').style.display = 'block';
-
-            container.innerHTML = items.map(item => {
-                const bullCase = item.bull_case || {};
-                const bearCase = item.bear_case || {};
-
-                return `
-                    <div class="watch-item">
-                        <div class="idea-header">
-                            <span class="idea-title">${item.topic || 'Untitled'}</span>
-                            <span class="idea-meta-item">${item.status || 'monitoring'}</span>
-                        </div>
-
-                        <div class="watch-cases">
-                            <div class="watch-case bull">
-                                <div class="watch-case-label">Bull Case</div>
-                                <div>${bullCase.view || '-'}</div>
-                                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
-                                    Sources: ${(bullCase.sources || []).join(', ') || '-'}
-                                </div>
-                            </div>
-                            <div class="watch-case bear">
-                                <div class="watch-case-label">Bear Case</div>
-                                <div>${bearCase.view || '-'}</div>
-                                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
-                                    Sources: ${(bearCase.sources || []).join(', ') || '-'}
-                                </div>
-                            </div>
-                        </div>
-
-                        ${item.resolution_trigger ? `
-                        <div style="margin-top: var(--spacing-sm); font-size: 0.85rem; color: var(--text-secondary);">
-                            <strong>Resolution Trigger:</strong> ${item.resolution_trigger}
-                        </div>
-                        ` : ''}
-
-                        ${item.weighted_lean ? `
-                        <div style="margin-top: var(--spacing-xs); font-size: 0.85rem;">
-                            <strong>Weighted Lean:</strong> ${item.weighted_lean}
-                        </div>
-                        ` : ''}
-                    </div>
-                `;
-            }).join('');
-        }
-
-        // V2: Display catalyst calendar
-        function displayCatalystCalendar(catalysts) {
-            const container = document.getElementById('catalyst-calendar');
-            if (!catalysts || catalysts.length === 0) {
-                document.getElementById('catalyst-section').style.display = 'none';
-                return;
-            }
-            document.getElementById('catalyst-section').style.display = 'block';
-
-            container.innerHTML = `
-                <table class="catalyst-table">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Event</th>
-                            <th>Impact</th>
-                            <th>Relevance</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${catalysts.map(c => `
-                            <tr>
-                                <td>${c.date || '-'}</td>
-                                <td><strong>${c.event || '-'}</strong></td>
-                                <td><span class="catalyst-impact impact-${c.impact || 'medium'}">${c.impact || 'medium'}</span></td>
-                                <td>${c.relevance || '-'}</td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            `;
-        }
-
-        // V2: Display source summary
-        function displaySourceSummary(summary) {
-            const container = document.getElementById('source-summary');
-            if (!summary || !summary.by_source) {
-                document.getElementById('source-section').style.display = 'none';
-                return;
-            }
-            document.getElementById('source-section').style.display = 'block';
-
-            const sources = Object.entries(summary.by_source || {});
-            if (sources.length === 0) {
-                container.innerHTML = '<div class="empty-state">No source data available</div>';
-                return;
-            }
-
-            container.innerHTML = sources.map(([name, data]) => `
-                <div class="source-summary-item">
-                    <div class="source-summary-name">${name} (${data.items || 0} items)</div>
-                    <div style="font-size: 0.7rem; color: var(--text-muted);">Weight: ${data.weight || 1.0}x</div>
-                    ${data.current_stance ? `<div class="source-summary-stance">${data.current_stance}</div>` : ''}
-                </div>
-            `).join('');
-        }
-
-        // V3: Display executive summary (enhanced PRD-025 format)
+        // V3: Display executive summary
         function displayV3ExecutiveSummary(summary) {
             const container = document.getElementById('v3-executive-section');
-
-            // Handle both old format (narrative) and new format (synthesis_narrative)
-            const hasContent = summary && (summary.narrative || summary.synthesis_narrative || summary.macro_context);
-            if (!hasContent) {
+            if (!summary || (!summary.narrative && !summary.synthesis_narrative)) {
                 container.style.display = 'none';
                 return;
             }
             container.style.display = 'block';
 
             const tone = summary.overall_tone || 'uncertain';
-            const theme = summary.dominant_theme || '';
-
-            // Check if this is enhanced format (PRD-025)
-            const isEnhanced = summary.source_highlights || summary.synthesis_narrative || summary.key_takeaways;
+            const isEnhanced = summary.source_highlights || summary.synthesis_narrative;
 
             if (isEnhanced) {
-                // Enhanced format with per-source highlights
                 const macroContext = summary.macro_context || '';
-                const sourceHighlights = summary.source_highlights || {};
                 const synthesisNarrative = summary.synthesis_narrative || '';
                 const keyTakeaways = summary.key_takeaways || [];
 
-                // Build source highlights HTML
-                const sourceOrder = ['42macro', 'discord', 'kt_technical', 'youtube', 'substack'];
-                const sourceLabels = {
-                    '42macro': '42 Macro',
-                    'discord': 'Discord (Imran)',
-                    'kt_technical': 'KT Technical',
-                    'youtube': 'YouTube',
-                    'substack': 'Substack'
-                };
-                const sourceColors = {
-                    '42macro': '#3b82f6',
-                    'discord': '#22c55e',
-                    'kt_technical': '#eab308',
-                    'youtube': '#ef4444',
-                    'substack': '#f97316'
-                };
-
-                let sourceHighlightsHtml = '';
-                for (const source of sourceOrder) {
-                    const highlight = sourceHighlights[source];
-                    if (highlight && highlight !== 'null' && highlight.length > 0) {
-                        const color = sourceColors[source] || '#6b7280';
-                        sourceHighlightsHtml += `
-                            <div class="source-highlight">
-                                <div class="source-highlight-header" style="border-left-color: ${color}">
-                                    <span class="source-highlight-name">${sourceLabels[source] || source}</span>
-                                </div>
-                                <div class="source-highlight-text">${highlight}</div>
-                            </div>
-                        `;
-                    }
-                }
-
-                // Build key takeaways HTML
-                let takeawaysHtml = '';
-                if (keyTakeaways.length > 0) {
-                    takeawaysHtml = `
-                        <div class="key-takeaways">
-                            <div class="key-takeaways-title">Key Takeaways</div>
-                            <ol class="key-takeaways-list">
-                                ${keyTakeaways.map(t => `<li>${t}</li>`).join('')}
+                container.innerHTML = `
+                    ${macroContext ? `<div style="font-size: var(--text-lg); margin-bottom: var(--spacing-md); color: var(--text-primary);">${macroContext}</div>` : ''}
+                    ${synthesisNarrative ? `<div style="color: var(--text-secondary); line-height: var(--leading-relaxed);">${synthesisNarrative}</div>` : ''}
+                    ${keyTakeaways.length > 0 ? `
+                        <div style="margin-top: var(--spacing-md); padding: var(--spacing-md); background: var(--glass-bg-light); border-radius: var(--radius-lg);">
+                            <div style="font-weight: var(--font-semibold); margin-bottom: var(--spacing-sm);">Key Takeaways</div>
+                            <ol style="margin: 0; padding-left: var(--spacing-lg);">
+                                ${keyTakeaways.map(t => `<li style="margin-bottom: var(--spacing-xs);">${t}</li>`).join('')}
                             </ol>
                         </div>
-                    `;
-                }
-
-                // Render enhanced format
-                container.innerHTML = `
-                    ${macroContext ? `<div class="macro-context">${macroContext}</div>` : ''}
-
-                    ${sourceHighlightsHtml ? `
-                        <div class="source-highlights-section">
-                            <div class="section-label">Source Highlights</div>
-                            ${sourceHighlightsHtml}
-                        </div>
                     ` : ''}
-
-                    ${synthesisNarrative ? `
-                        <div class="synthesis-narrative-section">
-                            <div class="section-label">Synthesis</div>
-                            <div class="v3-executive-narrative">${synthesisNarrative.replace(/\n\n/g, '</p><p>').replace(/^/, '<p>').replace(/$/, '</p>')}</div>
-                        </div>
-                    ` : ''}
-
-                    ${takeawaysHtml}
-
-                    <div class="v3-executive-meta">
-                        <span class="v3-tone-badge tone-${tone}">${tone}</span>
-                        ${theme ? `<span class="v3-dominant-theme">Theme: ${theme}</span>` : ''}
+                    <div style="margin-top: var(--spacing-md);">
+                        <span class="badge" style="background: var(--${tone === 'bullish' ? 'success' : tone === 'bearish' ? 'danger' : 'warning'}); color: white; padding: var(--spacing-xs) var(--spacing-sm); border-radius: var(--radius-full); font-size: var(--text-xs);">${tone}</span>
                     </div>
                 `;
             } else {
-                // Legacy format (simple narrative)
-                container.innerHTML = `
-                    <div class="v3-executive-narrative">${summary.narrative}</div>
-                    <div class="v3-executive-meta">
-                        <span class="v3-tone-badge tone-${tone}">${tone}</span>
-                        ${theme ? `<span class="v3-dominant-theme">Focus: ${theme}</span>` : ''}
-                    </div>
-                `;
+                container.innerHTML = `<div style="color: var(--text-secondary);">${summary.narrative}</div>`;
             }
         }
 
         // V3: Display attention priorities
         function displayV3AttentionPriorities(priorities) {
             const container = document.getElementById('v3-priorities-list');
-            const section = document.getElementById('v3-priorities-section');
+            const section = document.getElementById('priorities-section');
 
             if (!priorities || priorities.length === 0) {
                 section.style.display = 'none';
@@ -1082,28 +582,21 @@
             }
             section.style.display = 'block';
 
-            container.innerHTML = priorities.map(p => {
-                const sensitivity = p.time_sensitivity || 'medium';
-                return `
-                    <div class="attention-priority">
-                        <div class="priority-rank">${p.rank || '?'}</div>
-                        <div class="priority-content">
-                            <div class="priority-focus">${p.focus_area || 'Untitled'}</div>
-                            <div class="priority-why">${p.why || ''}</div>
-                            <div class="priority-meta">
-                                <span class="priority-sensitivity sensitivity-${sensitivity}">${sensitivity}</span>
-                                ${(p.sources_discussing || []).map(s => `<span class="idea-meta-item">${s}</span>`).join('')}
-                            </div>
-                        </div>
+            container.innerHTML = priorities.map(p => `
+                <div style="display: flex; gap: var(--spacing-md); padding: var(--spacing-md); background: var(--glass-bg-light); border-radius: var(--radius-lg); margin-bottom: var(--spacing-sm);">
+                    <div style="width: 32px; height: 32px; background: var(--primary); color: white; border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center; font-weight: var(--font-bold); flex-shrink: 0;">${p.rank || '?'}</div>
+                    <div>
+                        <div style="font-weight: var(--font-semibold);">${p.focus_area || 'Untitled'}</div>
+                        <div style="font-size: var(--text-sm); color: var(--text-secondary);">${p.why || ''}</div>
                     </div>
-                `;
-            }).join('');
+                </div>
+            `).join('');
         }
 
         // V3: Display confluence zones
         function displayV3ConfluenceZones(zones) {
             const container = document.getElementById('v3-confluence-list');
-            const section = document.getElementById('v3-confluence-section');
+            const section = document.getElementById('confluence-section');
 
             if (!zones || zones.length === 0) {
                 section.style.display = 'none';
@@ -1114,42 +607,14 @@
             container.innerHTML = zones.map(zone => {
                 const strength = zone.confluence_strength || 0;
                 const aligned = zone.sources_aligned || [];
-                const contrary = zone.sources_contrary || [];
-                const levels = zone.relevant_levels || [];
-
                 return `
-                    <div class="confluence-zone">
-                        <div class="confluence-header">
-                            <span class="confluence-theme">${zone.theme || 'Untitled'}</span>
-                            <span class="confluence-strength">
-                                <span>${Math.round(strength * 100)}% confluence</span>
-                            </span>
+                    <div style="padding: var(--spacing-md); background: var(--glass-bg-light); border-radius: var(--radius-lg); margin-bottom: var(--spacing-sm); border-left: 3px solid var(--success);">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: var(--spacing-sm);">
+                            <span style="font-weight: var(--font-semibold);">${zone.theme || 'Untitled'}</span>
+                            <span style="font-size: var(--text-sm); color: var(--success);">${Math.round(strength * 100)}% alignment</span>
                         </div>
-
-                        <div class="confluence-sources">
-                            ${aligned.map(s => `
-                                <div class="confluence-source">
-                                    <span class="confluence-source-name">${s.source || 'Unknown'}</span>
-                                    <span class="confluence-source-view">${s.view || ''}</span>
-                                </div>
-                            `).join('')}
-                        </div>
-
-                        ${contrary.length > 0 ? `
-                            <div class="confluence-contrary">
-                                <div class="confluence-contrary-label">Contrary View</div>
-                                ${contrary.map(s => `
-                                    <div class="confluence-source">
-                                        <span class="confluence-source-name">${s.source || 'Unknown'}</span>
-                                        <span class="confluence-source-view">${s.view || ''}</span>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        ` : ''}
-
-                        <div class="confluence-meta">
-                            ${levels.length > 0 ? `<span class="confluence-meta-item">Levels: ${levels.join(', ')}</span>` : ''}
-                            ${zone.related_catalyst ? `<span class="confluence-meta-item">Catalyst: ${zone.related_catalyst}</span>` : ''}
+                        <div style="font-size: var(--text-sm); color: var(--text-secondary);">
+                            ${aligned.map(s => `<div><strong>${s.source}:</strong> ${s.view}</div>`).join('')}
                         </div>
                     </div>
                 `;
@@ -1159,7 +624,7 @@
         // V3: Display conflict watch
         function displayV3ConflictWatch(conflicts) {
             const container = document.getElementById('v3-conflict-list');
-            const section = document.getElementById('v3-conflict-section');
+            const section = document.getElementById('conflict-section');
 
             if (!conflicts || conflicts.length === 0) {
                 section.style.display = 'none';
@@ -1167,90 +632,27 @@
             }
             section.style.display = 'block';
 
-            container.innerHTML = conflicts.map(conflict => {
-                const bullCase = conflict.bull_case || {};
-                const bearCase = conflict.bear_case || {};
-
-                return `
-                    <div class="watch-item">
-                        <div class="idea-header">
-                            <span class="idea-title">${conflict.topic || 'Untitled'}</span>
-                            <span class="idea-meta-item">${conflict.status || 'monitoring'}</span>
+            container.innerHTML = conflicts.map(c => `
+                <div style="padding: var(--spacing-md); background: var(--glass-bg-light); border-radius: var(--radius-lg); margin-bottom: var(--spacing-sm); border-left: 3px solid var(--warning);">
+                    <div style="font-weight: var(--font-semibold); margin-bottom: var(--spacing-sm);">${c.topic || 'Untitled'}</div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-md); font-size: var(--text-sm);">
+                        <div style="padding: var(--spacing-sm); background: rgba(16, 185, 129, 0.1); border-radius: var(--radius-md);">
+                            <div style="color: var(--success); font-weight: var(--font-medium);">Bull Case</div>
+                            <div style="color: var(--text-secondary);">${c.bull_case?.view || '-'}</div>
                         </div>
-
-                        <div class="watch-cases">
-                            <div class="watch-case bull">
-                                <div class="watch-case-label">Bull Case</div>
-                                <div>${bullCase.view || '-'}</div>
-                                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
-                                    Sources: ${(bullCase.sources || []).join(', ') || '-'}
-                                </div>
-                            </div>
-                            <div class="watch-case bear">
-                                <div class="watch-case-label">Bear Case</div>
-                                <div>${bearCase.view || '-'}</div>
-                                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
-                                    Sources: ${(bearCase.sources || []).join(', ') || '-'}
-                                </div>
-                            </div>
+                        <div style="padding: var(--spacing-sm); background: rgba(239, 68, 68, 0.1); border-radius: var(--radius-md);">
+                            <div style="color: var(--danger); font-weight: var(--font-medium);">Bear Case</div>
+                            <div style="color: var(--text-secondary);">${c.bear_case?.view || '-'}</div>
                         </div>
-
-                        ${conflict.resolution_trigger ? `
-                        <div style="margin-top: var(--spacing-sm); font-size: 0.85rem; color: var(--text-secondary);">
-                            <strong>Resolution Trigger:</strong> ${conflict.resolution_trigger}
-                        </div>
-                        ` : ''}
-
-                        ${conflict.weighted_lean ? `
-                        <div style="margin-top: var(--spacing-xs); font-size: 0.85rem;">
-                            <strong>Weighted Lean:</strong> ${conflict.weighted_lean}
-                        </div>
-                        ` : ''}
-
-                        ${conflict.user_action ? `
-                        <div style="margin-top: var(--spacing-xs); font-size: 0.85rem; color: var(--primary);">
-                            <strong>Action:</strong> ${conflict.user_action}
-                        </div>
-                        ` : ''}
                     </div>
-                `;
-            }).join('');
-        }
-
-        // V3: Display re-review recommendations
-        function displayV3ReReviewRecommendations(recommendations) {
-            const container = document.getElementById('v3-rereview-list');
-            const section = document.getElementById('v3-rereview-section');
-
-            if (!recommendations || recommendations.length === 0) {
-                section.style.display = 'none';
-                return;
-            }
-            section.style.display = 'block';
-
-            container.innerHTML = recommendations.map(rec => {
-                const trigger = rec.relevance_trigger || '';
-                const triggerLabel = trigger.replace(/_/g, ' ');
-
-                return `
-                    <div class="re-review-item">
-                        <div class="re-review-header">
-                            <div>
-                                <div class="re-review-title">${rec.title || 'Untitled'}</div>
-                                <div class="re-review-source">${rec.source || 'Unknown'} - ${rec.content_date || ''}</div>
-                            </div>
-                        </div>
-                        <div class="re-review-why">${rec.why_relevant_now || ''}</div>
-                        ${trigger ? `<span class="re-review-trigger">${triggerLabel}</span>` : ''}
-                    </div>
-                `;
-            }).join('');
+                </div>
+            `).join('');
         }
 
         // V3: Display source stances
         function displayV3SourceStances(stances) {
             const container = document.getElementById('v3-stances-list');
-            const section = document.getElementById('v3-stances-section');
+            const section = document.getElementById('stances-section');
 
             if (!stances || Object.keys(stances).length === 0) {
                 section.style.display = 'none';
@@ -1258,72 +660,19 @@
             }
             section.style.display = 'block';
 
-            const entries = Object.entries(stances);
-            container.innerHTML = entries.map(([name, data]) => {
+            container.innerHTML = Object.entries(stances).map(([name, data]) => {
                 const bias = data.overall_bias || 'neutral';
-                const biasClass = `bias-${bias.replace(/[^a-z]/gi, '')}`;
-
+                const biasColor = bias === 'bullish' ? 'success' : bias === 'bearish' ? 'danger' : 'warning';
                 return `
-                    <div class="source-stance-card">
-                        <div class="source-stance-header">
-                            <span class="source-stance-name">${name}</span>
-                            <span class="source-stance-weight">${data.items_analyzed || 0} items | ${data.weight || 1.0}x weight</span>
+                    <div style="padding: var(--spacing-md); background: var(--glass-bg-light); border-radius: var(--radius-lg); margin-bottom: var(--spacing-sm);">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: var(--spacing-xs);">
+                            <span style="font-weight: var(--font-semibold);">${name}</span>
+                            <span class="badge" style="background: var(--${biasColor}); color: white; padding: 2px 8px; border-radius: var(--radius-full); font-size: 10px;">${bias}</span>
                         </div>
-                        <div class="source-stance-narrative">${data.current_stance_narrative || ''}</div>
-                        <div class="source-stance-bias ${biasClass}">Bias: ${bias}</div>
+                        <div style="font-size: var(--text-sm); color: var(--text-secondary);">${data.current_stance_narrative || ''}</div>
                     </div>
                 `;
             }).join('');
-        }
-
-        // V3: Display catalyst calendar
-        function displayV3CatalystCalendar(catalysts) {
-            const container = document.getElementById('v3-catalyst-calendar');
-            const section = document.getElementById('v3-catalyst-section');
-
-            if (!catalysts || catalysts.length === 0) {
-                section.style.display = 'none';
-                return;
-            }
-            section.style.display = 'block';
-
-            container.innerHTML = `
-                <table class="v3-catalyst-table">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Event</th>
-                            <th>Impact</th>
-                            <th>Source Perspectives</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${catalysts.map(c => {
-                            const perspectives = c.source_perspectives || [];
-                            return `
-                                <tr>
-                                    <td>${c.date || '-'}</td>
-                                    <td>
-                                        <strong>${c.event || '-'}</strong>
-                                        ${c.themes_affected ? `<div style="font-size: 0.75rem; color: var(--text-muted);">${c.themes_affected.join(', ')}</div>` : ''}
-                                    </td>
-                                    <td><span class="catalyst-impact impact-${c.impact || 'medium'}">${c.impact || 'medium'}</span></td>
-                                    <td>
-                                        <div class="catalyst-perspectives">
-                                            ${perspectives.map(p => `
-                                                <div class="catalyst-perspective">
-                                                    <span class="catalyst-perspective-source">${p.source}:</span> ${p.view}
-                                                </div>
-                                            `).join('')}
-                                            ${c.pre_event_review ? `<div style="margin-top: 4px; color: #8b5cf6; font-size: 0.75rem;">Review: ${c.pre_event_review}</div>` : ''}
-                                        </div>
-                                    </td>
-                                </tr>
-                            `;
-                        }).join('')}
-                    </tbody>
-                </table>
-            `;
         }
 
         // Show empty synthesis state
@@ -1332,214 +681,206 @@
             document.getElementById('synthesis-content').style.display = 'none';
         }
 
-        // Parse ISO timestamp as UTC (backend stores UTC but may omit 'Z' suffix)
-        function parseUTCDate(isoString) {
-            if (!isoString) return null;
-            // If no timezone indicator, assume UTC by appending 'Z'
-            if (!isoString.endsWith('Z') && !isoString.includes('+') && !isoString.includes('-', 10)) {
-                isoString = isoString + 'Z';
+        // Trigger collection
+        async function triggerCollection(sourceName) {
+            const btn = event.target.closest('button');
+            const originalHTML = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="icon">⏳</span><span>Collecting...</span>';
+
+            try {
+                const response = await fetch(`${API_BASE}/collect/trigger/${sourceName}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    btn.innerHTML = `<span class="icon">✓</span><span>Done (${data.saved || 0} new)</span>`;
+                    await loadStatus();
+                    setTimeout(() => { btn.innerHTML = originalHTML; }, 3000);
+                } else {
+                    throw new Error(data.detail || 'Failed');
+                }
+            } catch (error) {
+                console.error('Collection error:', error);
+                btn.innerHTML = '<span class="icon">✕</span><span>Error</span>';
+                setTimeout(() => { btn.innerHTML = originalHTML; }, 3000);
+            } finally {
+                btn.disabled = false;
             }
-            return new Date(isoString);
         }
 
-        // Format time ago
-        function formatTimeAgo(date) {
-            const now = new Date();
-            const diff = Math.floor((now - date) / 1000);
+        // Analyze content
+        async function analyzeContent() {
+            const btn = document.getElementById('btn-analyze');
+            const originalHTML = btn.innerHTML;
+            btn.disabled = true;
+            let totalAnalyzed = 0;
 
-            if (diff < 60) return 'Just now';
-            if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-            if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-            return `${Math.floor(diff / 86400)}d ago`;
+            try {
+                while (true) {
+                    btn.innerHTML = `<span class="icon">⚡</span><span class="btn-text">Analyzing... (${totalAnalyzed})</span>`;
+                    const response = await fetch(`${API_BASE}/analyze/classify-batch?limit=50`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    const data = await response.json();
+                    if (!response.ok) throw new Error(data.detail);
+                    if (data.count > 0) {
+                        totalAnalyzed += data.count;
+                    } else {
+                        break;
+                    }
+                }
+                btn.innerHTML = `<span class="icon">✓</span><span class="btn-text">Done (${totalAnalyzed})</span>`;
+                await loadStatus();
+                setTimeout(() => { btn.innerHTML = originalHTML; }, 3000);
+            } catch (error) {
+                console.error('Analysis error:', error);
+                btn.innerHTML = '<span class="icon">✕</span><span class="btn-text">Error</span>';
+                setTimeout(() => { btn.innerHTML = originalHTML; }, 3000);
+            } finally {
+                btn.disabled = false;
+            }
         }
 
-        // Format date time (displays in user's local timezone)
-        function formatDateTime(date) {
-            return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        // Generate synthesis
+        async function generateSynthesis(timeWindow) {
+            const btn = timeWindow === '24h' ? document.getElementById('btn-generate-24h') : document.getElementById('btn-generate-7d');
+            const originalHTML = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = `<span class="icon">⏳</span><span class="btn-text">Generating...</span>`;
+
+            try {
+                const response = await fetch(`${API_BASE}/synthesis/generate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ time_window: timeWindow })
+                });
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    await loadLatestSynthesis();
+                    await loadStatus();
+                    btn.innerHTML = `<span class="icon">✓</span><span class="btn-text">Done</span>`;
+                } else if (data.status === 'no_content') {
+                    alert(data.message || 'No content available');
+                    btn.innerHTML = originalHTML;
+                } else {
+                    throw new Error(data.detail || 'Failed');
+                }
+                setTimeout(() => { btn.innerHTML = originalHTML; }, 3000);
+            } catch (error) {
+                console.error('Generation error:', error);
+                btn.innerHTML = '<span class="icon">✕</span><span class="btn-text">Error</span>';
+                setTimeout(() => { btn.innerHTML = originalHTML; }, 3000);
+            } finally {
+                btn.disabled = false;
+            }
         }
 
         // =====================================================
-        // THEMES TAB FUNCTIONS (PRD-024)
+        // THEMES TAB
         // =====================================================
-
         let allThemes = [];
         let currentThemeFilter = 'all';
 
-        // Switch between tabs
-        function switchTab(tabName) {
-            // Update tab buttons
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            event.target.classList.add('active');
-
-            // Update tab content
-            document.querySelectorAll('.tab-content').forEach(content => {
-                content.classList.remove('active');
-            });
-            document.getElementById(`${tabName}-tab`).classList.add('active');
-
-            // Load themes when switching to themes tab
-            if (tabName === 'themes') {
-                loadThemes();
-            }
-        }
-
-        // Load themes from API
         async function loadThemes() {
             try {
-                // Load summary stats
                 const summaryResponse = await fetch(`${API_BASE}/themes/summary`);
                 const summary = await summaryResponse.json();
 
-                // Update stats
                 document.getElementById('themes-total').textContent = summary.total || 0;
                 document.getElementById('themes-active').textContent = summary.by_status?.active || 0;
                 document.getElementById('themes-emerging').textContent = summary.by_status?.emerging || 0;
                 document.getElementById('themes-evolved').textContent = summary.by_status?.evolved || 0;
+                document.getElementById('kpi-themes').textContent = summary.by_status?.active || 0;
 
-                // Load themes list
                 const themesResponse = await fetch(`${API_BASE}/themes`);
                 allThemes = await themesResponse.json();
-
-                // Display themes
                 displayThemes(allThemes);
 
             } catch (error) {
                 console.error('Error loading themes:', error);
-                document.getElementById('themes-list').innerHTML = `
-                    <div class="themes-empty">
-                        <div class="themes-empty-icon">⚠️</div>
-                        <h3>Error Loading Themes</h3>
-                        <p>${error.message}</p>
-                    </div>
-                `;
             }
         }
 
-        // Filter themes by status
-        function filterThemes(status) {
+        function filterThemes(status, btnEl) {
             currentThemeFilter = status;
+            document.querySelectorAll('#panel-themes .tabs-nav .tab-btn').forEach(b => b.classList.remove('active'));
+            btnEl.classList.add('active');
 
-            // Update filter buttons
-            document.querySelectorAll('.filter-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            event.target.classList.add('active');
-
-            // Filter and display
-            let filtered = allThemes;
-            if (status !== 'all') {
-                filtered = allThemes.filter(t => t.status === status);
-            }
+            let filtered = status === 'all' ? allThemes : allThemes.filter(t => t.status === status);
             displayThemes(filtered);
         }
 
-        // Display themes list
         function displayThemes(themes) {
             const container = document.getElementById('themes-list');
-
             if (!themes || themes.length === 0) {
                 container.innerHTML = `
-                    <div class="themes-empty">
-                        <div class="themes-empty-icon">📋</div>
+                    <div class="sidebar-card" style="text-align: center; padding: var(--spacing-xl);">
+                        <div style="font-size: 48px; margin-bottom: var(--spacing-md);">📋</div>
                         <h3>No Themes Found</h3>
-                        <p>${currentThemeFilter === 'all' ? 'Themes will be extracted automatically from synthesis.' : `No ${currentThemeFilter} themes.`}</p>
+                        <p style="color: var(--text-muted);">${currentThemeFilter === 'all' ? 'Themes will be extracted from synthesis.' : `No ${currentThemeFilter} themes.`}</p>
                     </div>
                 `;
                 return;
             }
 
             container.innerHTML = themes.map(theme => {
-                // Parse source evidence
-                let sourceEvidence = {};
-                try {
-                    sourceEvidence = theme.source_evidence ? JSON.parse(theme.source_evidence) : {};
-                } catch (e) {
-                    sourceEvidence = theme.source_evidence || {};
-                }
-                const sources = Object.keys(sourceEvidence);
-
-                // Parse catalysts
-                let catalysts = [];
-                try {
-                    catalysts = theme.catalysts ? JSON.parse(theme.catalysts) : [];
-                } catch (e) {
-                    catalysts = theme.catalysts || [];
-                }
-
-                // Format dates
-                const firstMentioned = theme.first_mentioned_at ? formatDateShort(parseUTCDate(theme.first_mentioned_at)) : 'Unknown';
-                const lastUpdated = theme.last_updated_at ? formatTimeAgo(parseUTCDate(theme.last_updated_at)) : 'Never';
-
+                const statusColor = theme.status === 'active' ? 'success' : theme.status === 'emerging' ? 'warning' : theme.status === 'evolved' ? 'primary' : 'text-muted';
                 return `
-                    <div class="theme-card">
-                        <div class="theme-card-header">
-                            <span class="theme-name">${theme.name}</span>
-                            <span class="theme-status status-${theme.status}">${theme.status}</span>
+                    <div class="sidebar-card" style="margin-bottom: var(--spacing-md);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-sm);">
+                            <span style="font-weight: var(--font-semibold);">${theme.name}</span>
+                            <span class="badge" style="background: var(--${statusColor}); color: white; padding: 2px 8px; border-radius: var(--radius-full); font-size: 10px;">${theme.status}</span>
                         </div>
-
-                        ${theme.description ? `<div class="theme-description">${theme.description}</div>` : ''}
-
-                        <div class="theme-meta">
-                            <span>First: ${firstMentioned}</span>
-                            <span>Updated: ${lastUpdated}</span>
-                            ${theme.first_source ? `<span>Origin: ${theme.first_source}</span>` : ''}
-                            <span>Evidence: ${theme.evidence_count || 0} items</span>
+                        ${theme.description ? `<p style="font-size: var(--text-sm); color: var(--text-secondary); margin-bottom: var(--spacing-sm);">${theme.description}</p>` : ''}
+                        <div style="font-size: var(--text-xs); color: var(--text-muted);">
+                            Evidence: ${theme.evidence_count || 0} items
                         </div>
-
-                        ${sources.length > 0 ? `
-                            <div class="theme-evidence-section">
-                                <div class="theme-evidence-title">Sources Discussing</div>
-                                <div class="theme-sources">
-                                    ${sources.map(source => {
-                                        const evidence = sourceEvidence[source] || [];
-                                        const count = Array.isArray(evidence) ? evidence.length : 1;
-                                        return `<span class="theme-source-badge source-${source.replace(/\s+/g, '_').toLowerCase()}">${source} (${count})</span>`;
-                                    }).join('')}
-                                </div>
-                            </div>
-                        ` : ''}
-
-                        ${catalysts.length > 0 ? `
-                            <div class="theme-catalysts">
-                                <div class="theme-evidence-title">Related Catalysts</div>
-                                ${catalysts.map(c => {
-                                    const catalystText = typeof c === 'string' ? c : (c.event || c.date || JSON.stringify(c));
-                                    return `<span class="theme-catalyst-tag">${catalystText}</span>`;
-                                }).join('')}
-                            </div>
-                        ` : ''}
-
-                        ${theme.evolved_from_theme_id ? `
-                            <div class="theme-evolution-chain">
-                                Evolved from theme #${theme.evolved_from_theme_id}
-                            </div>
-                        ` : ''}
                     </div>
                 `;
             }).join('');
         }
 
-        // Format date short (MM/DD)
-        function formatDateShort(date) {
-            if (!date) return 'Unknown';
-            return (date.getMonth() + 1) + '/' + date.getDate();
+        // =====================================================
+        // UTILITIES
+        // =====================================================
+        function parseUTCDate(isoString) {
+            if (!isoString) return null;
+            if (!isoString.endsWith('Z') && !isoString.includes('+') && !isoString.includes('-', 10)) {
+                isoString = isoString + 'Z';
+            }
+            return new Date(isoString);
+        }
+
+        function formatTimeAgo(date) {
+            if (!date) return '-';
+            const now = new Date();
+            const diff = Math.floor((now - date) / 1000);
+            if (diff < 60) return 'Just now';
+            if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+            if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+            return `${Math.floor(diff / 86400)}d ago`;
+        }
+
+        function formatDateTime(date) {
+            if (!date) return '-';
+            return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
         }
     </script>
 
-    <!-- Modern UI Enhancement Scripts -->
+    <!-- Navigation & UI Scripts -->
+    <script src="js/navigation.js"></script>
     <script src="js/performance.js"></script>
-    <script src="js/charts/chartConfig.js"></script>
-    <script src="js/charts/confluenceRadar.js"></script>
-    <script src="js/charts/sourceDonut.js"></script>
-    <script src="js/charts/themeTimeline.js"></script>
-    <script src="js/charts/sentimentGauge.js"></script>
-    <script src="js/charts/convictionBar.js"></script>
-    <script src="js/charts/confluenceHeatmap.js"></script>
-    <script src="js/charts/index.js"></script>
     <script src="js/accessibility.js"></script>
     <script src="js/animations.js"></script>
     <script src="js/toast.js"></script>
+
+    <!-- Chart Scripts (lazy loaded) -->
+    <script src="js/charts/chartConfig.js"></script>
+    <script src="js/charts/index.js"></script>
 </body>
 </html>
