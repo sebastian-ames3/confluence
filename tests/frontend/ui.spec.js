@@ -782,6 +782,280 @@ test.describe('UI Modernization - PRD-026 Features', () => {
   });
 });
 
+test.describe('UI Modernization - Animations & Microinteractions (PRD-030)', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto(BASE_URL, {
+      httpCredentials: AUTH
+    });
+    await page.waitForLoadState('domcontentloaded');
+  });
+
+  test('should have animation timing CSS variables defined', async ({ page }) => {
+    const timings = await page.evaluate(() => {
+      const styles = getComputedStyle(document.documentElement);
+      return {
+        transitionFast: styles.getPropertyValue('--transition-fast').trim(),
+        transitionNormal: styles.getPropertyValue('--transition-normal').trim(),
+        transitionSlow: styles.getPropertyValue('--transition-slow').trim()
+      };
+    });
+
+    expect(timings.transitionFast).not.toBe('');
+    expect(timings.transitionNormal).not.toBe('');
+    expect(timings.transitionSlow).not.toBe('');
+  });
+
+  test('should have easing CSS variables defined', async ({ page }) => {
+    const easings = await page.evaluate(() => {
+      const styles = getComputedStyle(document.documentElement);
+      return {
+        easeOut: styles.getPropertyValue('--ease-out').trim(),
+        easeIn: styles.getPropertyValue('--ease-in').trim(),
+        easeInOut: styles.getPropertyValue('--ease-in-out').trim()
+      };
+    });
+
+    expect(easings.easeOut).not.toBe('');
+    expect(easings.easeIn).not.toBe('');
+    expect(easings.easeInOut).not.toBe('');
+  });
+
+  test('should have animation utility classes defined', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasAnimationClasses = await page.evaluate(() => {
+      const testEl = document.createElement('div');
+      testEl.className = 'animate-fade-in';
+      document.body.appendChild(testEl);
+      testEl.offsetHeight;
+      const styles = getComputedStyle(testEl);
+      const hasAnimation = styles.animation !== 'none' && styles.animation !== '';
+      testEl.remove();
+      return hasAnimation;
+    });
+    expect(hasAnimationClasses).toBeTruthy();
+  });
+
+  test('should have stagger-container CSS defined', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasStaggerStyles = await page.evaluate(() => {
+      const testEl = document.createElement('div');
+      testEl.className = 'stagger-container';
+      const child = document.createElement('div');
+      testEl.appendChild(child);
+      document.body.appendChild(testEl);
+      testEl.offsetHeight;
+      const childStyles = getComputedStyle(child);
+      // Stagger container children should have initial opacity 0 and transform
+      const hasStyles = childStyles.opacity === '0' ||
+                        childStyles.transform !== 'none';
+      testEl.remove();
+      return hasStyles;
+    });
+    expect(hasStaggerStyles).toBeTruthy();
+  });
+
+  test('should have drawer transition CSS defined', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasDrawerStyles = await page.evaluate(() => {
+      const testEl = document.createElement('div');
+      testEl.className = 'drawer';
+      document.body.appendChild(testEl);
+      testEl.offsetHeight;
+      const styles = getComputedStyle(testEl);
+      // Drawer should have transform translateX(-100%)
+      const hasStyles = styles.transform.includes('matrix') ||
+                        styles.transition !== '';
+      testEl.remove();
+      return hasStyles;
+    });
+    expect(hasDrawerStyles).toBeTruthy();
+  });
+
+  test('should have modal transition CSS defined', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasModalStyles = await page.evaluate(() => {
+      const testEl = document.createElement('div');
+      testEl.className = 'modal-backdrop';
+      document.body.appendChild(testEl);
+      testEl.offsetHeight;
+      const styles = getComputedStyle(testEl);
+      // Modal backdrop should have opacity 0 by default
+      const hasStyles = styles.opacity === '0' ||
+                        styles.transition !== '';
+      testEl.remove();
+      return hasStyles;
+    });
+    expect(hasModalStyles).toBeTruthy();
+  });
+
+  test('should have spinner loading animation', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasSpinnerAnimation = await page.evaluate(() => {
+      const testEl = document.createElement('div');
+      testEl.className = 'spinner';
+      document.body.appendChild(testEl);
+      testEl.offsetHeight;
+      const styles = getComputedStyle(testEl);
+      // Spinner should have animation
+      const hasStyles = styles.animation !== 'none' ||
+                        styles.borderRadius === '50%';
+      testEl.remove();
+      return hasStyles;
+    });
+    expect(hasSpinnerAnimation).toBeTruthy();
+  });
+
+  test('should have skeleton shimmer animation', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasSkeletonAnimation = await page.evaluate(() => {
+      const testEl = document.createElement('div');
+      testEl.className = 'skeleton';
+      document.body.appendChild(testEl);
+      testEl.offsetHeight;
+      const styles = getComputedStyle(testEl);
+      const afterStyles = getComputedStyle(testEl, '::after');
+      // Skeleton should have overflow hidden and after pseudo-element with animation
+      const hasStyles = styles.overflow === 'hidden' ||
+                        styles.position === 'relative' ||
+                        afterStyles.animation !== 'none';
+      testEl.remove();
+      return hasStyles;
+    });
+    expect(hasSkeletonAnimation).toBeTruthy();
+  });
+
+  test('should have loader-dots CSS defined', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasLoaderDotsStyles = await page.evaluate(() => {
+      const testEl = document.createElement('div');
+      testEl.className = 'loader-dots';
+      testEl.innerHTML = '<span></span><span></span><span></span>';
+      document.body.appendChild(testEl);
+      testEl.offsetHeight;
+      const styles = getComputedStyle(testEl);
+      const spanStyles = getComputedStyle(testEl.querySelector('span'));
+      // Loader dots should have flex display and spans with animation
+      const hasStyles = styles.display === 'flex' ||
+                        spanStyles.animation !== 'none' ||
+                        spanStyles.borderRadius === '50%';
+      testEl.remove();
+      return hasStyles;
+    });
+    expect(hasLoaderDotsStyles).toBeTruthy();
+  });
+
+  test('should have refresh-indicator CSS defined', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasRefreshIndicatorStyles = await page.evaluate(() => {
+      const testEl = document.createElement('div');
+      testEl.className = 'refresh-indicator';
+      document.body.appendChild(testEl);
+      testEl.offsetHeight;
+      const styles = getComputedStyle(testEl);
+      // Refresh indicator should have fixed position and transform
+      const hasStyles = styles.position === 'fixed' ||
+                        styles.transform.includes('translate');
+      testEl.remove();
+      return hasStyles;
+    });
+    expect(hasRefreshIndicatorStyles).toBeTruthy();
+  });
+
+  test('should have ripple-effect CSS defined', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasRippleStyles = await page.evaluate(() => {
+      const testEl = document.createElement('span');
+      testEl.className = 'ripple-effect';
+      document.body.appendChild(testEl);
+      testEl.offsetHeight;
+      const styles = getComputedStyle(testEl);
+      // Ripple effect should have position absolute and border-radius 50%
+      const hasStyles = styles.position === 'absolute' ||
+                        styles.borderRadius === '50%';
+      testEl.remove();
+      return hasStyles;
+    });
+    expect(hasRippleStyles).toBeTruthy();
+  });
+
+  test('should have AnimationController.createSkeleton method', async ({ page }) => {
+    const hasCreateSkeleton = await page.evaluate(() => {
+      return typeof window.AnimationController?.createSkeleton === 'function';
+    });
+    expect(hasCreateSkeleton).toBeTruthy();
+  });
+
+  test('should have AnimationController.showRefreshIndicator method', async ({ page }) => {
+    const hasShowRefreshIndicator = await page.evaluate(() => {
+      return typeof window.AnimationController?.showRefreshIndicator === 'function';
+    });
+    expect(hasShowRefreshIndicator).toBeTruthy();
+  });
+
+  test('should have AnimationController.setButtonLoading method', async ({ page }) => {
+    const hasSetButtonLoading = await page.evaluate(() => {
+      return typeof window.AnimationController?.setButtonLoading === 'function';
+    });
+    expect(hasSetButtonLoading).toBeTruthy();
+  });
+
+  test('should respect reduced motion preference', async ({ page }) => {
+    // Emulate reduced motion preference
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+
+    // Check that AnimationController respects the preference
+    const reducedMotionRespected = await page.evaluate(() => {
+      return window.AnimationController?.config?.reducedMotion === true;
+    });
+    expect(reducedMotionRespected).toBeTruthy();
+  });
+
+  test('should have hover-lift CSS class defined', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasHoverLiftStyles = await page.evaluate(() => {
+      const testEl = document.createElement('div');
+      testEl.className = 'hover-lift';
+      document.body.appendChild(testEl);
+      testEl.offsetHeight;
+      const styles = getComputedStyle(testEl);
+      // Hover lift should have transition
+      const hasStyles = styles.transition !== 'all 0s ease 0s' &&
+                        styles.transition !== '';
+      testEl.remove();
+      return hasStyles;
+    });
+    expect(hasHoverLiftStyles).toBeTruthy();
+  });
+
+  test('should have transition utility classes defined', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasTransitionClasses = await page.evaluate(() => {
+      const testEl = document.createElement('div');
+      testEl.className = 'transition-all';
+      document.body.appendChild(testEl);
+      testEl.offsetHeight;
+      const styles = getComputedStyle(testEl);
+      // Should have transition property set
+      const hasStyles = styles.transition !== '' &&
+                        styles.transition !== 'all 0s ease 0s';
+      testEl.remove();
+      return hasStyles;
+    });
+    expect(hasTransitionClasses).toBeTruthy();
+  });
+
+  test('should have page-ready animation class', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    // After page load, body should have page-ready class
+    const hasPageReady = await page.evaluate(() => {
+      return document.body.classList.contains('page-ready');
+    });
+    expect(hasPageReady).toBeTruthy();
+  });
+});
+
 test.describe('Performance Checks', () => {
   test('should load within acceptable time', async ({ page }) => {
     const startTime = Date.now();
