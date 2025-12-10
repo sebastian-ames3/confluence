@@ -340,6 +340,58 @@ const AnimationController = {
     } else {
       indicator.classList.remove('visible');
     }
+  },
+
+  /**
+   * Create skeleton loader element
+   * @param {string} type - Type of skeleton (card, text, avatar, kpi, etc.)
+   * @returns {HTMLElement} - Skeleton element
+   */
+  createSkeleton(type = 'card') {
+    const skeleton = document.createElement('div');
+    skeleton.className = `skeleton skeleton-${type}`;
+
+    if (type === 'card') {
+      skeleton.innerHTML = `
+        <div class="skeleton-card-content">
+          <div class="skeleton-card-header">
+            <div class="skeleton skeleton-avatar"></div>
+            <div class="skeleton skeleton-text" style="width: 60%"></div>
+          </div>
+          <div class="skeleton-card-body">
+            <div class="skeleton skeleton-text"></div>
+            <div class="skeleton skeleton-text" style="width: 80%"></div>
+            <div class="skeleton skeleton-text" style="width: 40%"></div>
+          </div>
+        </div>
+      `;
+    }
+
+    return skeleton;
+  },
+
+  /**
+   * Replace element with skeleton during async operation
+   * @param {HTMLElement} element - Element to replace
+   * @param {Function} asyncFn - Async function to run
+   */
+  async withSkeleton(element, asyncFn) {
+    const skeleton = this.createSkeleton();
+    const parent = element.parentNode;
+
+    const placeholder = document.createComment('skeleton-placeholder');
+    parent.insertBefore(placeholder, element);
+    parent.insertBefore(skeleton, element);
+    element.style.display = 'none';
+
+    try {
+      await asyncFn();
+    } finally {
+      skeleton.remove();
+      element.style.display = '';
+      placeholder.remove();
+      this.animateIn(element, 'fade-in');
+    }
   }
 };
 

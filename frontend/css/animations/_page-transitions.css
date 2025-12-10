@@ -167,6 +167,65 @@
               transform var(--transition-normal) var(--ease-in);
 }
 
+/* ----- Modal Transitions ----- */
+.modal-backdrop {
+  opacity: 0;
+  transition: opacity var(--transition-normal) var(--ease-out);
+}
+
+.modal-backdrop.active {
+  opacity: 1;
+}
+
+.modal-content {
+  opacity: 0;
+  transform: scale(0.95) translateY(20px);
+  transition:
+    opacity var(--transition-normal) var(--ease-out),
+    transform var(--transition-normal) var(--ease-out);
+}
+
+.modal-backdrop.active .modal-content,
+.modal.active .modal-content {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+
+/* ----- Drawer Transitions ----- */
+.drawer {
+  transform: translateX(-100%);
+  transition: transform var(--transition-normal) var(--ease-out);
+}
+
+.drawer.open {
+  transform: translateX(0);
+}
+
+.drawer-right {
+  transform: translateX(100%);
+}
+
+.drawer-right.open {
+  transform: translateX(0);
+}
+
+.drawer-bottom {
+  transform: translateY(100%);
+}
+
+.drawer-bottom.open {
+  transform: translateY(0);
+}
+
+.drawer-overlay {
+  opacity: 0;
+  transition: opacity var(--transition-normal) var(--ease-out);
+}
+
+.drawer-overlay.active {
+  opacity: 1;
+}
+
 /* ----- View Transitions (if supported) ----- */
 @supports (view-transition-name: main) {
   ::view-transition-old(root),

@@ -1,0 +1,404 @@
+/* ============================================
+   Loading States & Skeleton Screens
+   Smooth loading experiences
+   ============================================ */
+
+/* ----- Skeleton Base ----- */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+}
+
+.skeleton::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.05) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Skeleton Variants */
+.skeleton-text {
+  height: 16px;
+  border-radius: var(--radius-sm);
+}
+
+.skeleton-text-sm {
+  height: 12px;
+  border-radius: var(--radius-xs);
+}
+
+.skeleton-text-lg {
+  height: 24px;
+  border-radius: var(--radius-sm);
+}
+
+.skeleton-heading {
+  height: 32px;
+  width: 60%;
+  border-radius: var(--radius-sm);
+}
+
+.skeleton-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+
+.skeleton-avatar-sm {
+  width: 32px;
+  height: 32px;
+}
+
+.skeleton-avatar-lg {
+  width: 64px;
+  height: 64px;
+}
+
+.skeleton-button {
+  height: 40px;
+  width: 120px;
+  border-radius: var(--radius-md);
+}
+
+.skeleton-card {
+  height: 200px;
+  border-radius: var(--radius-lg);
+}
+
+.skeleton-kpi {
+  height: 100px;
+  border-radius: var(--radius-lg);
+}
+
+.skeleton-chart {
+  height: 300px;
+  border-radius: var(--radius-lg);
+}
+
+/* ----- Skeleton Card Layout ----- */
+.skeleton-card-content {
+  padding: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.skeleton-card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.skeleton-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+/* ----- Loading Spinner Variants ----- */
+
+/* Simple spinner */
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid var(--border-subtle);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.spinner-sm {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
+}
+
+.spinner-lg {
+  width: 40px;
+  height: 40px;
+  border-width: 4px;
+}
+
+.spinner-xl {
+  width: 56px;
+  height: 56px;
+  border-width: 5px;
+}
+
+/* Spinner colors */
+.spinner-white {
+  border-color: rgba(255, 255, 255, 0.2);
+  border-top-color: white;
+}
+
+.spinner-primary {
+  border-top-color: var(--primary);
+}
+
+.spinner-success {
+  border-top-color: var(--success);
+}
+
+/* Dots loader */
+.loader-dots {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+}
+
+.loader-dots span {
+  width: 8px;
+  height: 8px;
+  background: var(--primary);
+  border-radius: 50%;
+  animation: dotBounce 1.4s ease-in-out infinite;
+}
+
+.loader-dots span:nth-child(1) { animation-delay: 0s; }
+.loader-dots span:nth-child(2) { animation-delay: 0.16s; }
+.loader-dots span:nth-child(3) { animation-delay: 0.32s; }
+
+@keyframes dotBounce {
+  0%, 80%, 100% {
+    transform: scale(0.6);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Pulse loader */
+.loader-pulse {
+  width: 40px;
+  height: 40px;
+  background: var(--primary);
+  border-radius: 50%;
+  animation: loaderPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes loaderPulse {
+  0% {
+    transform: scale(0);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
+/* Bar loader */
+.loader-bar {
+  width: 100%;
+  height: 4px;
+  background: var(--bg-elevated);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.loader-bar::after {
+  content: '';
+  display: block;
+  width: 40%;
+  height: 100%;
+  background: var(--primary);
+  border-radius: 2px;
+  animation: barSlide 1.5s ease-in-out infinite;
+}
+
+@keyframes barSlide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(350%); }
+}
+
+/* ----- Page Loading Overlay ----- */
+.page-loader {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--bg-base);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  z-index: var(--z-modal);
+  opacity: 1;
+  transition: opacity var(--transition-normal) var(--ease-out);
+}
+
+.page-loader.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.page-loader-logo {
+  animation: float 2s var(--ease-in-out) infinite;
+}
+
+.page-loader-text {
+  color: var(--text-secondary);
+  animation: pulse 2s var(--ease-in-out) infinite;
+}
+
+/* ----- Content Placeholder ----- */
+.content-loading {
+  position: relative;
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.content-loading::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-lg);
+  opacity: 0.5;
+}
+
+/* ----- Lazy Image Loading ----- */
+.img-lazy {
+  background: var(--bg-elevated);
+  transition: opacity var(--transition-normal) var(--ease-out);
+}
+
+.img-lazy:not([src]) {
+  opacity: 0;
+}
+
+.img-lazy[src] {
+  opacity: 1;
+}
+
+/* ----- Data Refresh Indicator ----- */
+.refresh-indicator {
+  position: fixed;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-100%);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--glass-border);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  transition: transform var(--transition-normal) var(--ease-spring);
+  z-index: var(--z-toast);
+  box-shadow: var(--shadow-lg);
+}
+
+.refresh-indicator.visible {
+  transform: translateX(-50%) translateY(0);
+}
+
+.refresh-indicator .spinner {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
+}
+
+/* ----- Loading Card ----- */
+.card-loading {
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.card-loading::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ----- Button Loading State ----- */
+.btn.loading {
+  pointer-events: none;
+  opacity: 0.8;
+  position: relative;
+  color: transparent;
+}
+
+.btn.loading::after {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  top: 50%;
+  left: 50%;
+  margin: -8px 0 0 -8px;
+  border: 2px solid transparent;
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* Make the spinner visible over transparent text */
+.btn.loading::after {
+  color: white;
+}
+
+/* ----- Table Loading State ----- */
+.table-loading {
+  position: relative;
+  pointer-events: none;
+}
+
+.table-loading::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ----- Empty State Loading ----- */
+.empty-state-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-2xl);
+  gap: var(--spacing-md);
+}
+
+.empty-state-loading .spinner {
+  width: 48px;
+  height: 48px;
+}
+
+.empty-state-loading-text {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
