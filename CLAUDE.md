@@ -142,7 +142,7 @@ curl -X POST -u sames3:Spotswood1 \
 | 028 | Component Library | **Complete** (Playwright tested) |
 | 029 | Layout & Navigation | **Complete** (Playwright tested) |
 | 030 | Animations & Microinteractions | **Complete** (Playwright tested) |
-| 031 | Data Visualization & Charts | Complete (files exist, not Playwright tested) |
+| 031 | Data Visualization & Charts | **Complete** (Playwright tested) |
 | 032 | Accessibility & Performance | Complete (files exist, not Playwright tested) |
 
 **018**: `agents/transcript_harvester.py` - yt-dlp download, Whisper transcription, Claude analysis with priority tiers
@@ -156,7 +156,7 @@ curl -X POST -u sames3:Spotswood1 \
 
 ### UI PRDs Implementation Notes (026-032)
 
-**PRD-026**, **PRD-027**, **PRD-028**, **PRD-029**, and **PRD-030** are fully implemented and tested with Playwright. PRD-031 and PRD-032 have files created but are NOT fully Playwright tested.
+**PRD-026**, **PRD-027**, **PRD-028**, **PRD-029**, **PRD-030**, and **PRD-031** are fully implemented and tested with Playwright. PRD-032 has files created but is NOT fully Playwright tested.
 
 | PRD | What Exists | What's Missing |
 |-----|-------------|----------------|
@@ -165,7 +165,7 @@ curl -X POST -u sames3:Spotswood1 \
 | 028 | All component CSS files: buttons, cards, badges, inputs, tabs, tables, tooltips, progress, loaders, toasts, modals | None - Complete and Playwright tested |
 | 029 | Full layout implementation | None - Complete and Playwright tested |
 | 030 | All animation files: utilities, page-transitions, microinteractions, loading states, AnimationController JS | None - Complete and Playwright tested |
-| 031 | All 7 chart components | Not wired to real data, not visually tested |
+| 031 | All chart components: ChartTheme, ChartsManager, radar, donut, timeline, gauge, bar, heatmap + Chart.js CDN | None - Complete and Playwright tested |
 | 032 | accessibility.js, performance.js | Not integration tested |
 
 CSS Structure: `frontend/css/main.css` imports design-system, components, animations, charts, dashboard
