@@ -17,6 +17,8 @@
 
 /* Accessibility */
 @import '_accessibility.css';
+@import '_colors-a11y.css';
+@import '_critical.css';
 
 /* Dashboard Application Styles */
 @import '_dashboard.css';
