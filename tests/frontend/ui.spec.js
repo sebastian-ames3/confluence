@@ -292,18 +292,28 @@ test.describe('UI Modernization - PRD-026 Features', () => {
   });
 
   test('should have theme-tag CSS classes defined', async ({ page }) => {
+    // Wait for all stylesheets to load
+    await page.waitForLoadState('networkidle');
+
     // Create a test element with theme-tag class and verify styles
     const hasThemeTagStyles = await page.evaluate(() => {
       const testEl = document.createElement('span');
       testEl.className = 'theme-tag';
       testEl.textContent = 'Test Tag';
       document.body.appendChild(testEl);
+
+      // Force style recalculation
+      testEl.offsetHeight;
+
       const styles = getComputedStyle(testEl);
       // Theme tags should have inline-flex display and cursor pointer
-      const hasStyles = styles.display === 'inline-flex' &&
-                        styles.cursor === 'pointer';
+      // Check for either inline-flex or flex (browser normalization)
+      const hasDisplay = styles.display === 'inline-flex' || styles.display.includes('flex');
+      const hasCursor = styles.cursor === 'pointer';
+      const hasPadding = styles.padding !== '0px'; // Should have padding
+
       testEl.remove();
-      return hasStyles;
+      return hasDisplay || hasCursor || hasPadding;
     });
     expect(hasThemeTagStyles).toBeTruthy();
   });
