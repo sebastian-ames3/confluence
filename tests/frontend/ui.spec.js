@@ -1118,3 +1118,289 @@ test.describe('Performance Checks', () => {
     expect(criticalErrors.length).toBe(0);
   });
 });
+
+test.describe('UI Modernization - Data Visualization & Charts (PRD-031)', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto(BASE_URL, {
+      httpCredentials: AUTH
+    });
+    await page.waitForLoadState('domcontentloaded');
+  });
+
+  test('should load Chart.js library', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasChartJs = await page.evaluate(() => {
+      return typeof Chart !== 'undefined';
+    });
+    expect(hasChartJs).toBeTruthy();
+  });
+
+  test('should have ChartTheme global object', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasChartTheme = await page.evaluate(() => {
+      return typeof window.ChartTheme !== 'undefined' &&
+             typeof window.ChartTheme.colors !== 'undefined';
+    });
+    expect(hasChartTheme).toBeTruthy();
+  });
+
+  test('should have ChartsManager global object', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasChartsManager = await page.evaluate(() => {
+      return typeof window.ChartsManager !== 'undefined' &&
+             typeof window.ChartsManager.init === 'function';
+    });
+    expect(hasChartsManager).toBeTruthy();
+  });
+
+  test('should have ChartTheme color definitions', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasColors = await page.evaluate(() => {
+      const theme = window.ChartTheme;
+      if (!theme) return false;
+      return theme.colors.primary &&
+             theme.colors.bullish &&
+             theme.colors.bearish &&
+             theme.colors.discord;
+    });
+    expect(hasColors).toBeTruthy();
+  });
+
+  test('should have ChartTheme.getSourceColor method', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasMethod = await page.evaluate(() => {
+      const theme = window.ChartTheme;
+      if (!theme || typeof theme.getSourceColor !== 'function') return false;
+      // Test the method works
+      const color = theme.getSourceColor('discord');
+      return color && color.startsWith('#');
+    });
+    expect(hasMethod).toBeTruthy();
+  });
+
+  test('should have ChartTheme.getSentimentColor method', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasMethod = await page.evaluate(() => {
+      const theme = window.ChartTheme;
+      if (!theme || typeof theme.getSentimentColor !== 'function') return false;
+      // Test the method works
+      const color = theme.getSentimentColor('bullish');
+      return color && color.startsWith('#');
+    });
+    expect(hasMethod).toBeTruthy();
+  });
+
+  test('should have ChartTheme.getDefaultOptions method', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasMethod = await page.evaluate(() => {
+      const theme = window.ChartTheme;
+      if (!theme || typeof theme.getDefaultOptions !== 'function') return false;
+      // Test the method works
+      const options = theme.getDefaultOptions('line');
+      return options && options.responsive === true;
+    });
+    expect(hasMethod).toBeTruthy();
+  });
+
+  test('should have chart container CSS styles', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasChartContainerStyles = await page.evaluate(() => {
+      const testEl = document.createElement('div');
+      testEl.className = 'chart-container';
+      document.body.appendChild(testEl);
+      testEl.offsetHeight;
+      const styles = getComputedStyle(testEl);
+      const hasStyles = styles.position === 'relative' ||
+                        styles.borderRadius !== '0px';
+      testEl.remove();
+      return hasStyles;
+    });
+    expect(hasChartContainerStyles).toBeTruthy();
+  });
+
+  test('should have chart size variant CSS classes', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasSizeVariants = await page.evaluate(() => {
+      // Test chart-container-sm
+      const testEl = document.createElement('div');
+      testEl.className = 'chart-container chart-container-sm';
+      document.body.appendChild(testEl);
+      testEl.offsetHeight;
+      const styles = getComputedStyle(testEl);
+      const hasHeight = styles.height === '200px' || parseInt(styles.height) > 0;
+      testEl.remove();
+      return hasHeight;
+    });
+    expect(hasSizeVariants).toBeTruthy();
+  });
+
+  test('should have heatmap cell CSS styles', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasHeatmapStyles = await page.evaluate(() => {
+      const testEl = document.createElement('div');
+      testEl.className = 'heatmap-cell cell-bullish';
+      document.body.appendChild(testEl);
+      testEl.offsetHeight;
+      const styles = getComputedStyle(testEl);
+      // Cell should have display flex and cursor pointer
+      const hasStyles = styles.display === 'flex' ||
+                        styles.cursor === 'pointer' ||
+                        styles.borderRadius !== '0px';
+      testEl.remove();
+      return hasStyles;
+    });
+    expect(hasHeatmapStyles).toBeTruthy();
+  });
+
+  test('should have cell-bullish CSS class with green color', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasBullishStyles = await page.evaluate(() => {
+      const testEl = document.createElement('div');
+      testEl.className = 'cell-bullish';
+      document.body.appendChild(testEl);
+      testEl.offsetHeight;
+      const styles = getComputedStyle(testEl);
+      // Should have greenish background or border
+      const hasStyles = styles.backgroundColor.includes('16') || // rgba(16, 185, 129, ...)
+                        styles.borderColor.includes('16') ||
+                        styles.background.includes('16');
+      testEl.remove();
+      return hasStyles;
+    });
+    expect(hasBullishStyles).toBeTruthy();
+  });
+
+  test('should have cell-bearish CSS class with red color', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasBearishStyles = await page.evaluate(() => {
+      const testEl = document.createElement('div');
+      testEl.className = 'cell-bearish';
+      document.body.appendChild(testEl);
+      testEl.offsetHeight;
+      const styles = getComputedStyle(testEl);
+      // Should have reddish background or border
+      const hasStyles = styles.backgroundColor.includes('239') || // rgba(239, 68, 68, ...)
+                        styles.borderColor.includes('239') ||
+                        styles.background.includes('239');
+      testEl.remove();
+      return hasStyles;
+    });
+    expect(hasBearishStyles).toBeTruthy();
+  });
+
+  test('should have confluence-meter CSS styles', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasMeterStyles = await page.evaluate(() => {
+      const testEl = document.createElement('div');
+      testEl.className = 'confluence-meter';
+      document.body.appendChild(testEl);
+      testEl.offsetHeight;
+      const styles = getComputedStyle(testEl);
+      // Should have relative position and overflow hidden
+      const hasStyles = styles.position === 'relative' ||
+                        styles.overflow === 'hidden' ||
+                        styles.height !== '0px';
+      testEl.remove();
+      return hasStyles;
+    });
+    expect(hasMeterStyles).toBeTruthy();
+  });
+
+  test('should have charts section visible in dashboard', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasChartsSection = await page.evaluate(() => {
+      const section = document.querySelector('.charts-section');
+      if (!section) return false;
+      const styles = getComputedStyle(section);
+      return styles.display !== 'none';
+    });
+    expect(hasChartsSection).toBeTruthy();
+  });
+
+  test('should have chart containers with data-chart attributes', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasChartContainers = await page.evaluate(() => {
+      const containers = document.querySelectorAll('[data-chart]');
+      return containers.length >= 2; // At least sentiment and source charts
+    });
+    expect(hasChartContainers).toBeTruthy();
+  });
+
+  test('should have chart-loading CSS class defined', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasLoadingStyles = await page.evaluate(() => {
+      const testEl = document.createElement('div');
+      testEl.className = 'chart-loading';
+      document.body.appendChild(testEl);
+      testEl.offsetHeight;
+      const styles = getComputedStyle(testEl);
+      // Should have flex display and centered content
+      const hasStyles = styles.display === 'flex' ||
+                        styles.alignItems === 'center' ||
+                        styles.justifyContent === 'center';
+      testEl.remove();
+      return hasStyles;
+    });
+    expect(hasLoadingStyles).toBeTruthy();
+  });
+
+  test('should have chart-empty CSS class defined', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasEmptyStyles = await page.evaluate(() => {
+      const testEl = document.createElement('div');
+      testEl.className = 'chart-empty';
+      document.body.appendChild(testEl);
+      testEl.offsetHeight;
+      const styles = getComputedStyle(testEl);
+      // Should have flex display and column direction
+      const hasStyles = styles.display === 'flex' ||
+                        styles.flexDirection === 'column' ||
+                        styles.textAlign === 'center';
+      testEl.remove();
+      return hasStyles;
+    });
+    expect(hasEmptyStyles).toBeTruthy();
+  });
+
+  test('should have ChartsManager.setupLazyLoading method', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasLazyLoading = await page.evaluate(() => {
+      return typeof window.ChartsManager?.setupLazyLoading === 'function';
+    });
+    expect(hasLazyLoading).toBeTruthy();
+  });
+
+  test('should have ChartsManager.loadChart method', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasLoadChart = await page.evaluate(() => {
+      return typeof window.ChartsManager?.loadChart === 'function';
+    });
+    expect(hasLoadChart).toBeTruthy();
+  });
+
+  test('should initialize ChartsManager on page load', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const isInitialized = await page.evaluate(() => {
+      return window.ChartsManager?.initialized === true;
+    });
+    expect(isInitialized).toBeTruthy();
+  });
+
+  test('should have fadeSlideIn keyframe animation', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const hasKeyframe = await page.evaluate(() => {
+      const testEl = document.createElement('div');
+      testEl.className = 'heatmap-row';
+      document.body.appendChild(testEl);
+      testEl.offsetHeight;
+      const styles = getComputedStyle(testEl);
+      // Should have animation property set
+      const hasAnimation = styles.animation !== 'none' &&
+                          styles.animation !== '' &&
+                          styles.animationName !== 'none';
+      testEl.remove();
+      return hasAnimation;
+    });
+    expect(hasKeyframe).toBeTruthy();
+  });
+});
