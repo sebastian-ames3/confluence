@@ -147,6 +147,10 @@ curl -X POST -u sames3:Spotswood1 \
 **024**: Theme tracking with source-level evidence, lifecycle (emerging→active→evolved→dormant), MCP tools
 **025**: Enhanced executive summary with per-source highlights, synthesis narrative, key takeaways
 **026-032**: Modern UI design system (glassmorphism, animations, accessibility, Chart.js theming)
+- CSS Structure: `frontend/css/main.css` imports design-system, components, animations, charts, dashboard
+- Design tokens: `_tokens.css` (spacing, radius), `_colors.css` (semantic colors), `_effects.css` (glass, shadows)
+- Glassmorphism: Status cards, V3 sections use `var(--glass-bg)` + `backdrop-filter: blur(12px)`
+- Removed: Old `style.css` and `mobile.css` files with deprecated variables
 **031**: Chart visualization system - 7 Chart.js components (radar, donut, timeline, gauge, bar, heatmap) with ChartsManager
 **032**: Accessibility (WCAG 2.1 AA) and performance (Web Vitals, lazy loading, caching)
 
