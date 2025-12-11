@@ -144,6 +144,7 @@ curl -X POST -u sames3:Spotswood1 \
 | 030 | Animations & Microinteractions | **Complete** (Playwright tested) |
 | 031 | Data Visualization & Charts | **Complete** (Playwright tested) |
 | 032 | Accessibility & Performance | **Complete** (Playwright tested) |
+| 033 | Sources & History Tabs | **Complete** |
 
 **018**: `agents/transcript_harvester.py` - yt-dlp download, Whisper transcription, Claude analysis with priority tiers
 **019**: `backend/utils/deduplication.py` - check_duplicate() used in collect.py and trigger.py endpoints
@@ -153,6 +154,7 @@ curl -X POST -u sames3:Spotswood1 \
 **024**: Theme tracking with source-level evidence, lifecycle (emerging→active→evolved→dormant), MCP tools
 **025**: Enhanced executive summary with per-source highlights, synthesis narrative, key takeaways
 **026-032**: Modern UI design system (glassmorphism, animations, accessibility, Chart.js theming)
+**033**: Sources & History tabs - loadSources(), loadHistory(), tab event wiring, source detail drill-down, synthesis detail view
 
 ### UI PRDs Implementation Notes (026-032)
 
@@ -240,4 +242,4 @@ npm run test:chromium
 
 ---
 
-**Last Updated**: 2025-12-10
+**Last Updated**: 2025-12-11
