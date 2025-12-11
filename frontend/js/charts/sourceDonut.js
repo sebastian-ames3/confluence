@@ -21,24 +21,38 @@ class SourceDonutChart {
 
     this.chart = null;
     this.currentData = [];
+    this.tooltipEl = null;
+  }
 
-    // Register custom tooltip positioner (only once)
-    if (!Chart.Tooltip.positioners.donutRight) {
-      Chart.Tooltip.positioners.donutRight = function(elements, eventPosition) {
-        if (!elements.length) {
-          return false;
-        }
+  /**
+   * Get or create custom tooltip element
+   */
+  getOrCreateTooltip(chart) {
+    let tooltipEl = chart.canvas.parentNode.querySelector('.donut-tooltip');
 
-        const chart = elements[0].element.$context.chart;
-        const chartArea = chart.chartArea;
-
-        // Position tooltip to the right of the chart
-        return {
-          x: chartArea.right + 10,
-          y: (chartArea.top + chartArea.bottom) / 2
-        };
-      };
+    if (!tooltipEl) {
+      tooltipEl = document.createElement('div');
+      tooltipEl.className = 'donut-tooltip';
+      tooltipEl.style.cssText = `
+        position: absolute;
+        background: rgba(30, 41, 59, 0.95);
+        border: 1px solid rgba(99, 102, 241, 0.3);
+        border-radius: 8px;
+        padding: 10px 14px;
+        pointer-events: none;
+        font-family: 'Inter', -apple-system, sans-serif;
+        font-size: 12px;
+        color: #CBD5E1;
+        z-index: 1000;
+        white-space: nowrap;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        opacity: 0;
+        transition: opacity 0.15s ease;
+      `;
+      chart.canvas.parentNode.appendChild(tooltipEl);
     }
+
+    return tooltipEl;
   }
 
   /**
@@ -52,6 +66,10 @@ class SourceDonutChart {
 
     this.currentData = data;
     const total = data.reduce((sum, item) => sum + item.count, 0);
+    const self = this;
+
+    // Ensure parent has relative positioning
+    this.canvas.parentNode.style.position = 'relative';
 
     this.chart = new Chart(this.ctx, {
       type: 'doughnut',
@@ -85,28 +103,46 @@ class SourceDonutChart {
             }
           },
           tooltip: {
-            enabled: true,
-            position: 'donutRight',  // Use custom positioner
-            backgroundColor: 'rgba(30, 41, 59, 0.95)',
-            titleColor: '#F8FAFC',
-            bodyColor: '#CBD5E1',
-            borderColor: 'rgba(99, 102, 241, 0.3)',
-            borderWidth: 1,
-            cornerRadius: 8,
-            padding: 12,
-            boxPadding: 6,
-            caretSize: 6,
-            displayColors: true,
-            callbacks: {
-              title: (context) => {
-                return context[0]?.label || '';
-              },
-              label: (context) => {
-                const item = data[context.dataIndex];
-                if (!item) return '';
-                const percentage = ((item.count / total) * 100).toFixed(1);
-                return `${item.count} items (${percentage}%)`;
+            enabled: false, // Disable default tooltip
+            external: function(context) {
+              const { chart, tooltip } = context;
+              const tooltipEl = self.getOrCreateTooltip(chart);
+
+              // Hide if no tooltip
+              if (tooltip.opacity === 0) {
+                tooltipEl.style.opacity = '0';
+                return;
               }
+
+              // Get data for hovered segment
+              const dataIndex = tooltip.dataPoints?.[0]?.dataIndex;
+              if (dataIndex === undefined || !data[dataIndex]) {
+                tooltipEl.style.opacity = '0';
+                return;
+              }
+
+              const item = data[dataIndex];
+              const percentage = ((item.count / total) * 100).toFixed(1);
+              const color = ChartTheme.getSourceColor(item.source);
+
+              // Build tooltip content
+              tooltipEl.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                  <span style="width: 10px; height: 10px; border-radius: 50%; background: ${color};"></span>
+                  <span style="font-weight: 600; color: #F8FAFC;">${item.source}</span>
+                </div>
+                <div>${item.count} items (${percentage}%)</div>
+              `;
+
+              // Position to the right of the chart
+              const chartArea = chart.chartArea;
+              const tooltipWidth = tooltipEl.offsetWidth || 150;
+              const tooltipHeight = tooltipEl.offsetHeight || 50;
+
+              // Place tooltip to the right of the donut, vertically centered
+              tooltipEl.style.left = (chartArea.right + 15) + 'px';
+              tooltipEl.style.top = ((chartArea.top + chartArea.bottom) / 2 - tooltipHeight / 2) + 'px';
+              tooltipEl.style.opacity = '1';
             }
           }
         },
@@ -127,7 +163,6 @@ class SourceDonutChart {
    * Plugin to show total in center
    */
   centerTextPlugin(total) {
-    const self = this;
     return {
       id: 'centerText',
       afterDraw: (chart) => {
@@ -171,6 +206,11 @@ class SourceDonutChart {
     if (this.chart) {
       this.chart.destroy();
       this.chart = null;
+    }
+    // Clean up tooltip
+    const tooltipEl = this.canvas?.parentNode?.querySelector('.donut-tooltip');
+    if (tooltipEl) {
+      tooltipEl.remove();
     }
   }
 }
