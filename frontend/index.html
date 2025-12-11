@@ -445,7 +445,20 @@
         document.addEventListener('DOMContentLoaded', () => {
             loadStatus();
             loadLatestSynthesis();
+            loadThemesSummary();  // Load theme count for KPI card
         });
+
+        // Load just the themes summary for the KPI card (lightweight)
+        async function loadThemesSummary() {
+            try {
+                const response = await fetch(`${API_BASE}/themes/summary`);
+                const summary = await response.json();
+                document.getElementById('kpi-themes').textContent = summary.by_status?.active || 0;
+            } catch (error) {
+                console.error('Error loading themes summary:', error);
+                document.getElementById('kpi-themes').textContent = '0';
+            }
+        }
 
         // Listen for tab changes
         window.addEventListener('tabchange', (e) => {
@@ -566,8 +579,7 @@
                 document.getElementById('market-regime-badge').innerHTML = `<span class="market-regime ${regimeClass}">${regimeValue}</span>`;
             }
 
-            // Update hero key insight
-            const execSummary = data.executive_summary;
+            // Update hero key insight (reuse execSummary from above)
             if (execSummary) {
                 const insight = execSummary.synthesis_narrative || execSummary.narrative || '';
                 document.getElementById('hero-key-insight').textContent = insight.split('.')[0] + '.';
