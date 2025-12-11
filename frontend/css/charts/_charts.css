@@ -11,6 +11,13 @@
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-xl);
   padding: var(--spacing-lg);
+  transition: all var(--transition-fast);
+}
+
+.chart-container:hover {
+  border-color: var(--primary);
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.15);
+  transform: translateY(-2px);
 }
 
 .chart-container-sm {
@@ -18,8 +25,8 @@
 }
 
 .chart-container-md {
-  min-height: 180px;
-  height: auto;
+  min-height: 200px;
+  height: 220px;
 }
 
 .chart-container-lg {
@@ -279,6 +286,20 @@
   }
 }
 
+/* ----- Chart Skeleton Loader ----- */
+.chart-skeleton {
+  background: linear-gradient(90deg, var(--glass-bg) 25%, var(--bg-elevated) 50%, var(--glass-bg) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+  border-radius: var(--radius-lg);
+  height: 100%;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
 /* ----- Charts Section Layout ----- */
 .charts-section {
   margin-bottom: var(--spacing-xl);
@@ -294,5 +315,10 @@
 @media (max-width: 768px) {
   .charts-grid {
     grid-template-columns: 1fr;
+    gap: var(--spacing-md);
+  }
+
+  .chart-container-md {
+    height: 180px;
   }
 }
