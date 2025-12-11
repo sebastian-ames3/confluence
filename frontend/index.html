@@ -982,6 +982,387 @@
         }
 
         // =====================================================
+        // SOURCES TAB
+        // =====================================================
+        let sourcesLoaded = false;
+        let currentSourceView = 'list'; // 'list' or 'detail'
+        let currentSourceName = null;
+
+        async function loadSources() {
+            if (sourcesLoaded && currentSourceView === 'list') return;
+
+            const container = document.getElementById('sources-detail-list');
+            container.innerHTML = '<p style="color: var(--text-muted);">Loading sources...</p>';
+
+            try {
+                const response = await fetch(`${API_BASE}/dashboard/sources`);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const sources = await response.json();
+                displaySources(sources);
+                sourcesLoaded = true;
+                currentSourceView = 'list';
+            } catch (error) {
+                console.error('Error loading sources:', error);
+                container.innerHTML = `
+                    <div class="sidebar-card" style="text-align: center; padding: var(--spacing-xl);">
+                        <div style="font-size: 48px; margin-bottom: var(--spacing-md);">⚠️</div>
+                        <h3>Error Loading Sources</h3>
+                        <p style="color: var(--text-muted);">${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function displaySources(sources) {
+            const container = document.getElementById('sources-detail-list');
+
+            if (!sources || sources.length === 0) {
+                container.innerHTML = `
+                    <div class="sidebar-card" style="text-align: center; padding: var(--spacing-xl);">
+                        <div style="font-size: 48px; margin-bottom: var(--spacing-md);">📡</div>
+                        <h3>No Sources Found</h3>
+                        <p style="color: var(--text-muted);">No data sources have been configured.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = `
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--spacing-md);">
+                    ${sources.map(source => {
+                        const lastCollected = source.last_collected ? formatTimeAgo(parseUTCDate(source.last_collected)) : 'Never';
+                        const statusColor = source.active ? 'var(--success)' : 'var(--text-muted)';
+                        const statusText = source.active ? 'Active' : 'Inactive';
+
+                        return `
+                            <div class="sidebar-card source-card" onclick="loadSourceDetail('${source.name}')" style="cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-sm);">
+                                    <span style="font-weight: var(--font-semibold); font-size: var(--text-lg);">${source.name}</span>
+                                    <span style="display: flex; align-items: center; gap: 4px; font-size: var(--text-xs);">
+                                        <span style="width: 8px; height: 8px; border-radius: 50%; background: ${statusColor};"></span>
+                                        ${statusText}
+                                    </span>
+                                </div>
+                                <div style="font-size: var(--text-sm); color: var(--text-secondary); margin-bottom: var(--spacing-md);">
+                                    Type: ${source.type}
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-sm); font-size: var(--text-sm);">
+                                    <div>
+                                        <div style="color: var(--text-muted);">Total Items</div>
+                                        <div style="font-weight: var(--font-semibold);">${source.total_items || 0}</div>
+                                    </div>
+                                    <div>
+                                        <div style="color: var(--text-muted);">Analyzed</div>
+                                        <div style="font-weight: var(--font-semibold);">${source.analyzed_items || 0}</div>
+                                    </div>
+                                </div>
+                                <div style="margin-top: var(--spacing-md); padding-top: var(--spacing-sm); border-top: 1px solid var(--border-subtle); font-size: var(--text-xs); color: var(--text-muted);">
+                                    Last collected: ${lastCollected}
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
+
+        async function loadSourceDetail(sourceName) {
+            currentSourceName = sourceName;
+            currentSourceView = 'detail';
+
+            const container = document.getElementById('sources-detail-list');
+            container.innerHTML = '<p style="color: var(--text-muted);">Loading content...</p>';
+
+            try {
+                const response = await fetch(`${API_BASE}/dashboard/sources/${sourceName}?limit=20`);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const content = await response.json();
+                displaySourceDetail(sourceName, content);
+            } catch (error) {
+                console.error('Error loading source detail:', error);
+                container.innerHTML = `
+                    <div class="sidebar-card" style="text-align: center; padding: var(--spacing-xl);">
+                        <div style="font-size: 48px; margin-bottom: var(--spacing-md);">⚠️</div>
+                        <h3>Error Loading Content</h3>
+                        <p style="color: var(--text-muted);">${error.message}</p>
+                        <button class="btn btn-secondary" onclick="loadSources()" style="margin-top: var(--spacing-md);">← Back to Sources</button>
+                    </div>
+                `;
+            }
+        }
+
+        function displaySourceDetail(sourceName, content) {
+            const container = document.getElementById('sources-detail-list');
+
+            const backButton = `
+                <button class="btn btn-secondary" onclick="sourcesLoaded = false; loadSources();" style="margin-bottom: var(--spacing-md);">
+                    ← Back to Sources
+                </button>
+            `;
+
+            if (!content || content.length === 0) {
+                container.innerHTML = `
+                    ${backButton}
+                    <div class="sidebar-card" style="text-align: center; padding: var(--spacing-xl);">
+                        <div style="font-size: 48px; margin-bottom: var(--spacing-md);">📭</div>
+                        <h3>No Content</h3>
+                        <p style="color: var(--text-muted);">No content has been collected from ${sourceName} yet.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = `
+                ${backButton}
+                <h3 style="margin-bottom: var(--spacing-md);">${sourceName} - Recent Content (${content.length} items)</h3>
+                <div style="display: flex; flex-direction: column; gap: var(--spacing-sm);">
+                    ${content.map(item => {
+                        const collectedAt = item.collected_at ? formatTimeAgo(parseUTCDate(item.collected_at)) : '-';
+                        const sentiment = item.sentiment || 'neutral';
+                        const sentimentColor = sentiment === 'bullish' ? 'var(--success)' : sentiment === 'bearish' ? 'var(--danger)' : 'var(--text-muted)';
+
+                        return `
+                            <div class="sidebar-card" style="padding: var(--spacing-sm) var(--spacing-md);">
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: var(--spacing-md);">
+                                    <div style="flex: 1; min-width: 0;">
+                                        <div style="font-weight: var(--font-medium); margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                            ${item.title || 'Untitled'}
+                                        </div>
+                                        ${item.summary ? `<div style="font-size: var(--text-sm); color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">${item.summary}</div>` : ''}
+                                    </div>
+                                    <div style="flex-shrink: 0; text-align: right; font-size: var(--text-xs);">
+                                        <div style="color: var(--text-muted);">${collectedAt}</div>
+                                        <div style="color: ${sentimentColor}; text-transform: capitalize;">${sentiment}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
+
+        // =====================================================
+        // HISTORY TAB
+        // =====================================================
+        let historyLoaded = false;
+        let currentHistoryView = 'list'; // 'list' or 'detail'
+        let historyOffset = 0;
+        const historyLimit = 10;
+
+        async function loadHistory(offset = 0) {
+            if (historyLoaded && currentHistoryView === 'list' && offset === historyOffset) return;
+
+            historyOffset = offset;
+            const container = document.getElementById('synthesis-history-list');
+            container.innerHTML = '<p style="color: var(--text-muted);">Loading history...</p>';
+
+            try {
+                const response = await fetch(`${API_BASE}/synthesis/history?limit=${historyLimit}&offset=${offset}`);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+                displayHistory(data);
+                historyLoaded = true;
+                currentHistoryView = 'list';
+            } catch (error) {
+                console.error('Error loading history:', error);
+                container.innerHTML = `
+                    <div class="sidebar-card" style="text-align: center; padding: var(--spacing-xl);">
+                        <div style="font-size: 48px; margin-bottom: var(--spacing-md);">⚠️</div>
+                        <h3>Error Loading History</h3>
+                        <p style="color: var(--text-muted);">${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function displayHistory(data) {
+            const container = document.getElementById('synthesis-history-list');
+            const { syntheses, total, limit, offset } = data;
+
+            if (!syntheses || syntheses.length === 0) {
+                container.innerHTML = `
+                    <div class="sidebar-card" style="text-align: center; padding: var(--spacing-xl);">
+                        <div style="font-size: 48px; margin-bottom: var(--spacing-md);">📜</div>
+                        <h3>No Synthesis History</h3>
+                        <p style="color: var(--text-muted);">Generate a synthesis to see it here.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const pagination = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-md);">
+                    <span style="font-size: var(--text-sm); color: var(--text-muted);">
+                        Showing ${offset + 1}-${Math.min(offset + syntheses.length, total)} of ${total}
+                    </span>
+                    <div style="display: flex; gap: var(--spacing-sm);">
+                        <button class="btn btn-secondary btn-sm" onclick="loadHistory(${Math.max(0, offset - limit)})" ${offset === 0 ? 'disabled' : ''}>
+                            ← Previous
+                        </button>
+                        <button class="btn btn-secondary btn-sm" onclick="loadHistory(${offset + limit})" ${offset + limit >= total ? 'disabled' : ''}>
+                            Next →
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            container.innerHTML = `
+                ${pagination}
+                <div style="display: flex; flex-direction: column; gap: var(--spacing-md);">
+                    ${syntheses.map(synth => {
+                        const generatedAt = synth.generated_at ? formatDateTime(parseUTCDate(synth.generated_at)) : '-';
+                        const regimeColor = synth.market_regime === 'risk-on' ? 'var(--success)' :
+                                           synth.market_regime === 'risk-off' ? 'var(--danger)' : 'var(--warning)';
+                        const themes = synth.key_themes || [];
+
+                        return `
+                            <div class="sidebar-card" onclick="loadSynthesisDetail(${synth.id})" style="cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--spacing-sm);">
+                                    <div>
+                                        <div style="font-weight: var(--font-semibold);">${generatedAt}</div>
+                                        <div style="font-size: var(--text-sm); color: var(--text-muted);">
+                                            ${synth.time_window} window • ${synth.content_count || 0} items
+                                        </div>
+                                    </div>
+                                    <span style="background: ${regimeColor}; color: white; padding: 2px 8px; border-radius: var(--radius-full); font-size: 10px; text-transform: capitalize;">
+                                        ${synth.market_regime || 'unknown'}
+                                    </span>
+                                </div>
+                                ${synth.synthesis_preview ? `
+                                    <p style="font-size: var(--text-sm); color: var(--text-secondary); margin-bottom: var(--spacing-sm); overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
+                                        ${synth.synthesis_preview}
+                                    </p>
+                                ` : ''}
+                                ${themes.length > 0 ? `
+                                    <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+                                        ${themes.slice(0, 4).map(t => `
+                                            <span style="background: var(--bg-elevated); padding: 2px 6px; border-radius: var(--radius-sm); font-size: 10px; color: var(--text-secondary);">
+                                                ${typeof t === 'string' ? t : t.theme || t.name || 'Theme'}
+                                            </span>
+                                        `).join('')}
+                                        ${themes.length > 4 ? `<span style="font-size: 10px; color: var(--text-muted);">+${themes.length - 4} more</span>` : ''}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+                ${pagination}
+            `;
+        }
+
+        async function loadSynthesisDetail(synthesisId) {
+            currentHistoryView = 'detail';
+
+            const container = document.getElementById('synthesis-history-list');
+            container.innerHTML = '<p style="color: var(--text-muted);">Loading synthesis...</p>';
+
+            try {
+                const response = await fetch(`${API_BASE}/synthesis/${synthesisId}`);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const synthesis = await response.json();
+                displaySynthesisDetail(synthesis);
+            } catch (error) {
+                console.error('Error loading synthesis:', error);
+                container.innerHTML = `
+                    <div class="sidebar-card" style="text-align: center; padding: var(--spacing-xl);">
+                        <div style="font-size: 48px; margin-bottom: var(--spacing-md);">⚠️</div>
+                        <h3>Error Loading Synthesis</h3>
+                        <p style="color: var(--text-muted);">${error.message}</p>
+                        <button class="btn btn-secondary" onclick="historyLoaded = false; loadHistory();" style="margin-top: var(--spacing-md);">← Back to History</button>
+                    </div>
+                `;
+            }
+        }
+
+        function displaySynthesisDetail(synth) {
+            const container = document.getElementById('synthesis-history-list');
+            const generatedAt = synth.generated_at ? formatDateTime(parseUTCDate(synth.generated_at)) : '-';
+
+            const backButton = `
+                <button class="btn btn-secondary" onclick="historyLoaded = false; loadHistory();" style="margin-bottom: var(--spacing-md);">
+                    ← Back to History
+                </button>
+            `;
+
+            const themes = synth.key_themes || [];
+            const ideas = synth.high_conviction_ideas || [];
+            const contradictions = synth.contradictions || [];
+            const catalysts = synth.catalysts || [];
+
+            container.innerHTML = `
+                ${backButton}
+                <div class="sidebar-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-md);">
+                        <div>
+                            <h3 style="margin: 0;">Synthesis #${synth.id}</h3>
+                            <div style="font-size: var(--text-sm); color: var(--text-muted);">${generatedAt}</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: var(--text-sm);">${synth.time_window} window</div>
+                            <div style="font-size: var(--text-xs); color: var(--text-muted);">${synth.content_count || 0} items analyzed</div>
+                        </div>
+                    </div>
+
+                    ${synth.market_regime ? `
+                        <div style="margin-bottom: var(--spacing-md);">
+                            <span style="font-size: var(--text-sm); color: var(--text-muted);">Market Regime:</span>
+                            <span style="font-weight: var(--font-semibold); text-transform: capitalize;"> ${synth.market_regime}</span>
+                        </div>
+                    ` : ''}
+
+                    ${synth.synthesis ? `
+                        <div style="margin-bottom: var(--spacing-lg);">
+                            <h4 style="margin-bottom: var(--spacing-sm);">Summary</h4>
+                            <p style="font-size: var(--text-sm); color: var(--text-secondary); white-space: pre-wrap;">${synth.synthesis}</p>
+                        </div>
+                    ` : ''}
+
+                    ${themes.length > 0 ? `
+                        <div style="margin-bottom: var(--spacing-lg);">
+                            <h4 style="margin-bottom: var(--spacing-sm);">Key Themes (${themes.length})</h4>
+                            <div style="display: flex; flex-wrap: wrap; gap: var(--spacing-xs);">
+                                ${themes.map(t => `
+                                    <span style="background: var(--primary); color: white; padding: 4px 10px; border-radius: var(--radius-full); font-size: var(--text-sm);">
+                                        ${typeof t === 'string' ? t : t.theme || t.name || 'Theme'}
+                                    </span>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    ${ideas.length > 0 ? `
+                        <div style="margin-bottom: var(--spacing-lg);">
+                            <h4 style="margin-bottom: var(--spacing-sm);">High Conviction Ideas (${ideas.length})</h4>
+                            <ul style="margin: 0; padding-left: var(--spacing-lg); font-size: var(--text-sm); color: var(--text-secondary);">
+                                ${ideas.map(idea => `<li style="margin-bottom: 4px;">${typeof idea === 'string' ? idea : idea.idea || idea.description || JSON.stringify(idea)}</li>`).join('')}
+                            </ul>
+                        </div>
+                    ` : ''}
+
+                    ${contradictions.length > 0 ? `
+                        <div style="margin-bottom: var(--spacing-lg);">
+                            <h4 style="margin-bottom: var(--spacing-sm);">Contradictions (${contradictions.length})</h4>
+                            <ul style="margin: 0; padding-left: var(--spacing-lg); font-size: var(--text-sm); color: var(--text-secondary);">
+                                ${contradictions.map(c => `<li style="margin-bottom: 4px;">${typeof c === 'string' ? c : c.description || c.conflict || JSON.stringify(c)}</li>`).join('')}
+                            </ul>
+                        </div>
+                    ` : ''}
+
+                    ${catalysts.length > 0 ? `
+                        <div>
+                            <h4 style="margin-bottom: var(--spacing-sm);">Catalysts (${catalysts.length})</h4>
+                            <ul style="margin: 0; padding-left: var(--spacing-lg); font-size: var(--text-sm); color: var(--text-secondary);">
+                                ${catalysts.map(c => `<li style="margin-bottom: 4px;">${typeof c === 'string' ? c : c.event || c.description || JSON.stringify(c)}</li>`).join('')}
+                            </ul>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        // =====================================================
         // UTILITIES
         // =====================================================
         function parseUTCDate(isoString) {
@@ -1006,6 +1387,34 @@
             if (!date) return '-';
             return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
         }
+
+        // =====================================================
+        // TAB CHANGE EVENT HANDLER
+        // =====================================================
+        window.addEventListener('tabchange', (e) => {
+            const tab = e.detail.tab;
+            console.log('[Tab] Switched to:', tab);
+
+            if (tab === 'themes') {
+                loadThemes();
+            } else if (tab === 'sources') {
+                loadSources();
+            } else if (tab === 'history') {
+                loadHistory();
+            }
+        });
+
+        // Handle initial page load with hash
+        document.addEventListener('DOMContentLoaded', () => {
+            const hash = window.location.hash.slice(1);
+            if (hash === 'sources') {
+                loadSources();
+            } else if (hash === 'history') {
+                loadHistory();
+            } else if (hash === 'themes') {
+                loadThemes();
+            }
+        });
     </script>
 
     <!-- Navigation & UI Scripts -->
