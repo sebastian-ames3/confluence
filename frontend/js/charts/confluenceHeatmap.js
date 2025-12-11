@@ -13,7 +13,9 @@ class ConfluenceHeatmap {
 
     this.options = {
       animated: true,
-      cellSize: 40,
+      cellSize: 28,
+      labelWidth: 80,
+      headerHeight: 50,
       ...options
     };
   }
@@ -28,8 +30,8 @@ class ConfluenceHeatmap {
 
     // Calculate dimensions
     const cellSize = this.options.cellSize;
-    const labelWidth = 120;
-    const headerHeight = 80;
+    const labelWidth = this.options.labelWidth || 80;
+    const headerHeight = this.options.headerHeight || 50;
 
     this.container.innerHTML = `
       <div class="heatmap-wrapper">
