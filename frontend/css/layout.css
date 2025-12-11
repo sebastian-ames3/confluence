@@ -862,6 +862,7 @@ body {
 
   .content-sidebar {
     grid-template-columns: 1fr;
+    order: 0; /* Sidebar below main content on mobile */
   }
 
   .content-sidebar .sidebar-card:last-child {
