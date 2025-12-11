@@ -182,19 +182,30 @@
                                 <div class="charts-grid">
                                     <div class="chart-container chart-container-md" data-chart="sentiment-gauge" data-chart-type="sentiment-gauge">
                                         <div class="chart-header"><span class="chart-title">Sentiment</span></div>
-                                        <div class="chart-canvas-wrapper"><canvas id="sentiment-gauge-canvas"></canvas></div>
+                                        <div class="chart-canvas-wrapper">
+                                            <div class="chart-skeleton" id="skeleton-sentiment-gauge"></div>
+                                            <canvas id="sentiment-gauge-canvas" style="display: none;"></canvas>
+                                        </div>
                                     </div>
                                     <div class="chart-container chart-container-md" data-chart="source-donut" data-chart-type="source-donut">
                                         <div class="chart-header"><span class="chart-title">Sources</span></div>
-                                        <div class="chart-canvas-wrapper"><canvas id="source-donut-canvas"></canvas></div>
+                                        <div class="chart-canvas-wrapper">
+                                            <div class="chart-skeleton" id="skeleton-source-donut"></div>
+                                            <canvas id="source-donut-canvas" style="display: none;"></canvas>
+                                        </div>
                                     </div>
                                     <div class="chart-container chart-container-md" data-chart="conviction-bar" data-chart-type="conviction-bar">
                                         <div class="chart-header"><span class="chart-title">Conviction</span></div>
-                                        <div class="chart-canvas-wrapper"><canvas id="conviction-bar-canvas"></canvas></div>
+                                        <div class="chart-canvas-wrapper">
+                                            <div class="chart-skeleton" id="skeleton-conviction-bar"></div>
+                                            <canvas id="conviction-bar-canvas" style="display: none;"></canvas>
+                                        </div>
                                     </div>
                                     <div class="chart-container chart-container-md" data-chart="confluence-heatmap" data-chart-type="confluence-heatmap" id="confluence-heatmap">
                                         <div class="chart-header"><span class="chart-title">Confluence</span></div>
-                                        <div class="chart-canvas-wrapper"></div>
+                                        <div class="chart-canvas-wrapper">
+                                            <div class="chart-skeleton" id="skeleton-confluence-heatmap"></div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -527,7 +538,11 @@
             } else {
                 // Fallback: extract from synthesis summary
                 const synthesisSummary = data.synthesis_summary || data.synthesis || '';
-                const sentences = synthesisSummary.split(/[.!?]/).filter(s => s.trim().length > 20).slice(0, 5);
+                // Better sentence splitting that handles abbreviations
+                const sentences = synthesisSummary
+                    .split(/(?<=[.!?])\s+(?=[A-Z])/)
+                    .filter(s => s.trim().length > 20)
+                    .slice(0, 5);
                 if (sentences.length > 0) {
                     takeawaysList.innerHTML = sentences.map(s =>
                         `<li style="margin-bottom: var(--spacing-xs); line-height: var(--leading-relaxed);">${s.trim()}.</li>`
@@ -730,9 +745,18 @@
 
         // Show empty synthesis state
         function showEmptySynthesis() {
+            // Show empty state in takeaways section
             document.getElementById('synthesis-empty').style.display = 'block';
             document.getElementById('takeaways-content').style.display = 'none';
+
+            // Hide full synthesis panel
             document.getElementById('synthesis-panel').style.display = 'none';
+
+            // Hide all V3 sections (they show when data is available)
+            document.getElementById('priorities-section').style.display = 'none';
+            document.getElementById('confluence-section').style.display = 'none';
+            document.getElementById('conflict-section').style.display = 'none';
+            document.getElementById('stances-section').style.display = 'none';
         }
 
         // Toggle full synthesis panel visibility

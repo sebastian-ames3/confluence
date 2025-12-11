@@ -36,6 +36,21 @@ const ChartsManager = {
   },
 
   /**
+   * Remove skeleton loader and show canvas
+   */
+  revealChart(chartId) {
+    const skeleton = document.getElementById(`skeleton-${chartId}`);
+    const canvas = document.getElementById(`${chartId}-canvas`);
+
+    if (skeleton) {
+      skeleton.remove();
+    }
+    if (canvas) {
+      canvas.style.display = 'block';
+    }
+  },
+
+  /**
    * Load a specific chart
    */
   loadChart(chartId, container) {
@@ -121,6 +136,7 @@ const ChartsManager = {
       { source: 'Substack', count: 20 }
     ]);
 
+    this.revealChart('source-donut');
     this.instances.set(canvasId, chart);
   },
 
@@ -159,6 +175,7 @@ const ChartsManager = {
 
     const chart = new SentimentGaugeChart(canvasId);
     chart.render(35, 'Moderately Bullish');
+    this.revealChart('sentiment-gauge');
     this.instances.set(canvasId, chart);
   },
 
@@ -182,6 +199,7 @@ const ChartsManager = {
       { label: 'Gold Rally', value: 45, sentiment: 'bullish' }
     ]);
 
+    this.revealChart('conviction-bar');
     this.instances.set(canvasId, chart);
   },
 
@@ -193,6 +211,9 @@ const ChartsManager = {
       console.warn('[Charts] ConfluenceHeatmap not loaded');
       return;
     }
+
+    // Remove skeleton for heatmap
+    this.revealChart('confluence-heatmap');
 
     const heatmap = new ConfluenceHeatmap(containerId, {
       onCellClick: (data) => {
