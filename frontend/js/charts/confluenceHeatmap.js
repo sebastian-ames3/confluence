@@ -5,11 +5,14 @@
 
 class ConfluenceHeatmap {
   constructor(containerId, options = {}) {
-    this.container = document.getElementById(containerId);
-    if (!this.container) {
+    const containerEl = document.getElementById(containerId);
+    if (!containerEl) {
       console.error(`[ConfluenceHeatmap] Container #${containerId} not found`);
       return;
     }
+
+    // Find the canvas wrapper inside the container, or use container itself
+    this.container = containerEl.querySelector('.chart-canvas-wrapper') || containerEl;
 
     this.options = {
       animated: true,
@@ -27,6 +30,10 @@ class ConfluenceHeatmap {
    */
   render(data) {
     const { sources, themes, matrix } = data;
+
+    // Clear any skeleton loader
+    const skeleton = this.container.querySelector('.chart-skeleton');
+    if (skeleton) skeleton.remove();
 
     // Calculate dimensions
     const cellSize = this.options.cellSize;
