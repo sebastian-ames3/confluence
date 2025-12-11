@@ -21,6 +21,24 @@ class SourceDonutChart {
 
     this.chart = null;
     this.currentData = [];
+
+    // Register custom tooltip positioner (only once)
+    if (!Chart.Tooltip.positioners.donutRight) {
+      Chart.Tooltip.positioners.donutRight = function(elements, eventPosition) {
+        if (!elements.length) {
+          return false;
+        }
+
+        const chart = elements[0].element.$context.chart;
+        const chartArea = chart.chartArea;
+
+        // Position tooltip to the right of the chart
+        return {
+          x: chartArea.right + 10,
+          y: (chartArea.top + chartArea.bottom) / 2
+        };
+      };
+    }
   }
 
   /**
@@ -67,12 +85,27 @@ class SourceDonutChart {
             }
           },
           tooltip: {
-            ...ChartTheme.getDefaultOptions('doughnut').plugins.tooltip,
+            enabled: true,
+            position: 'donutRight',  // Use custom positioner
+            backgroundColor: 'rgba(30, 41, 59, 0.95)',
+            titleColor: '#F8FAFC',
+            bodyColor: '#CBD5E1',
+            borderColor: 'rgba(99, 102, 241, 0.3)',
+            borderWidth: 1,
+            cornerRadius: 8,
+            padding: 12,
+            boxPadding: 6,
+            caretSize: 6,
+            displayColors: true,
             callbacks: {
+              title: (context) => {
+                return context[0]?.label || '';
+              },
               label: (context) => {
                 const item = data[context.dataIndex];
+                if (!item) return '';
                 const percentage = ((item.count / total) * 100).toFixed(1);
-                return `${item.source}: ${item.count} items (${percentage}%)`;
+                return `${item.count} items (${percentage}%)`;
               }
             }
           }
