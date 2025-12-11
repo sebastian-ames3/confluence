@@ -24,6 +24,37 @@ class ConvictionBarChart {
   }
 
   /**
+   * Get or create custom tooltip element
+   */
+  getOrCreateTooltip(chart) {
+    let tooltipEl = chart.canvas.parentNode.querySelector('.bar-tooltip');
+
+    if (!tooltipEl) {
+      tooltipEl = document.createElement('div');
+      tooltipEl.className = 'bar-tooltip';
+      tooltipEl.style.cssText = `
+        position: absolute;
+        background: rgba(30, 41, 59, 0.95);
+        border: 1px solid rgba(99, 102, 241, 0.3);
+        border-radius: 8px;
+        padding: 10px 14px;
+        pointer-events: none;
+        font-family: 'Inter', -apple-system, sans-serif;
+        font-size: 12px;
+        color: #CBD5E1;
+        z-index: 1000;
+        white-space: nowrap;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        opacity: 0;
+        transition: opacity 0.15s ease;
+      `;
+      chart.canvas.parentNode.appendChild(tooltipEl);
+    }
+
+    return tooltipEl;
+  }
+
+  /**
    * Create the bar chart
    * @param {Array} data - [{ label, value, sentiment?, source? }]
    */
@@ -34,6 +65,10 @@ class ConvictionBarChart {
 
     const sortedData = [...data].sort((a, b) => b.value - a.value);
     this.currentData = sortedData;
+    const self = this;
+
+    // Ensure parent has relative positioning
+    this.canvas.parentNode.style.position = 'relative';
 
     this.chart = new Chart(this.ctx, {
       type: 'bar',
@@ -58,14 +93,53 @@ class ConvictionBarChart {
           ...ChartTheme.getDefaultOptions('bar').plugins,
           legend: { display: false },
           tooltip: {
-            ...ChartTheme.getDefaultOptions('bar').plugins.tooltip,
-            callbacks: {
-              label: (context) => {
-                const item = sortedData[context.dataIndex];
-                let label = `Conviction: ${item.value}%`;
-                if (item.sentiment) label += ` | ${item.sentiment}`;
-                return label;
+            enabled: false, // Disable default tooltip
+            external: function(context) {
+              const { chart, tooltip } = context;
+              const tooltipEl = self.getOrCreateTooltip(chart);
+
+              // Hide if no tooltip
+              if (tooltip.opacity === 0) {
+                tooltipEl.style.opacity = '0';
+                return;
               }
+
+              // Get data for hovered bar
+              const dataIndex = tooltip.dataPoints?.[0]?.dataIndex;
+              if (dataIndex === undefined || !sortedData[dataIndex]) {
+                tooltipEl.style.opacity = '0';
+                return;
+              }
+
+              const item = sortedData[dataIndex];
+              const color = item.sentiment
+                ? ChartTheme.getSentimentColor(item.sentiment)
+                : item.source
+                  ? ChartTheme.getSourceColor(item.source)
+                  : self.getConvictionColor(item.value);
+
+              // Build tooltip content
+              let sentimentHtml = item.sentiment
+                ? `<div style="margin-top: 4px; font-size: 11px; color: #94A3B8;">Sentiment: ${item.sentiment}</div>`
+                : '';
+
+              tooltipEl.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                  <span style="width: 10px; height: 10px; border-radius: 2px; background: ${color};"></span>
+                  <span style="font-weight: 600; color: #F8FAFC;">${item.label}</span>
+                </div>
+                <div>Conviction: ${item.value}%</div>
+                ${sentimentHtml}
+              `;
+
+              // Position above the chart
+              const chartArea = chart.chartArea;
+              const tooltipHeight = tooltipEl.offsetHeight || 60;
+
+              // Center horizontally, position above chart
+              tooltipEl.style.left = ((chartArea.left + chartArea.right) / 2 - (tooltipEl.offsetWidth || 100) / 2) + 'px';
+              tooltipEl.style.top = (chartArea.top - tooltipHeight - 10) + 'px';
+              tooltipEl.style.opacity = '1';
             }
           }
         },
@@ -163,6 +237,11 @@ class ConvictionBarChart {
     if (this.chart) {
       this.chart.destroy();
       this.chart = null;
+    }
+    // Clean up tooltip
+    const tooltipEl = this.canvas?.parentNode?.querySelector('.bar-tooltip');
+    if (tooltipEl) {
+      tooltipEl.remove();
     }
   }
 }
