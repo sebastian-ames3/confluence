@@ -827,28 +827,43 @@
             const originalHTML = btn.innerHTML;
             btn.disabled = true;
             let totalAnalyzed = 0;
+            let batchCount = 0;
 
             try {
+                btn.innerHTML = `<span class="icon">⚡</span><span class="btn-text">Starting...</span>`;
+
                 while (true) {
-                    btn.innerHTML = `<span class="icon">⚡</span><span class="btn-text">Analyzing... (${totalAnalyzed})</span>`;
+                    batchCount++;
                     const response = await fetch(`${API_BASE}/analyze/classify-batch?limit=50`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' }
                     });
                     const data = await response.json();
+
                     if (!response.ok) throw new Error(data.detail);
+
                     if (data.count > 0) {
                         totalAnalyzed += data.count;
+                        btn.innerHTML = `<span class="icon">⚡</span><span class="btn-text">Analyzed: ${totalAnalyzed}</span>`;
+                        // Small delay to ensure UI updates are visible
+                        await new Promise(r => setTimeout(r, 100));
                     } else {
                         break;
                     }
+
+                    // Safety: max 20 batches to prevent infinite loop
+                    if (batchCount >= 20) {
+                        console.log('[Analyze] Max batches reached');
+                        break;
+                    }
                 }
+
                 btn.innerHTML = `<span class="icon">✓</span><span class="btn-text">Done (${totalAnalyzed})</span>`;
                 await loadStatus();
                 setTimeout(() => { btn.innerHTML = originalHTML; }, 3000);
             } catch (error) {
                 console.error('Analysis error:', error);
-                btn.innerHTML = '<span class="icon">✕</span><span class="btn-text">Error</span>';
+                btn.innerHTML = `<span class="icon">✕</span><span class="btn-text">Error</span>`;
                 setTimeout(() => { btn.innerHTML = originalHTML; }, 3000);
             } finally {
                 btn.disabled = false;
@@ -860,9 +875,17 @@
             const btn = timeWindow === '24h' ? document.getElementById('btn-generate-24h') : document.getElementById('btn-generate-7d');
             const originalHTML = btn.innerHTML;
             btn.disabled = true;
-            btn.innerHTML = `<span class="icon">⏳</span><span class="btn-text">Generating...</span>`;
+
+            // Start elapsed time counter
+            let seconds = 0;
+            const timerInterval = setInterval(() => {
+                seconds++;
+                btn.innerHTML = `<span class="icon">⏳</span><span class="btn-text">Generating... ${seconds}s</span>`;
+            }, 1000);
 
             try {
+                btn.innerHTML = `<span class="icon">⏳</span><span class="btn-text">Generating... 0s</span>`;
+
                 const response = await fetch(`${API_BASE}/synthesis/generate`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -870,10 +893,12 @@
                 });
                 const data = await response.json();
 
+                clearInterval(timerInterval);
+
                 if (data.status === 'success') {
                     await loadLatestSynthesis();
                     await loadStatus();
-                    btn.innerHTML = `<span class="icon">✓</span><span class="btn-text">Done</span>`;
+                    btn.innerHTML = `<span class="icon">✓</span><span class="btn-text">Done (${seconds}s)</span>`;
                 } else if (data.status === 'no_content') {
                     alert(data.message || 'No content available');
                     btn.innerHTML = originalHTML;
@@ -882,8 +907,9 @@
                 }
                 setTimeout(() => { btn.innerHTML = originalHTML; }, 3000);
             } catch (error) {
+                clearInterval(timerInterval);
                 console.error('Generation error:', error);
-                btn.innerHTML = '<span class="icon">✕</span><span class="btn-text">Error</span>';
+                btn.innerHTML = `<span class="icon">✕</span><span class="btn-text">Error</span>`;
                 setTimeout(() => { btn.innerHTML = originalHTML; }, 3000);
             } finally {
                 btn.disabled = false;
