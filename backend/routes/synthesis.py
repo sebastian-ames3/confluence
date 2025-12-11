@@ -28,6 +28,7 @@ from backend.models import (
 )
 from backend.utils.auth import verify_credentials
 from backend.utils.rate_limiter import limiter, RATE_LIMITS
+from agents.theme_extractor import extract_and_track_themes
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -368,6 +369,16 @@ async def generate_synthesis(
         db.add(synthesis)
         db.commit()
         db.refresh(synthesis)
+
+        # PRD-024: Extract and track themes from V3 synthesis
+        if version == "3":
+            try:
+                theme_result = extract_and_track_themes(result, db)
+                logger.info(f"Theme extraction complete: {theme_result.get('created', 0)} created, "
+                           f"{theme_result.get('updated', 0)} updated")
+            except Exception as theme_error:
+                # Don't fail synthesis if theme extraction fails
+                logger.warning(f"Theme extraction failed (non-fatal): {str(theme_error)}")
 
         # Return appropriate response format
         if version == "3":
