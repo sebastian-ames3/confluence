@@ -26,7 +26,7 @@ body {
 
 .main-content {
   flex: 1;
-  padding-top: calc(64px + var(--spacing-lg));
+  padding-top: 64px;
   padding-bottom: calc(80px + var(--spacing-lg));
 }
 
@@ -331,6 +331,132 @@ body {
 .mobile-nav-actions {
   padding-top: var(--spacing-lg);
   border-top: 1px solid var(--border-subtle);
+}
+
+/* ============================================
+   ANIMATED HERO BACKGROUND
+   ============================================ */
+.hero-background {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 420px;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.gradient-layer {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 40%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse 60% 50% at 80% 20%, rgba(139, 92, 246, 0.12) 0%, transparent 50%),
+    radial-gradient(ellipse 50% 40% at 50% 80%, rgba(59, 130, 246, 0.1) 0%, transparent 50%);
+  animation: gradientShift 15s ease-in-out infinite alternate;
+}
+
+@keyframes gradientShift {
+  0% {
+    transform: scale(1) translate(0, 0);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1) translate(-2%, 2%);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1.05) translate(2%, -1%);
+    opacity: 1;
+  }
+}
+
+.flow-lines {
+  position: absolute;
+  bottom: 40px;
+  left: 0;
+  width: 100%;
+  height: 200px;
+}
+
+.flow-line {
+  fill: none;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  opacity: 0.4;
+}
+
+.flow-line-1 {
+  stroke: rgba(99, 102, 241, 0.3);
+  stroke-dasharray: 800;
+  stroke-dashoffset: 800;
+  animation: flowDraw 8s ease-in-out infinite;
+}
+
+.flow-line-2 {
+  stroke: rgba(139, 92, 246, 0.25);
+  stroke-dasharray: 900;
+  stroke-dashoffset: 900;
+  animation: flowDraw 10s ease-in-out infinite;
+  animation-delay: -3s;
+}
+
+.flow-line-3 {
+  stroke: rgba(59, 130, 246, 0.2);
+  stroke-dasharray: 850;
+  stroke-dashoffset: 850;
+  animation: flowDraw 12s ease-in-out infinite;
+  animation-delay: -6s;
+}
+
+@keyframes flowDraw {
+  0%, 100% {
+    stroke-dashoffset: 800;
+    opacity: 0.2;
+  }
+  50% {
+    stroke-dashoffset: 0;
+    opacity: 0.5;
+  }
+}
+
+.hero-fade {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 150px;
+  background: linear-gradient(to bottom, transparent 0%, var(--bg-base) 100%);
+}
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .gradient-layer,
+  .flow-line {
+    animation: none;
+  }
+  .flow-line {
+    stroke-dashoffset: 0;
+    opacity: 0.3;
+  }
+}
+
+/* Smaller hero on mobile */
+@media (max-width: 768px) {
+  .hero-background {
+    height: 280px;
+  }
+  .flow-lines {
+    height: 120px;
+  }
+}
+
+/* Ensure main content sits above the background */
+.site-header,
+.main-content {
+  position: relative;
+  z-index: 1;
 }
 
 /* ============================================
@@ -835,7 +961,7 @@ body {
   }
 
   .main-content {
-    padding-top: calc(56px + var(--spacing-md));
+    padding-top: 56px ;
     padding-bottom: calc(72px + var(--spacing-md));
   }
 
