@@ -291,6 +291,69 @@ async def list_themes(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/summary")
+async def get_theme_summary(db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """
+    Get summary statistics about themes.
+    """
+    try:
+        themes = db.query(Theme).all()
+
+        by_status = {"emerging": 0, "active": 0, "evolved": 0, "dormant": 0}
+        for theme in themes:
+            if theme.status in by_status:
+                by_status[theme.status] += 1
+
+        # Get active themes with their evidence counts
+        active_themes = []
+        for theme in themes:
+            if theme.status in ["emerging", "active"]:
+                source_evidence = {}
+                if theme.source_evidence:
+                    try:
+                        source_evidence = json.loads(theme.source_evidence)
+                    except json.JSONDecodeError:
+                        pass
+
+                catalysts = []
+                if theme.catalysts:
+                    try:
+                        catalysts = json.loads(theme.catalysts)
+                    except json.JSONDecodeError:
+                        pass
+
+                # Find next catalyst
+                next_catalyst = None
+                today = datetime.utcnow().date()
+                for c in catalysts:
+                    try:
+                        c_date = datetime.strptime(c.get("date", ""), "%Y-%m-%d").date()
+                        if c_date >= today:
+                            if next_catalyst is None or c_date < datetime.strptime(next_catalyst, "%Y-%m-%d").date():
+                                next_catalyst = c.get("date")
+                    except ValueError:
+                        pass
+
+                active_themes.append({
+                    "id": theme.id,
+                    "name": theme.name,
+                    "status": theme.status,
+                    "sources": list(source_evidence.keys()),
+                    "evidence_count": sum(len(v) for v in source_evidence.values()),
+                    "next_catalyst": next_catalyst
+                })
+
+        return {
+            "total": len(themes),
+            "by_status": by_status,
+            "active_themes": sorted(active_themes, key=lambda x: x["evidence_count"], reverse=True)
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting theme summary: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/{theme_id}")
 async def get_theme(theme_id: int, db: Session = Depends(get_db)) -> Dict[str, Any]:
     """
@@ -596,67 +659,4 @@ async def add_evidence(
     except Exception as e:
         db.rollback()
         logger.error(f"Error adding evidence: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/summary")
-async def get_theme_summary(db: Session = Depends(get_db)) -> Dict[str, Any]:
-    """
-    Get summary statistics about themes.
-    """
-    try:
-        themes = db.query(Theme).all()
-
-        by_status = {"emerging": 0, "active": 0, "evolved": 0, "dormant": 0}
-        for theme in themes:
-            if theme.status in by_status:
-                by_status[theme.status] += 1
-
-        # Get active themes with their evidence counts
-        active_themes = []
-        for theme in themes:
-            if theme.status in ["emerging", "active"]:
-                source_evidence = {}
-                if theme.source_evidence:
-                    try:
-                        source_evidence = json.loads(theme.source_evidence)
-                    except json.JSONDecodeError:
-                        pass
-
-                catalysts = []
-                if theme.catalysts:
-                    try:
-                        catalysts = json.loads(theme.catalysts)
-                    except json.JSONDecodeError:
-                        pass
-
-                # Find next catalyst
-                next_catalyst = None
-                today = datetime.utcnow().date()
-                for c in catalysts:
-                    try:
-                        c_date = datetime.strptime(c.get("date", ""), "%Y-%m-%d").date()
-                        if c_date >= today:
-                            if next_catalyst is None or c_date < datetime.strptime(next_catalyst, "%Y-%m-%d").date():
-                                next_catalyst = c.get("date")
-                    except ValueError:
-                        pass
-
-                active_themes.append({
-                    "id": theme.id,
-                    "name": theme.name,
-                    "status": theme.status,
-                    "sources": list(source_evidence.keys()),
-                    "evidence_count": sum(len(v) for v in source_evidence.values()),
-                    "next_catalyst": next_catalyst
-                })
-
-        return {
-            "total_themes": len(themes),
-            "by_status": by_status,
-            "active_themes": sorted(active_themes, key=lambda x: x["evidence_count"], reverse=True)
-        }
-
-    except Exception as e:
-        logger.error(f"Error getting theme summary: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
