@@ -301,68 +301,18 @@ async def get_theme_summary(db: Session = Depends(get_db)) -> Dict[str, Any]:
 
         by_status = {"emerging": 0, "active": 0, "evolved": 0, "dormant": 0}
         for theme in themes:
-            if theme.status in by_status:
+            if theme.status and theme.status in by_status:
                 by_status[theme.status] += 1
-
-        # Get active themes with their evidence counts
-        active_themes = []
-        for theme in themes:
-            if theme.status in ["emerging", "active"]:
-                source_evidence = {}
-                if theme.source_evidence:
-                    try:
-                        source_evidence = json.loads(theme.source_evidence)
-                    except json.JSONDecodeError:
-                        pass
-
-                catalysts = []
-                if theme.catalysts:
-                    try:
-                        catalysts = json.loads(theme.catalysts)
-                    except json.JSONDecodeError:
-                        pass
-
-                # Find next catalyst (catalysts can be strings or dicts)
-                next_catalyst = None
-                today = datetime.utcnow().date()
-                for c in catalysts:
-                    try:
-                        # Handle both string catalysts and dict catalysts
-                        if isinstance(c, dict):
-                            c_date_str = c.get("date", "")
-                            if c_date_str:
-                                c_date = datetime.strptime(c_date_str, "%Y-%m-%d").date()
-                                if c_date >= today:
-                                    if next_catalyst is None or c_date < datetime.strptime(next_catalyst, "%Y-%m-%d").date():
-                                        next_catalyst = c_date_str
-                        # Skip string catalysts for date parsing (no date info)
-                    except (ValueError, AttributeError):
-                        pass
-
-                evidence_count = 0
-                for v in source_evidence.values():
-                    if isinstance(v, list):
-                        evidence_count += len(v)
-                    elif isinstance(v, dict):
-                        evidence_count += 1
-
-                active_themes.append({
-                    "id": theme.id,
-                    "name": theme.name,
-                    "status": theme.status,
-                    "sources": list(source_evidence.keys()),
-                    "evidence_count": evidence_count,
-                    "next_catalyst": next_catalyst
-                })
 
         return {
             "total": len(themes),
             "by_status": by_status,
-            "active_themes": sorted(active_themes, key=lambda x: x["evidence_count"], reverse=True)
+            "active_themes": []
         }
 
     except Exception as e:
-        logger.error(f"Error getting theme summary: {str(e)}")
+        import traceback
+        logger.error(f"Error getting theme summary: {str(e)}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
