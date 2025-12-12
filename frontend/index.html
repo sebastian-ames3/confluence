@@ -934,7 +934,8 @@
                 document.getElementById('kpi-themes').textContent = summary.by_status?.active || 0;
 
                 const themesResponse = await fetch(`${API_BASE}/themes`);
-                allThemes = await themesResponse.json();
+                const themesData = await themesResponse.json();
+                allThemes = themesData.themes || [];
                 displayThemes(allThemes);
 
             } catch (error) {
