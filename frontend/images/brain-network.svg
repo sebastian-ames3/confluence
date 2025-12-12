@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <radialGradient id="nodeGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#818cf8" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#6366f1" stop-opacity="0.3"/>
+    </radialGradient>
+    <radialGradient id="centerGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#a78bfa" stop-opacity="0.8"/>
+      <stop offset="50%" stop-color="#6366f1" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#4f46e5" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background glow -->
+  <circle cx="100" cy="100" r="80" fill="url(#centerGlow)" filter="url(#softGlow)"/>
+
+  <!-- Connection lines -->
+  <g stroke="#6366f1" stroke-width="1" stroke-opacity="0.4" filter="url(#glow)">
+    <!-- Outer ring connections -->
+    <line x1="100" y1="30" x2="150" y2="55"/>
+    <line x1="150" y1="55" x2="165" y2="100"/>
+    <line x1="165" y1="100" x2="150" y2="145"/>
+    <line x1="150" y1="145" x2="100" y2="170"/>
+    <line x1="100" y1="170" x2="50" y2="145"/>
+    <line x1="50" y1="145" x2="35" y2="100"/>
+    <line x1="35" y1="100" x2="50" y2="55"/>
+    <line x1="50" y1="55" x2="100" y2="30"/>
+
+    <!-- Inner connections to center -->
+    <line x1="100" y1="30" x2="100" y2="70"/>
+    <line x1="150" y1="55" x2="125" y2="80"/>
+    <line x1="165" y1="100" x2="130" y2="100"/>
+    <line x1="150" y1="145" x2="125" y2="120"/>
+    <line x1="100" y1="170" x2="100" y2="130"/>
+    <line x1="50" y1="145" x2="75" y2="120"/>
+    <line x1="35" y1="100" x2="70" y2="100"/>
+    <line x1="50" y1="55" x2="75" y2="80"/>
+
+    <!-- Cross connections -->
+    <line x1="100" y1="70" x2="125" y2="80"/>
+    <line x1="125" y1="80" x2="130" y2="100"/>
+    <line x1="130" y1="100" x2="125" y2="120"/>
+    <line x1="125" y1="120" x2="100" y2="130"/>
+    <line x1="100" y1="130" x2="75" y2="120"/>
+    <line x1="75" y1="120" x2="70" y2="100"/>
+    <line x1="70" y1="100" x2="75" y2="80"/>
+    <line x1="75" y1="80" x2="100" y2="70"/>
+
+    <!-- Diagonal inner connections -->
+    <line x1="100" y1="70" x2="130" y2="100"/>
+    <line x1="130" y1="100" x2="100" y2="130"/>
+    <line x1="100" y1="130" x2="70" y2="100"/>
+    <line x1="70" y1="100" x2="100" y2="70"/>
+    <line x1="125" y1="80" x2="75" y2="120"/>
+    <line x1="75" y1="80" x2="125" y2="120"/>
+  </g>
+
+  <!-- Outer ring nodes -->
+  <g filter="url(#glow)">
+    <circle cx="100" cy="30" r="6" fill="url(#nodeGlow)"/>
+    <circle cx="150" cy="55" r="5" fill="url(#nodeGlow)"/>
+    <circle cx="165" cy="100" r="6" fill="url(#nodeGlow)"/>
+    <circle cx="150" cy="145" r="5" fill="url(#nodeGlow)"/>
+    <circle cx="100" cy="170" r="6" fill="url(#nodeGlow)"/>
+    <circle cx="50" cy="145" r="5" fill="url(#nodeGlow)"/>
+    <circle cx="35" cy="100" r="6" fill="url(#nodeGlow)"/>
+    <circle cx="50" cy="55" r="5" fill="url(#nodeGlow)"/>
+  </g>
+
+  <!-- Inner ring nodes -->
+  <g filter="url(#glow)">
+    <circle cx="100" cy="70" r="5" fill="url(#nodeGlow)"/>
+    <circle cx="125" cy="80" r="4" fill="url(#nodeGlow)"/>
+    <circle cx="130" cy="100" r="5" fill="url(#nodeGlow)"/>
+    <circle cx="125" cy="120" r="4" fill="url(#nodeGlow)"/>
+    <circle cx="100" cy="130" r="5" fill="url(#nodeGlow)"/>
+    <circle cx="75" cy="120" r="4" fill="url(#nodeGlow)"/>
+    <circle cx="70" cy="100" r="5" fill="url(#nodeGlow)"/>
+    <circle cx="75" cy="80" r="4" fill="url(#nodeGlow)"/>
+  </g>
+
+  <!-- Center node -->
+  <circle cx="100" cy="100" r="10" fill="#a78bfa" filter="url(#glow)"/>
+  <circle cx="100" cy="100" r="6" fill="#c4b5fd"/>
+</svg>
