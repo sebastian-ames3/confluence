@@ -409,7 +409,7 @@
                 <span class="icon">📊</span>
                 <span class="btn-text">Generate 7-Day</span>
             </button>
-            <button class="fab-btn fab-btn-ghost" onclick="loadStatus(); loadLatestSynthesis();">
+            <button class="fab-btn fab-btn-ghost" onclick="refreshCurrentTab()">
                 <span class="icon">🔄</span>
                 <span class="btn-text desktop-only">Refresh</span>
             </button>
@@ -1386,6 +1386,35 @@
         function formatDateTime(date) {
             if (!date) return '-';
             return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        }
+
+        // =====================================================
+        // REFRESH CURRENT TAB
+        // =====================================================
+        async function refreshCurrentTab() {
+            // Find active tab
+            const activeTab = document.querySelector('.tab-btn.active');
+            const tabName = activeTab ? activeTab.dataset.tab : 'overview';
+
+            console.log('[Refresh] Refreshing tab:', tabName);
+
+            // Force refresh by resetting loaded flags
+            switch (tabName) {
+                case 'overview':
+                    await Promise.all([loadStatus(), loadLatestSynthesis()]);
+                    break;
+                case 'themes':
+                    await loadThemes();
+                    break;
+                case 'sources':
+                    sourcesLoaded = false;
+                    await loadSources();
+                    break;
+                case 'history':
+                    historyLoaded = false;
+                    await loadHistory();
+                    break;
+            }
         }
 
         // =====================================================
