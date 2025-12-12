@@ -77,3 +77,4 @@ dev/test_output/
 dev/debug/
 dev/.pytest_cache/
 dev/*.log
+CLAUDE.md
