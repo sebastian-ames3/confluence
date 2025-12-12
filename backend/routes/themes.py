@@ -322,16 +322,21 @@ async def get_theme_summary(db: Session = Depends(get_db)) -> Dict[str, Any]:
                     except json.JSONDecodeError:
                         pass
 
-                # Find next catalyst
+                # Find next catalyst (catalysts can be strings or dicts)
                 next_catalyst = None
                 today = datetime.utcnow().date()
                 for c in catalysts:
                     try:
-                        c_date = datetime.strptime(c.get("date", ""), "%Y-%m-%d").date()
-                        if c_date >= today:
-                            if next_catalyst is None or c_date < datetime.strptime(next_catalyst, "%Y-%m-%d").date():
-                                next_catalyst = c.get("date")
-                    except ValueError:
+                        # Handle both string catalysts and dict catalysts
+                        if isinstance(c, dict):
+                            c_date_str = c.get("date", "")
+                            if c_date_str:
+                                c_date = datetime.strptime(c_date_str, "%Y-%m-%d").date()
+                                if c_date >= today:
+                                    if next_catalyst is None or c_date < datetime.strptime(next_catalyst, "%Y-%m-%d").date():
+                                        next_catalyst = c_date_str
+                        # Skip string catalysts for date parsing (no date info)
+                    except (ValueError, AttributeError):
                         pass
 
                 active_themes.append({
