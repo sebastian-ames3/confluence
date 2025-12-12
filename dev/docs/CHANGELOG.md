@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.7.2] - 2025-12-11
+
+### Added
+- **[PRD-033] Sources & History Tabs** - Complete
+  - Sources tab: Grid of source cards with stats, drill-down to content list
+  - History tab: Paginated synthesis history with detail view
+  - Tab event wiring for lazy loading
+  - 13 integration tests (`tests/test_sources_history_integration.py`)
+
+### Fixed
+- **Themes Tab**
+  - Fixed database constraint migration for PRD-024 status values (`/api/themes/migrate-constraints`)
+  - Fixed route ordering: `/summary` now defined before `/{theme_id}` to prevent 422 errors
+  - Fixed themes list parsing: Extract `themes` array from API response object
+  - Fixed themes summary: Handle string catalysts and defensive type checking
+
+- **Refresh Button**
+  - Now refreshes current active tab (Overview/Themes/Sources/History) instead of always refreshing Overview
+
+### Changed
+- `frontend/index.html` - Added Sources/History tab implementations, fixed themes parsing, added `refreshCurrentTab()`
+- `backend/routes/themes.py` - Route ordering fix, constraint migration endpoint, defensive error handling
+
+---
+
 ## [1.7.1] - 2025-12-10
 
 ### Changed
@@ -184,8 +209,8 @@
 
 | PRD | Status |
 |-----|--------|
-| 001-032 | Complete |
+| 001-033 | Complete |
 
 ---
 
-**Last Updated**: 2025-12-10
+**Last Updated**: 2025-12-11

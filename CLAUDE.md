@@ -2,7 +2,7 @@
 
 Personal investment research aggregation system. Collects from 5 sources, applies AI analysis, surfaces confluence via web dashboard and Claude Desktop MCP.
 
-**Version**: 1.7.0 (Dec 2025) | **Status**: Production
+**Version**: 1.7.2 (Dec 2025) | **Status**: Production
 
 ---
 
