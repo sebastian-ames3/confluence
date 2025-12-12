@@ -66,23 +66,18 @@ body {
 .header-logo {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
   text-decoration: none;
   flex-shrink: 0;
 }
 
-.logo-icon {
-  font-size: var(--text-xl);
+.logo-icon-img {
+  width: 36px;
+  height: 36px;
+  transition: transform var(--transition-fast);
 }
 
-.logo-text {
-  font-size: var(--text-lg);
-  font-weight: var(--font-bold);
-  color: var(--text-primary);
-}
-
-.logo-accent {
-  color: var(--primary);
+.header-logo:hover .logo-icon-img {
+  transform: scale(1.1);
 }
 
 /* Search Trigger */
