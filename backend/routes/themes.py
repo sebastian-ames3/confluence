@@ -92,6 +92,7 @@ async def migrate_themes_schema(db: Session = Depends(get_db)) -> Dict[str, Any]
     """
     Migrate themes table to add missing columns (PRD-024).
     Adds aliases, source_evidence, catalysts, first_source columns if missing.
+    Also rebuilds table to fix CHECK constraints if needed.
     """
     from sqlalchemy import text
 
@@ -124,6 +125,72 @@ async def migrate_themes_schema(db: Session = Depends(get_db)) -> Dict[str, Any]
         "status": "success",
         "migrations": migrations
     }
+
+
+@router.post("/migrate-constraints")
+async def migrate_themes_constraints(db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """
+    Rebuild themes table to fix CHECK constraints for PRD-024 status values.
+    SQLite doesn't support ALTER CONSTRAINT, so we rebuild the table.
+    """
+    from sqlalchemy import text
+
+    try:
+        # Step 1: Create new table with correct constraints
+        db.execute(text("""
+            CREATE TABLE IF NOT EXISTS themes_new (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name VARCHAR NOT NULL UNIQUE,
+                description TEXT,
+                aliases TEXT,
+                evolved_from_theme_id INTEGER REFERENCES themes_new(id),
+                source_evidence TEXT,
+                catalysts TEXT,
+                first_source VARCHAR,
+                first_mentioned_at DATETIME,
+                status VARCHAR DEFAULT 'emerging' CHECK(status IN ('emerging', 'active', 'evolved', 'dormant')),
+                last_updated_at DATETIME,
+                current_conviction FLOAT DEFAULT 0.5,
+                confidence_interval_low FLOAT,
+                confidence_interval_high FLOAT,
+                prior_probability FLOAT,
+                evidence_count INTEGER DEFAULT 0,
+                json_metadata TEXT,
+                created_at DATETIME,
+                updated_at DATETIME
+            )
+        """))
+        db.commit()
+
+        # Step 2: Copy existing data (if any)
+        db.execute(text("""
+            INSERT OR IGNORE INTO themes_new
+            SELECT * FROM themes
+        """))
+        db.commit()
+
+        # Step 3: Drop old table
+        db.execute(text("DROP TABLE IF EXISTS themes"))
+        db.commit()
+
+        # Step 4: Rename new table
+        db.execute(text("ALTER TABLE themes_new RENAME TO themes"))
+        db.commit()
+
+        logger.info("Themes table rebuilt with correct constraints")
+
+        return {
+            "status": "success",
+            "message": "Themes table rebuilt with PRD-024 status constraints"
+        }
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Constraint migration failed: {str(e)}")
+        return {
+            "status": "error",
+            "error": str(e)
+        }
 
 
 @router.get("")
