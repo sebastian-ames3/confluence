@@ -95,31 +95,9 @@
 
             <!-- Hero Section -->
             <section class="hero-section" id="hero-section">
-                <div class="hero-grid">
-                    <!-- Market Regime -->
-                    <div class="hero-regime">
-                        <div class="regime-label">Market Regime</div>
-                        <div class="regime-badge regime-badge-uncertain" id="hero-regime-badge">
-                            <span class="regime-icon">⚡</span>
-                            <span class="regime-text" id="hero-regime-text">Loading...</span>
-                        </div>
-                        <div class="regime-meta">
-                            <span>Last updated:</span>
-                            <span id="hero-last-updated">-</span>
-                        </div>
-                    </div>
-
-                    <!-- Key Insight -->
-                    <div class="hero-insight">
-                        <div class="insight-label">Key Insight</div>
-                        <p class="insight-text" id="hero-key-insight">
-                            Loading latest synthesis...
-                        </p>
-                        <div class="insight-sources">
-                            <span style="color: var(--text-muted);">Primary:</span>
-                            <span id="hero-sources">-</span>
-                        </div>
-                    </div>
+                <div class="hero-banner">
+                    <img src="images/brain-network.avif" alt="Neural Network" class="hero-brain-image">
+                    <h1 class="hero-title">Macro <span class="hero-title-accent">Confluence</span></h1>
                 </div>
             </section>
 
@@ -492,7 +470,6 @@
                     const synthTime = parseUTCDate(data.latest_synthesis.generated_at);
                     document.getElementById('last-synthesis-time').textContent = formatTimeAgo(synthTime);
                     document.getElementById('last-synthesis-window').textContent = data.latest_synthesis.time_window + ' window';
-                    document.getElementById('hero-last-updated').textContent = formatTimeAgo(synthTime);
                 } else {
                     document.getElementById('last-synthesis-time').textContent = 'Never';
                     document.getElementById('last-synthesis-window').textContent = '-';
@@ -576,24 +553,14 @@
                 }
             }
 
-            // Update hero section
+            // Update market regime badge
             let regimeValue = data.market_regime;
             if (typeof regimeValue === 'object' && regimeValue !== null) {
                 regimeValue = regimeValue.current;
             }
             if (regimeValue) {
-                const heroRegimeBadge = document.getElementById('hero-regime-badge');
-                heroRegimeBadge.className = `regime-badge regime-badge-${regimeValue.toLowerCase().replace(/[^a-z]/g, '-')}`;
-                document.getElementById('hero-regime-text').textContent = regimeValue;
-
                 const regimeClass = `regime-${regimeValue.replace('_', '-').replace(' ', '-')}`;
                 document.getElementById('market-regime-badge').innerHTML = `<span class="market-regime ${regimeClass}">${regimeValue}</span>`;
-            }
-
-            // Update hero key insight (reuse execSummary from above)
-            if (execSummary) {
-                const insight = execSummary.synthesis_narrative || execSummary.narrative || '';
-                document.getElementById('hero-key-insight').textContent = insight.split('.')[0] + '.';
             }
 
             // Synthesis text
