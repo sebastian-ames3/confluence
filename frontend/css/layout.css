@@ -465,6 +465,9 @@ body {
 .hero-section {
   margin-bottom: var(--spacing-lg);
   padding: var(--spacing-md) 0;
+  /* Override page-transitions.css opacity: 0 */
+  opacity: 1 !important;
+  transform: none !important;
 }
 
 .hero-banner {
