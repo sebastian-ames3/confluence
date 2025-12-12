@@ -339,12 +339,19 @@ async def get_theme_summary(db: Session = Depends(get_db)) -> Dict[str, Any]:
                     except (ValueError, AttributeError):
                         pass
 
+                evidence_count = 0
+                for v in source_evidence.values():
+                    if isinstance(v, list):
+                        evidence_count += len(v)
+                    elif isinstance(v, dict):
+                        evidence_count += 1
+
                 active_themes.append({
                     "id": theme.id,
                     "name": theme.name,
                     "status": theme.status,
                     "sources": list(source_evidence.keys()),
-                    "evidence_count": sum(len(v) for v in source_evidence.values()),
+                    "evidence_count": evidence_count,
                     "next_catalyst": next_catalyst
                 })
 
