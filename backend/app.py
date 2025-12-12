@@ -144,11 +144,13 @@ app.include_router(heartbeat.router, prefix="/api", tags=["heartbeat"])
 frontend_path = Path(__file__).parent.parent / "frontend"
 css_path = frontend_path / "css"
 js_path = frontend_path / "js"
+images_path = frontend_path / "images"
 
 # Debug: log paths at startup
 print(f"STATIC FILES DEBUG: frontend_path={frontend_path}, exists={frontend_path.exists()}")
 print(f"STATIC FILES DEBUG: css_path={css_path}, exists={css_path.exists()}")
 print(f"STATIC FILES DEBUG: js_path={js_path}, exists={js_path.exists()}")
+print(f"STATIC FILES DEBUG: images_path={images_path}, exists={images_path.exists()}")
 
 # Mount static asset directories
 if css_path.exists():
@@ -157,6 +159,9 @@ if css_path.exists():
 if js_path.exists():
     app.mount("/js", StaticFiles(directory=str(js_path)), name="js")
     print("STATIC FILES: Mounted /js")
+if images_path.exists():
+    app.mount("/images", StaticFiles(directory=str(images_path)), name="images")
+    print("STATIC FILES: Mounted /images")
 if frontend_path.exists():
     app.mount("/static", StaticFiles(directory=str(frontend_path), html=True), name="frontend")
     print("STATIC FILES: Mounted /static")
