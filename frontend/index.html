@@ -232,6 +232,13 @@
                                 <!-- Takeaways Content -->
                                 <div id="takeaways-content" style="display: none;">
                                     <ol id="takeaways-list" style="margin: 0; padding-left: var(--spacing-lg); color: var(--text-secondary);"></ol>
+
+                                    <!-- Feedback Section (PRD-038) -->
+                                    <div id="synthesis-feedback-section" style="margin-top: var(--spacing-md); padding-top: var(--spacing-md); border-top: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center;">
+                                        <span style="font-size: var(--text-sm); color: var(--text-muted);">Was this synthesis helpful?</span>
+                                        <div id="synthesis-feedback-buttons"></div>
+                                    </div>
+
                                     <button id="view-full-synthesis-btn" class="fab-btn fab-btn-ghost" style="width: 100%; margin-top: var(--spacing-md); justify-content: center;" onclick="toggleFullSynthesis()">
                                         <span class="icon">📄</span>
                                         <span>View Full Synthesis</span>
@@ -460,12 +467,96 @@
         </div>
     </div>
 
+    <!-- Feedback Modal (PRD-038) -->
+    <div class="modal" id="feedback-modal" aria-hidden="true">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content" style="max-width: 450px;">
+            <div class="modal-header">
+                <h3 class="modal-title">Rate This Synthesis</h3>
+                <button class="modal-close" onclick="FeedbackManager.closeFeedbackModal()" aria-label="Close">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 6L6 18M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="feedback-form" onsubmit="FeedbackManager.submitDetailedFeedback(event)">
+                    <!-- Synthesis-specific ratings -->
+                    <div id="synthesis-ratings">
+                        <div class="rating-group">
+                            <label>Accuracy</label>
+                            <div class="star-rating" id="accuracy-rating">
+                                <input type="radio" id="accuracy-5" name="accuracy_rating" value="5">
+                                <label for="accuracy-5" title="Excellent"></label>
+                                <input type="radio" id="accuracy-4" name="accuracy_rating" value="4">
+                                <label for="accuracy-4" title="Good"></label>
+                                <input type="radio" id="accuracy-3" name="accuracy_rating" value="3">
+                                <label for="accuracy-3" title="Average"></label>
+                                <input type="radio" id="accuracy-2" name="accuracy_rating" value="2">
+                                <label for="accuracy-2" title="Poor"></label>
+                                <input type="radio" id="accuracy-1" name="accuracy_rating" value="1">
+                                <label for="accuracy-1" title="Very Poor"></label>
+                            </div>
+                        </div>
+                        <div class="rating-group">
+                            <label>Usefulness</label>
+                            <div class="star-rating" id="usefulness-rating">
+                                <input type="radio" id="usefulness-5" name="usefulness_rating" value="5">
+                                <label for="usefulness-5" title="Excellent"></label>
+                                <input type="radio" id="usefulness-4" name="usefulness_rating" value="4">
+                                <label for="usefulness-4" title="Good"></label>
+                                <input type="radio" id="usefulness-3" name="usefulness_rating" value="3">
+                                <label for="usefulness-3" title="Average"></label>
+                                <input type="radio" id="usefulness-2" name="usefulness_rating" value="2">
+                                <label for="usefulness-2" title="Poor"></label>
+                                <input type="radio" id="usefulness-1" name="usefulness_rating" value="1">
+                                <label for="usefulness-1" title="Very Poor"></label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Theme-specific rating (hidden by default) -->
+                    <div id="theme-ratings" style="display: none;">
+                        <div class="rating-group">
+                            <label>Quality</label>
+                            <div class="star-rating" id="quality-rating">
+                                <input type="radio" id="quality-5" name="quality_rating" value="5">
+                                <label for="quality-5" title="Excellent"></label>
+                                <input type="radio" id="quality-4" name="quality_rating" value="4">
+                                <label for="quality-4" title="Good"></label>
+                                <input type="radio" id="quality-3" name="quality_rating" value="3">
+                                <label for="quality-3" title="Average"></label>
+                                <input type="radio" id="quality-2" name="quality_rating" value="2">
+                                <label for="quality-2" title="Poor"></label>
+                                <input type="radio" id="quality-1" name="quality_rating" value="1">
+                                <label for="quality-1" title="Very Poor"></label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="rating-group" style="margin-top: var(--spacing-md);">
+                        <label for="feedback-comment">Comments (optional)</label>
+                        <textarea id="feedback-comment" name="comment" rows="3"
+                                  class="input" placeholder="What could be improved?"
+                                  maxlength="2000" style="width: 100%; resize: vertical;"></textarea>
+                    </div>
+
+                    <div class="modal-footer" style="padding: var(--spacing-md) 0 0 0; border-top: none;">
+                        <button type="button" class="btn btn-secondary" onclick="FeedbackManager.closeFeedbackModal()">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Submit Feedback</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Container -->
     <div class="toast-container" id="toast-container"></div>
 
     <!-- Auth & API (PRD-036) - Must load before other scripts -->
     <script src="js/api.js"></script>
     <script src="js/auth.js"></script>
+    <script src="js/feedback.js"></script>
 
     <!-- Application JavaScript -->
     <script>
@@ -554,11 +645,17 @@
             }
         }
 
+        // Store current synthesis id for feedback (PRD-038)
+        let currentSynthesisId = null;
+
         // Display synthesis content
         function displaySynthesis(data) {
             document.getElementById('synthesis-empty').style.display = 'none';
             document.getElementById('takeaways-content').style.display = 'block';
             document.getElementById('synthesis-content').style.display = 'block';
+
+            // Store synthesis id for feedback (PRD-038)
+            currentSynthesisId = data.id;
 
             // Check version
             const isV3 = data.version === '3.0' || data.confluence_zones || data.attention_priorities;
@@ -592,6 +689,12 @@
                 } else {
                     takeawaysList.innerHTML = '<li style="color: var(--text-muted);">No key takeaways available.</li>';
                 }
+            }
+
+            // Add feedback buttons (PRD-038)
+            const feedbackContainer = document.getElementById('synthesis-feedback-buttons');
+            if (feedbackContainer && data.id && typeof FeedbackManager !== 'undefined') {
+                feedbackContainer.innerHTML = FeedbackManager.renderSynthesisFeedbackButtons(data.id);
             }
 
             // Update market regime badge
@@ -986,11 +1089,18 @@
 
             container.innerHTML = themes.map(theme => {
                 const statusColor = theme.status === 'active' ? 'success' : theme.status === 'emerging' ? 'warning' : theme.status === 'evolved' ? 'primary' : 'text-muted';
+                // Generate feedback buttons if FeedbackManager is available (PRD-038)
+                const feedbackButtons = (typeof FeedbackManager !== 'undefined' && theme.id)
+                    ? FeedbackManager.renderThemeFeedbackButtons(theme.id)
+                    : '';
                 return `
                     <div class="sidebar-card" style="margin-bottom: var(--spacing-md);">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-sm);">
                             <span style="font-weight: var(--font-semibold);">${theme.name}</span>
-                            <span class="badge" style="background: var(--${statusColor}); color: white; padding: 2px 8px; border-radius: var(--radius-full); font-size: 10px;">${theme.status}</span>
+                            <div style="display: flex; align-items: center; gap: var(--spacing-sm);">
+                                ${feedbackButtons}
+                                <span class="badge" style="background: var(--${statusColor}); color: white; padding: 2px 8px; border-radius: var(--radius-full); font-size: 10px;">${theme.status}</span>
+                            </div>
                         </div>
                         ${theme.description ? `<p style="font-size: var(--text-sm); color: var(--text-secondary); margin-bottom: var(--spacing-sm);">${theme.description}</p>` : ''}
                         <div style="font-size: var(--text-xs); color: var(--text-muted);">

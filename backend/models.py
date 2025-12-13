@@ -405,6 +405,82 @@ class CollectionRun(Base):
         return f"<CollectionRun(id={self.id}, type='{self.run_type}', status='{self.status}')>"
 
 
+class SynthesisFeedback(Base):
+    """
+    User feedback on research synthesis (PRD-038).
+
+    Supports both simple thumbs up/down and detailed ratings.
+    One feedback entry per user per synthesis (upsert pattern).
+    """
+    __tablename__ = "synthesis_feedback"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    synthesis_id = Column(Integer, ForeignKey("syntheses.id", ondelete="CASCADE"), nullable=False)
+
+    # Simple feedback (thumbs up/down)
+    is_helpful = Column(Boolean)  # True=thumbs up, False=thumbs down, None=no simple vote
+
+    # Detailed feedback (from modal)
+    accuracy_rating = Column(Integer)  # 1-5 scale
+    usefulness_rating = Column(Integer)  # 1-5 scale
+    comment = Column(Text)
+
+    # Metadata
+    user = Column(String, nullable=False)  # Username from JWT
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    synthesis = relationship("Synthesis", backref="feedback_items")
+
+    # Constraints and indexes
+    __table_args__ = (
+        CheckConstraint('accuracy_rating >= 1 AND accuracy_rating <= 5', name='check_synthesis_accuracy_rating'),
+        CheckConstraint('usefulness_rating >= 1 AND usefulness_rating <= 5', name='check_synthesis_usefulness_rating'),
+        Index('idx_synthesis_feedback_user', 'synthesis_id', 'user'),
+    )
+
+    def __repr__(self):
+        return f"<SynthesisFeedback(id={self.id}, synthesis_id={self.synthesis_id}, user='{self.user}')>"
+
+
+class ThemeFeedback(Base):
+    """
+    User feedback on tracked themes (PRD-038).
+
+    Supports both simple thumbs up/down (relevance) and detailed quality rating.
+    One feedback entry per user per theme (upsert pattern).
+    """
+    __tablename__ = "theme_feedback"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    theme_id = Column(Integer, ForeignKey("themes.id", ondelete="CASCADE"), nullable=False)
+
+    # Simple feedback (thumbs up/down for relevance)
+    is_relevant = Column(Boolean)  # True=relevant, False=not relevant, None=no vote
+
+    # Detailed feedback (from modal)
+    quality_rating = Column(Integer)  # 1-5 scale
+    comment = Column(Text)
+
+    # Metadata
+    user = Column(String, nullable=False)  # Username from JWT
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    theme = relationship("Theme", backref="feedback_items")
+
+    # Constraints and indexes
+    __table_args__ = (
+        CheckConstraint('quality_rating >= 1 AND quality_rating <= 5', name='check_theme_quality_rating'),
+        Index('idx_theme_feedback_user', 'theme_id', 'user'),
+    )
+
+    def __repr__(self):
+        return f"<ThemeFeedback(id={self.id}, theme_id={self.theme_id}, user='{self.user}')>"
+
+
 # ============================================================================
 # Utility Functions
 # ============================================================================
