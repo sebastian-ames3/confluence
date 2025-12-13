@@ -6,11 +6,15 @@ Provides common functionality for Claude API integration.
 
 PRD-017: Removed logging.basicConfig() call to avoid conflicts with uvicorn's
 logging configuration. App-wide logging should be configured centrally in app.py.
+
+PRD-034: Added retry logic with exponential backoff to call_claude() method
+for improved reliability during transient API failures.
 """
 
 import os
 import json
 import logging
+import time
 from pathlib import Path
 from typing import Dict, Any, Optional
 from anthropic import Anthropic
@@ -57,10 +61,13 @@ class BaseAgent:
         system_prompt: Optional[str] = None,
         max_tokens: int = 4096,
         temperature: float = 0.0,
-        expect_json: bool = True
+        expect_json: bool = True,
+        max_retries: int = 3
     ) -> Dict[str, Any]:
         """
-        Make a call to Claude API.
+        Make a call to Claude API with retry logic.
+
+        PRD-034: Added exponential backoff retry for transient failures.
 
         Args:
             prompt: User prompt to send
@@ -68,41 +75,58 @@ class BaseAgent:
             max_tokens: Maximum tokens in response
             temperature: Sampling temperature (0.0 = deterministic)
             expect_json: Whether to expect JSON response
+            max_retries: Maximum number of retry attempts (default: 3)
 
         Returns:
             Parsed response (dict if JSON, string otherwise)
 
         Raises:
-            Exception: If API call fails or response is invalid
+            Exception: If API call fails after all retries
         """
-        try:
-            logger.debug(f"Calling Claude with prompt length: {len(prompt)}")
+        last_exception = None
 
-            # Build messages
-            messages = [{"role": "user", "content": prompt}]
+        for attempt in range(max_retries):
+            try:
+                logger.debug(f"Calling Claude with prompt length: {len(prompt)} (attempt {attempt + 1}/{max_retries})")
 
-            # Make API call
-            response = self.client.messages.create(
-                model=self.model,
-                max_tokens=max_tokens,
-                temperature=temperature,
-                system=system_prompt if system_prompt else "",
-                messages=messages
-            )
+                # Build messages
+                messages = [{"role": "user", "content": prompt}]
 
-            # Extract text content
-            response_text = response.content[0].text
-            logger.debug(f"Received response length: {len(response_text)}")
+                # Make API call
+                response = self.client.messages.create(
+                    model=self.model,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                    system=system_prompt if system_prompt else "",
+                    messages=messages
+                )
 
-            # Parse JSON if expected
-            if expect_json:
-                return self._parse_json_response(response_text)
-            else:
-                return {"response": response_text}
+                # Extract text content
+                response_text = response.content[0].text
+                logger.debug(f"Received response length: {len(response_text)}")
 
-        except Exception as e:
-            logger.error(f"Claude API call failed: {str(e)}")
-            raise
+                # Parse JSON if expected
+                if expect_json:
+                    return self._parse_json_response(response_text)
+                else:
+                    return {"response": response_text}
+
+            except Exception as e:
+                last_exception = e
+
+                if attempt < max_retries - 1:
+                    # Calculate delay with exponential backoff (1s, 2s, 4s, ..., max 30s)
+                    delay = min(2 ** attempt, 30)
+                    logger.warning(
+                        f"Claude API attempt {attempt + 1}/{max_retries} failed: {str(e)}. "
+                        f"Retrying in {delay}s..."
+                    )
+                    time.sleep(delay)
+                else:
+                    logger.error(f"Claude API failed after {max_retries} attempts: {str(e)}")
+
+        # All retries exhausted, raise the last exception
+        raise last_exception
 
     def _parse_json_response(self, response_text: str) -> Dict[str, Any]:
         """

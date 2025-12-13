@@ -3,6 +3,8 @@ Base Collector Class
 
 Foundation for all data collectors.
 Provides common functionality for collecting content from various sources.
+
+PRD-034: Added dry_run mode for testing collectors without database writes.
 """
 
 import logging
@@ -23,22 +25,31 @@ class BaseCollector(ABC):
     - Error handling and retry logic
     - Data validation
     - Database integration
+    - Dry-run mode for testing (PRD-034)
     """
 
-    def __init__(self, source_name: str, config: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self,
+        source_name: str,
+        config: Optional[Dict[str, Any]] = None,
+        dry_run: bool = False
+    ):
         """
         Initialize base collector.
 
         Args:
             source_name: Name of the data source (e.g., "discord", "42macro")
             config: Optional configuration dictionary
+            dry_run: If True, skip database writes and log what would be saved (PRD-034)
         """
         self.source_name = source_name
         self.config = config or {}
+        self.dry_run = dry_run
         self.download_dir = Path(f"downloads/{source_name}")
         self.download_dir.mkdir(parents=True, exist_ok=True)
 
-        logger.info(f"Initialized {self.__class__.__name__} for source '{source_name}'")
+        mode_str = " [DRY RUN]" if dry_run else ""
+        logger.info(f"Initialized {self.__class__.__name__} for source '{source_name}'{mode_str}")
 
     @abstractmethod
     async def collect(self) -> List[Dict[str, Any]]:
@@ -109,12 +120,25 @@ class BaseCollector(ABC):
         """
         Save collected content to database.
 
+        PRD-034: Supports dry_run mode - logs what would be saved without writing.
+
         Args:
             content_items: List of content items to save
 
         Returns:
-            Number of items successfully saved
+            Number of items successfully saved (or would be saved in dry_run mode)
         """
+        # PRD-034: Dry-run mode - log what would be saved without writing
+        if self.dry_run:
+            logger.info(f"[DRY RUN] Would save {len(content_items)} items to database")
+            for i, item in enumerate(content_items[:3]):  # Log first 3 items as sample
+                url = item.get("url", "no-url")[:100]
+                content_type = item.get("content_type", "unknown")
+                logger.info(f"[DRY RUN] Sample item {i+1}: type={content_type}, url={url}")
+            if len(content_items) > 3:
+                logger.info(f"[DRY RUN] ... and {len(content_items) - 3} more items")
+            return len(content_items)
+
         from sqlalchemy.orm import Session
         from backend.models import SessionLocal, RawContent, Source
         import json
@@ -217,11 +241,14 @@ class BaseCollector(ABC):
         """
         Run the full collection process.
 
+        PRD-034: Includes dry_run flag in result when running in dry-run mode.
+
         Returns:
             Summary of collection results
         """
         start_time = datetime.now()
-        logger.info(f"Starting collection for {self.source_name}...")
+        mode_str = " [DRY RUN]" if self.dry_run else ""
+        logger.info(f"Starting collection for {self.source_name}{mode_str}...")
 
         try:
             # Collect content
@@ -239,7 +266,7 @@ class BaseCollector(ABC):
                 logger.warning(f"Unexpected collect() return type: {type(collection_result)}")
                 content_items = []
 
-            # Save to database
+            # Save to database (or simulate in dry-run mode)
             saved_count = await self.save_to_database(content_items)
 
             elapsed_time = (datetime.now() - start_time).total_seconds()
@@ -250,11 +277,13 @@ class BaseCollector(ABC):
                 "collected": len(content_items),
                 "saved": saved_count,
                 "elapsed_seconds": round(elapsed_time, 2),
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.utcnow().isoformat(),
+                "dry_run": self.dry_run  # PRD-034: Include dry_run flag in result
             }
 
+            action_str = "would be saved" if self.dry_run else "saved"
             logger.info(
-                f"Collection complete: {saved_count}/{len(content_items)} items saved "
+                f"Collection complete{mode_str}: {saved_count}/{len(content_items)} items {action_str} "
                 f"in {elapsed_time:.2f}s"
             )
 
@@ -269,5 +298,6 @@ class BaseCollector(ABC):
                 "status": "error",
                 "error": str(e),
                 "elapsed_seconds": round(elapsed_time, 2),
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.utcnow().isoformat(),
+                "dry_run": self.dry_run  # PRD-034: Include dry_run flag in result
             }

@@ -11,7 +11,11 @@ Security features (PRD-015):
 - HTTP Basic Auth on all API routes (except /health)
 - Rate limiting to prevent API abuse
 
-Version: 1.0.1 - Force redeploy after trigger fix
+Observability (PRD-034):
+- Sentry error monitoring (when SENTRY_DSN is configured)
+- Environment variable validation at startup
+
+Version: 1.0.2 - PRD-034 Observability Foundation
 """
 
 from fastapi import FastAPI, Request
@@ -21,10 +25,55 @@ from slowapi.errors import RateLimitExceeded
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+import logging
 
 # Load environment variables from project root
 project_root = Path(__file__).parent.parent
 load_dotenv(project_root / ".env")
+
+# Set up logging
+logger = logging.getLogger(__name__)
+
+# ============================================================================
+# PRD-034: Sentry Error Monitoring
+# ============================================================================
+# Initialize Sentry only if SENTRY_DSN is configured
+if os.getenv("SENTRY_DSN"):
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.fastapi import FastApiIntegration
+
+        sentry_sdk.init(
+            dsn=os.getenv("SENTRY_DSN"),
+            integrations=[FastApiIntegration()],
+            traces_sample_rate=0.1,  # 10% of transactions for performance monitoring
+            environment=os.getenv("RAILWAY_ENV", "development"),
+            send_default_pii=False,  # Don't send personally identifiable information
+        )
+        logger.info("Sentry error monitoring initialized")
+    except Exception as e:
+        logger.warning(f"Failed to initialize Sentry: {e}")
+else:
+    logger.info("Sentry not configured (SENTRY_DSN not set)")
+
+# ============================================================================
+# PRD-034: Environment Variable Validation
+# ============================================================================
+REQUIRED_ENV_VARS = ["CLAUDE_API_KEY", "AUTH_USERNAME", "AUTH_PASSWORD"]
+
+def validate_environment():
+    """Validate required environment variables are set in production."""
+    if os.getenv("RAILWAY_ENV") == "production":
+        missing = [v for v in REQUIRED_ENV_VARS if not os.getenv(v)]
+        if missing:
+            raise RuntimeError(f"Missing required environment variables: {missing}")
+    else:
+        # In development, just warn about missing vars
+        missing = [v for v in REQUIRED_ENV_VARS if not os.getenv(v)]
+        if missing:
+            logger.warning(f"Missing environment variables (not enforced in dev): {missing}")
+
+validate_environment()
 
 # Import rate limiter
 from backend.utils.rate_limiter import limiter, rate_limit_exceeded_handler
@@ -91,6 +140,7 @@ app.add_middleware(
 
 
 @app.get("/")
+@app.get("/index.html")
 async def root():
     """Serve the dashboard HTML."""
     from fastapi.responses import FileResponse

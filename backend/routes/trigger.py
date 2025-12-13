@@ -5,6 +5,7 @@ Protected API endpoints for triggering collection and analysis.
 Used by GitHub Actions scheduler and manual API calls.
 
 Part of PRD-014: Deployment & Infrastructure Fixes.
+PRD-034: Added dry_run parameter for testing collectors without database writes.
 """
 
 from fastapi import APIRouter, HTTPException, Depends, Header
@@ -64,6 +65,7 @@ class CollectRequest(BaseModel):
     """Request model for collection trigger"""
     sources: Optional[List[str]] = None  # None = all sources
     run_type: str = "manual"  # "manual", "scheduled_6am", "scheduled_6pm"
+    dry_run: bool = False  # PRD-034: Skip database writes and log what would be saved
 
 
 class AnalyzeRequest(BaseModel):
@@ -95,8 +97,10 @@ async def trigger_collection(
     Protected endpoint - requires X-API-Key header.
     Called by GitHub Actions scheduler or manually.
 
+    PRD-034: Supports dry_run mode to test without database writes.
+
     Args:
-        request: Collection request with optional source filter
+        request: Collection request with optional source filter and dry_run flag
         db: Database session
         api_key: Validated API key
 
@@ -119,6 +123,25 @@ async def trigger_collection(
     else:
         sources_to_collect = all_sources
 
+    # PRD-034: Log dry-run mode
+    mode_str = " [DRY RUN]" if request.dry_run else ""
+    logger.info(f"Collection request{mode_str} for sources: {sources_to_collect}")
+
+    # Skip creating collection run record in dry-run mode
+    if request.dry_run:
+        # Run collection without creating a job record
+        logger.info(f"Running dry-run collection for sources: {sources_to_collect}")
+        await _run_collection_job(job_id=None, sources=sources_to_collect, dry_run=True)
+
+        return {
+            "status": "dry_run_completed",
+            "job_id": None,
+            "message": f"Dry-run collection completed for sources: {sources_to_collect}",
+            "sources": sources_to_collect,
+            "run_type": request.run_type,
+            "dry_run": True
+        }
+
     # Create collection run record
     collection_run = CollectionRun(
         run_type=request.run_type,
@@ -136,31 +159,37 @@ async def trigger_collection(
 
     # Run collection synchronously - GitHub Actions waits for completion anyway
     # This ensures proper error handling and job status updates
-    await _run_collection_job(job_id, sources_to_collect)
+    await _run_collection_job(job_id, sources_to_collect, dry_run=False)
 
     return {
         "status": "accepted",
         "job_id": job_id,
         "message": f"Collection started for sources: {sources_to_collect}",
         "sources": sources_to_collect,
-        "run_type": request.run_type
+        "run_type": request.run_type,
+        "dry_run": False
     }
 
 
-async def _run_collection_job(job_id: int, sources: List[str]):
+async def _run_collection_job(job_id: Optional[int], sources: List[str], dry_run: bool = False):
     """
     Execute collection job asynchronously.
 
+    PRD-034: Supports dry_run mode.
+
     Args:
-        job_id: CollectionRun ID
+        job_id: CollectionRun ID (None in dry-run mode)
         sources: List of sources to collect from
+        dry_run: If True, skip database writes and log what would be saved
     """
     import traceback
     from backend.models import SessionLocal
 
-    logger.info(f"Job {job_id}: Starting collection task for sources: {sources}")
+    mode_str = " [DRY RUN]" if dry_run else ""
+    job_str = f"Job {job_id}" if job_id else "Dry-run"
+    logger.info(f"{job_str}: Starting collection task{mode_str} for sources: {sources}")
 
-    db = SessionLocal()
+    db = SessionLocal() if not dry_run else None
     results = {}
     errors = []
     total_items = 0
@@ -170,19 +199,21 @@ async def _run_collection_job(job_id: int, sources: List[str]):
     try:
         for source_name in sources:
             try:
-                logger.info(f"Job {job_id}: Collecting from {source_name}")
-                items = await _collect_from_source(db, source_name)
+                logger.info(f"{job_str}: Collecting from {source_name}{mode_str}")
+                items = await _collect_from_source(db, source_name, dry_run=dry_run)
                 results[source_name] = {
                     "status": "success",
-                    "items_collected": len(items)
+                    "items_collected": len(items),
+                    "dry_run": dry_run
                 }
                 total_items += len(items)
                 successful += 1
-                logger.info(f"Job {job_id}: Collected {len(items)} items from {source_name}")
+                action_str = "would collect" if dry_run else "collected"
+                logger.info(f"{job_str}: {action_str.capitalize()} {len(items)} items from {source_name}")
 
             except Exception as e:
                 error_msg = f"Collection from {source_name} failed: {str(e)}"
-                logger.error(f"Job {job_id}: {error_msg}\n{traceback.format_exc()}")
+                logger.error(f"{job_str}: {error_msg}\n{traceback.format_exc()}")
                 results[source_name] = {
                     "status": "failed",
                     "error": str(e)
@@ -190,43 +221,49 @@ async def _run_collection_job(job_id: int, sources: List[str]):
                 errors.append(error_msg)
                 failed += 1
 
-        # Update collection run record
-        collection_run = db.query(CollectionRun).filter(CollectionRun.id == job_id).first()
-        if collection_run:
-            collection_run.completed_at = datetime.utcnow()
-            collection_run.status = "completed" if failed == 0 else "completed_with_errors"
-            collection_run.source_results = json.dumps(results)
-            collection_run.errors = json.dumps(errors)
-            collection_run.total_items_collected = total_items
-            collection_run.successful_sources = successful
-            collection_run.failed_sources = failed
-            db.commit()
-
-        logger.info(f"Job {job_id}: Collection completed. Total: {total_items} items, {successful} successful, {failed} failed")
-
-    except Exception as e:
-        logger.error(f"Job {job_id}: Fatal error: {e}\n{traceback.format_exc()}")
-        # Mark as failed
-        try:
+        # Update collection run record (skip in dry-run mode)
+        if not dry_run and job_id:
             collection_run = db.query(CollectionRun).filter(CollectionRun.id == job_id).first()
             if collection_run:
                 collection_run.completed_at = datetime.utcnow()
-                collection_run.status = "failed"
-                collection_run.errors = json.dumps([str(e)])
+                collection_run.status = "completed" if failed == 0 else "completed_with_errors"
+                collection_run.source_results = json.dumps(results)
+                collection_run.errors = json.dumps(errors)
+                collection_run.total_items_collected = total_items
+                collection_run.successful_sources = successful
+                collection_run.failed_sources = failed
                 db.commit()
-        except Exception as db_error:
-            logger.error(f"Job {job_id}: Failed to update status: {db_error}")
+
+        logger.info(f"{job_str}: Collection completed{mode_str}. Total: {total_items} items, {successful} successful, {failed} failed")
+
+    except Exception as e:
+        logger.error(f"{job_str}: Fatal error: {e}\n{traceback.format_exc()}")
+        # Mark as failed (skip in dry-run mode)
+        if not dry_run and job_id:
+            try:
+                collection_run = db.query(CollectionRun).filter(CollectionRun.id == job_id).first()
+                if collection_run:
+                    collection_run.completed_at = datetime.utcnow()
+                    collection_run.status = "failed"
+                    collection_run.errors = json.dumps([str(e)])
+                    db.commit()
+            except Exception as db_error:
+                logger.error(f"{job_str}: Failed to update status: {db_error}")
     finally:
-        db.close()
+        if db:
+            db.close()
 
 
-async def _collect_from_source(db: Session, source_name: str) -> list:
+async def _collect_from_source(db: Optional[Session], source_name: str, dry_run: bool = False) -> list:
     """
     Collect from a single source.
 
+    PRD-034: Supports dry_run mode.
+
     Args:
-        db: Database session
+        db: Database session (None in dry-run mode)
         source_name: Source to collect from
+        dry_run: If True, skip database writes
 
     Returns:
         List of collected items
@@ -261,9 +298,11 @@ async def _collect_from_source(db: Session, source_name: str) -> list:
     else:
         raise ValueError(f"Unknown source: {source_name}")
 
-    # Save items to database
-    if items:
+    # Save items to database (skip in dry-run mode)
+    if items and not dry_run:
         await _save_collected_items(db, source_name, items)
+    elif items and dry_run:
+        logger.info(f"[DRY RUN] Would save {len(items)} items from {source_name} to database")
 
     return items
 
