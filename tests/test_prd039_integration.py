@@ -21,8 +21,9 @@ class TestExtractionLogic:
 
     @pytest.fixture
     def extractor(self):
-        """Create extractor instance."""
-        return SymbolLevelExtractor()
+        """Create extractor instance with dummy API key for testing."""
+        # Use dummy API key for testing - we're not actually calling the API
+        return SymbolLevelExtractor(api_key="test-key-for-unit-tests")
 
     @pytest.fixture
     def kt_sample_transcript(self):
@@ -139,7 +140,7 @@ class TestSymbolNormalization:
 
     def test_normalize_common_aliases(self):
         """Test normalization of common symbol aliases."""
-        extractor = SymbolLevelExtractor()
+        extractor = SymbolLevelExtractor(api_key="test-key-for-unit-tests")
 
         # Google/Alphabet -> GOOGL
         assert extractor.normalize_symbol('GOOGLE') == 'GOOGL'
@@ -158,7 +159,7 @@ class TestSymbolNormalization:
 
     def test_tracked_symbols_only(self):
         """Test that only tracked symbols are processed."""
-        extractor = SymbolLevelExtractor()
+        extractor = SymbolLevelExtractor(api_key="test-key-for-unit-tests")
 
         # Tracked symbols
         assert 'GOOGL' in extractor.TRACKED_SYMBOLS

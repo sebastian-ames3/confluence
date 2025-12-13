@@ -18,8 +18,9 @@ class TestPhase0Validation:
 
     @pytest.fixture
     def extractor(self):
-        """Create extractor instance."""
-        return SymbolLevelExtractor()
+        """Create extractor instance with dummy API key for testing."""
+        # Use dummy API key for testing - we're not actually calling the API
+        return SymbolLevelExtractor(api_key="test-key-for-unit-tests")
 
     @pytest.fixture
     def kt_sample_transcript(self):
