@@ -52,6 +52,7 @@
   transform: scale(0.95) translateY(20px);
   transition: opacity var(--transition-normal),
               transform var(--transition-normal);
+  z-index: 1; /* Ensure content is above backdrop within modal container */
 }
 
 .modal-backdrop.active .modal-content {
