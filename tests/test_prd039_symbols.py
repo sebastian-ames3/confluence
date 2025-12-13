@@ -17,7 +17,7 @@ class TestSymbolLevelExtractor:
 
     def test_normalize_symbol(self):
         """Test symbol aliasing works correctly."""
-        extractor = SymbolLevelExtractor()
+        extractor = SymbolLevelExtractor(api_key="test-key-for-unit-tests")
 
         # Test canonical symbols
         assert extractor.normalize_symbol("GOOGL") == "GOOGL"
@@ -38,7 +38,7 @@ class TestSymbolLevelExtractor:
 
     def test_tracked_symbols_list(self):
         """Test that all tracked symbols are defined."""
-        extractor = SymbolLevelExtractor()
+        extractor = SymbolLevelExtractor(api_key="test-key-for-unit-tests")
 
         expected = ['SPX', 'QQQ', 'IWM', 'BTC', 'SMH', 'TSLA', 'NVDA', 'GOOGL', 'AAPL', 'MSFT', 'AMZN']
         assert extractor.TRACKED_SYMBOLS == expected
