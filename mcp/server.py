@@ -330,6 +330,88 @@ Use this for a quick overview of theme tracking status.""",
                 "properties": {},
                 "required": []
             }
+        ),
+        Tool(
+            name="get_symbol_analysis",
+            description="""Get complete analysis for a tracked symbol (PRD-039).
+
+Returns KT Technical view (wave count, levels, bias),
+Discord view (quadrant, IV regime, strategy),
+and confluence assessment.
+
+Tracked symbols: SPX, QQQ, IWM, BTC, SMH, TSLA, NVDA, GOOGL, AAPL, MSFT, AMZN
+
+Use this to get the full picture for a specific symbol.""",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "symbol": {
+                        "type": "string",
+                        "description": "Symbol ticker (e.g., GOOGL, SPX, QQQ)"
+                    }
+                },
+                "required": ["symbol"]
+            }
+        ),
+        Tool(
+            name="get_symbol_levels",
+            description="""Get all active price levels for a symbol (PRD-039).
+
+Returns support, resistance, targets, invalidation levels
+with context snippets and direction vectors.
+
+Optionally filter by source (kt_technical or discord).
+
+Use this to see specific price levels for trading.""",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "symbol": {
+                        "type": "string",
+                        "description": "Symbol ticker"
+                    },
+                    "source": {
+                        "type": "string",
+                        "description": "Optional: filter by source (kt_technical or discord)"
+                    }
+                },
+                "required": ["symbol"]
+            }
+        ),
+        Tool(
+            name="get_confluence_opportunities",
+            description="""Get symbols where KT Technical and Discord are aligned (PRD-039).
+
+Returns symbols with high confluence scores (>0.7),
+including suggested trade setups.
+
+Use this to find high-conviction setups where both sources agree.""",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "required": []
+            }
+        ),
+        Tool(
+            name="get_trade_setup",
+            description="""Generate a trade setup for a symbol based on current state (PRD-039).
+
+Combines KT Technical levels with Discord positioning
+to suggest entry, stop, target, and structure.
+
+Only works when sources are directionally aligned.
+
+Use this to brainstorm specific trade ideas.""",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "symbol": {
+                        "type": "string",
+                        "description": "Symbol ticker"
+                    }
+                },
+                "required": ["symbol"]
+            }
         )
     ]
 
@@ -467,6 +549,50 @@ async def call_tool(name: str, arguments: dict):
             return [TextContent(
                 type="text",
                 text=json.dumps(summary, indent=2)
+            )]
+
+        # PRD-039: Symbol-Level Confluence Tools
+        elif name == "get_symbol_analysis":
+            symbol = arguments.get("symbol", "").upper()
+            analysis = client.get_symbol_detail(symbol)
+            return [TextContent(
+                type="text",
+                text=json.dumps(analysis, indent=2)
+            )]
+
+        elif name == "get_symbol_levels":
+            symbol = arguments.get("symbol", "").upper()
+            source = arguments.get("source")
+            levels = client.get_symbol_levels(symbol, source)
+            return [TextContent(
+                type="text",
+                text=json.dumps(levels, indent=2)
+            )]
+
+        elif name == "get_confluence_opportunities":
+            opportunities = client.get_confluence_opportunities()
+            return [TextContent(
+                type="text",
+                text=json.dumps(opportunities, indent=2)
+            )]
+
+        elif name == "get_trade_setup":
+            symbol = arguments.get("symbol", "").upper()
+            detail = client.get_symbol_detail(symbol)
+
+            # Extract trade setup from confluence data
+            trade_setup = {
+                "symbol": symbol,
+                "kt_bias": detail.get("kt_technical", {}).get("bias"),
+                "discord_quadrant": detail.get("discord_options", {}).get("quadrant"),
+                "confluence_score": detail.get("confluence", {}).get("score"),
+                "trade_setup": detail.get("confluence", {}).get("trade_setup"),
+                "levels": detail.get("levels", [])
+            }
+
+            return [TextContent(
+                type="text",
+                text=json.dumps(trade_setup, indent=2)
             )]
 
         else:
