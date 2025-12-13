@@ -27,6 +27,7 @@ from backend.models import (
 )
 from backend.utils.auth import verify_credentials
 from backend.utils.rate_limiter import limiter, RATE_LIMITS
+from backend.utils.sanitization import sanitize_search_query
 
 router = APIRouter()
 
@@ -57,6 +58,9 @@ async def search_content(
     Returns:
         Dictionary with search results and metadata
     """
+    # PRD-037: Sanitize search query
+    q = sanitize_search_query(q)
+
     # Calculate cutoff date
     cutoff = datetime.utcnow() - timedelta(days=days)
     search_pattern = f"%{q}%"
@@ -154,6 +158,9 @@ async def get_source_view(
     Returns:
         Dictionary with source's view on the topic
     """
+    # PRD-037: Sanitize topic query
+    topic = sanitize_search_query(topic)
+
     # Calculate cutoff date
     cutoff = datetime.utcnow() - timedelta(days=days)
     search_pattern = f"%{topic}%"

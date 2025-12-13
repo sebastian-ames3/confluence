@@ -22,6 +22,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from backend.models import get_db, RawContent, Source, SessionLocal, AnalyzedContent
 from backend.utils.deduplication import check_duplicate
+from backend.utils.sanitization import sanitize_content_text, sanitize_url
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/collect", tags=["collect"])
@@ -256,12 +257,13 @@ async def ingest_discord_data(
                     from dateutil.parser import parse as parse_datetime
                     collected_at = parse_datetime(collected_at)
 
+                # PRD-037: Sanitize content before storage
                 raw_content = RawContent(
                     source_id=source.id,
                     content_type=message_data["content_type"],
-                    content_text=message_data.get("content_text"),
+                    content_text=sanitize_content_text(message_data.get("content_text")),
                     file_path=message_data.get("file_path"),
-                    url=message_data.get("url"),
+                    url=sanitize_url(message_data.get("url")),
                     json_metadata=json.dumps(message_data.get("metadata", {})),
                     collected_at=collected_at,
                     processed=False
@@ -425,12 +427,13 @@ async def ingest_42macro_data(
                     from dateutil.parser import parse as parse_datetime
                     collected_at = parse_datetime(collected_at)
 
+                # PRD-037: Sanitize content before storage
                 raw_content = RawContent(
                     source_id=source.id,
                     content_type=item_data["content_type"],
-                    content_text=item_data.get("content_text"),
+                    content_text=sanitize_content_text(item_data.get("content_text")),
                     file_path=item_data.get("file_path"),
-                    url=item_data.get("url"),
+                    url=sanitize_url(item_data.get("url")),
                     json_metadata=json.dumps(item_data.get("metadata", {})),
                     collected_at=collected_at,
                     processed=False
@@ -671,12 +674,13 @@ async def _save_collected_items(
                 from dateutil.parser import parse as parse_datetime
                 collected_at = parse_datetime(collected_at)
 
+            # PRD-037: Sanitize content before storage
             raw_content = RawContent(
                 source_id=source.id,
                 content_type=item.get("content_type", "text"),
-                content_text=item.get("content_text"),
+                content_text=sanitize_content_text(item.get("content_text")),
                 file_path=item.get("file_path"),
-                url=item.get("url"),
+                url=sanitize_url(item.get("url")),
                 json_metadata=json.dumps(item.get("metadata", {})),
                 collected_at=collected_at,
                 processed=False
