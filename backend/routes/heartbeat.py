@@ -3,13 +3,17 @@ Heartbeat Monitoring Endpoints
 
 Tracks when critical services (like Discord collector on laptop) last checked in.
 Provides alerts when services go silent.
+
+PRD-035: Migrated to async ORM using SQLAlchemy AsyncSession.
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timedelta
 from typing import Dict, Any
 import logging
 
-from backend.utils.db import get_db
+from backend.models import get_async_db, ServiceHeartbeat
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -20,7 +24,9 @@ DISCORD_THRESHOLD_HOURS = 25  # Discord should run daily, allow some buffer
 
 
 @router.post("/heartbeat/discord")
-async def record_discord_heartbeat():
+async def record_discord_heartbeat(
+    db: AsyncSession = Depends(get_async_db)
+):
     """
     Record a heartbeat from the Discord collector (laptop script).
 
@@ -30,48 +36,50 @@ async def record_discord_heartbeat():
         Status message
     """
     try:
-        db = get_db()
+        now = datetime.utcnow()
 
         # Check if heartbeat record exists
-        row = db.execute_query(
-            "SELECT * FROM service_heartbeats WHERE service_name = ?",
-            ("discord",),
-            fetch="one"
+        result = await db.execute(
+            select(ServiceHeartbeat).where(ServiceHeartbeat.service_name == "discord")
         )
+        heartbeat = result.scalar_one_or_none()
 
-        now = datetime.now().isoformat()
-
-        if row:
+        if heartbeat:
             # Update existing record
-            db.update("service_heartbeats", row["id"], {
-                "last_heartbeat": now,
-                "heartbeat_count": row["heartbeat_count"] + 1,
-                "status": "healthy"
-            })
-            logger.info(f"Discord heartbeat updated: {row['heartbeat_count'] + 1} total")
+            heartbeat.last_heartbeat = now
+            heartbeat.heartbeat_count += 1
+            heartbeat.status = "healthy"
+            heartbeat.updated_at = now
+            logger.info(f"Discord heartbeat updated: {heartbeat.heartbeat_count} total")
         else:
             # Create new record
-            db.insert("service_heartbeats", {
-                "service_name": "discord",
-                "last_heartbeat": now,
-                "heartbeat_count": 1,
-                "status": "healthy"
-            })
+            heartbeat = ServiceHeartbeat(
+                service_name="discord",
+                last_heartbeat=now,
+                heartbeat_count=1,
+                status="healthy"
+            )
+            db.add(heartbeat)
             logger.info("Discord heartbeat created (first run)")
+
+        await db.commit()
 
         return {
             "status": "success",
             "message": "Heartbeat recorded",
-            "timestamp": now
+            "timestamp": now.isoformat()
         }
 
     except Exception as e:
         logger.error(f"Failed to record Discord heartbeat: {e}")
+        await db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/heartbeat/status")
-async def get_heartbeat_status():
+async def get_heartbeat_status(
+    db: AsyncSession = Depends(get_async_db)
+):
     """
     Get current status of all monitored services.
 
@@ -79,21 +87,15 @@ async def get_heartbeat_status():
         Dict with service statuses, warnings, and last heartbeat times
     """
     try:
-        db = get_db()
-
-        # Ensure table exists
-        _ensure_heartbeat_table(db)
+        now = datetime.utcnow()
 
         # Get Discord heartbeat
-        discord_row = db.execute_query(
-            "SELECT * FROM service_heartbeats WHERE service_name = ?",
-            ("discord",),
-            fetch="one"
+        result = await db.execute(
+            select(ServiceHeartbeat).where(ServiceHeartbeat.service_name == "discord")
         )
+        discord_heartbeat = result.scalar_one_or_none()
 
-        now = datetime.now()
-
-        if not discord_row:
+        if not discord_heartbeat:
             # Never received a heartbeat
             return {
                 "discord": {
@@ -106,18 +108,16 @@ async def get_heartbeat_status():
                 }
             }
 
-        # Parse last heartbeat time
-        last_heartbeat = datetime.fromisoformat(discord_row["last_heartbeat"])
-        hours_since = (now - last_heartbeat).total_seconds() / 3600
-
+        # Calculate hours since last heartbeat
+        hours_since = (now - discord_heartbeat.last_heartbeat).total_seconds() / 3600
         is_stale = hours_since > DISCORD_THRESHOLD_HOURS
 
         status = {
             "discord": {
-                "status": discord_row["status"],
-                "last_heartbeat": discord_row["last_heartbeat"],
+                "status": discord_heartbeat.status,
+                "last_heartbeat": discord_heartbeat.last_heartbeat.isoformat() if discord_heartbeat.last_heartbeat else None,
                 "hours_since_heartbeat": round(hours_since, 1),
-                "heartbeat_count": discord_row["heartbeat_count"],
+                "heartbeat_count": discord_heartbeat.heartbeat_count,
                 "is_stale": is_stale,
                 "alert_level": "critical" if is_stale else "healthy",
                 "message": _get_discord_message(hours_since, is_stale)
@@ -134,37 +134,8 @@ async def get_heartbeat_status():
 def _get_discord_message(hours_since: float, is_stale: bool) -> str:
     """Generate user-friendly status message."""
     if is_stale:
-        return f"⚠️ DISCORD DISCONNECTED - Last check-in {hours_since:.1f} hours ago. Laptop script may be down."
+        return f"DISCORD DISCONNECTED - Last check-in {hours_since:.1f} hours ago. Laptop script may be down."
     elif hours_since < 2:
-        return f"✓ Healthy - Last check-in {int(hours_since * 60)} minutes ago"
+        return f"Healthy - Last check-in {int(hours_since * 60)} minutes ago"
     else:
-        return f"✓ Healthy - Last check-in {hours_since:.1f} hours ago"
-
-
-def _ensure_heartbeat_table(db):
-    """Create heartbeat table if it doesn't exist."""
-    try:
-        db.execute_query(
-            "SELECT COUNT(*) FROM service_heartbeats LIMIT 1",
-            fetch="one"
-        )
-    except Exception:
-        # Table doesn't exist, create it
-        logger.info("Creating service_heartbeats table...")
-        with db.get_connection() as conn:
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS service_heartbeats (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    service_name TEXT NOT NULL UNIQUE,
-                    last_heartbeat TIMESTAMP NOT NULL,
-                    heartbeat_count INTEGER DEFAULT 0,
-                    status TEXT DEFAULT 'healthy',
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-            conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_service_heartbeats_name
-                ON service_heartbeats(service_name)
-            """)
-        logger.info("service_heartbeats table created successfully")
+        return f"Healthy - Last check-in {hours_since:.1f} hours ago"

@@ -2,9 +2,15 @@
 Database utilities for Macro Confluence Hub.
 
 Provides database connection management, CRUD operations, and query utilities.
+
+DEPRECATED (PRD-035): This module uses raw SQLite queries and is being replaced
+by SQLAlchemy ORM with async sessions. Use backend.models instead:
+- For sync sessions: from backend.models import get_db, SessionLocal
+- For async sessions: from backend.models import get_async_db, AsyncSessionLocal
 """
 import sqlite3
 import json
+import warnings
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -13,7 +19,11 @@ from datetime import datetime
 
 class DatabaseManager:
     """
-    Manages database connections and provides utility methods for CRUD operations.
+    DEPRECATED: Manages database connections using raw SQLite queries.
+
+    This class is deprecated as of PRD-035. Use SQLAlchemy ORM instead:
+    - backend.models.get_db() for sync sessions
+    - backend.models.get_async_db() for async sessions
     """
 
     def __init__(self, db_path: str = "database/confluence.db"):
@@ -23,6 +33,11 @@ class DatabaseManager:
         Args:
             db_path: Path to SQLite database file
         """
+        warnings.warn(
+            "DatabaseManager is deprecated. Use backend.models with SQLAlchemy ORM instead.",
+            DeprecationWarning,
+            stacklevel=2
+        )
         self.db_path = db_path
         self._ensure_database_exists()
 
