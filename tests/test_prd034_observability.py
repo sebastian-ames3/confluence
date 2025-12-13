@@ -245,20 +245,20 @@ class TestPRD034Documentation:
     """Test PRD-034 documentation exists."""
 
     def test_prd_document_exists(self):
-        """Verify PRD-034 document exists in docs/."""
-        prd_path = Path(__file__).parent.parent / "docs" / "PRD-034_Observability_Foundation.md"
-        assert prd_path.exists(), "PRD-034 document should exist"
+        """Verify PRD-034 document exists in docs/archived/."""
+        prd_path = Path(__file__).parent.parent / "docs" / "archived" / "PRD-034_Observability_Foundation.md"
+        assert prd_path.exists(), "PRD-034 document should exist in docs/archived/"
 
     def test_prd_has_definition_of_done(self):
         """Verify PRD has Definition of Done section."""
-        prd_path = Path(__file__).parent.parent / "docs" / "PRD-034_Observability_Foundation.md"
+        prd_path = Path(__file__).parent.parent / "docs" / "archived" / "PRD-034_Observability_Foundation.md"
         content = prd_path.read_text()
 
         assert "Definition of Done" in content, "PRD should have Definition of Done section"
 
     def test_prd_covers_all_sections(self):
         """Verify PRD covers all four implementation sections."""
-        prd_path = Path(__file__).parent.parent / "docs" / "PRD-034_Observability_Foundation.md"
+        prd_path = Path(__file__).parent.parent / "docs" / "archived" / "PRD-034_Observability_Foundation.md"
         content = prd_path.read_text()
 
         assert "34.1" in content, "PRD should cover 34.1 Sentry"
