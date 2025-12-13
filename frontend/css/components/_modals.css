@@ -445,6 +445,126 @@
   font-family: var(--font-mono);
 }
 
+/* ----- Login Modal (PRD-036) ----- */
+.login-modal-content {
+  max-width: 400px;
+  padding: var(--spacing-xl);
+}
+
+.login-modal-header {
+  text-align: center;
+  margin-bottom: var(--spacing-lg);
+}
+
+.login-logo {
+  width: 64px;
+  height: 64px;
+  margin-bottom: var(--spacing-sm);
+}
+
+.login-title {
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.login-subtitle {
+  color: var(--text-muted);
+  margin-top: var(--spacing-xs);
+  font-size: var(--text-sm);
+}
+
+.login-form .input-group {
+  margin-bottom: var(--spacing-md);
+}
+
+.login-form label {
+  display: block;
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.login-form .input {
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: var(--text-base);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  color: var(--text-primary);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.login-form .input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+.login-error {
+  color: var(--danger);
+  font-size: var(--text-sm);
+  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-sm);
+  background: rgba(239, 68, 68, 0.1);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+/* Modal active state using .modal.active */
+.modal.active {
+  pointer-events: auto;
+}
+
+.modal.active .modal-backdrop {
+  opacity: 1;
+  visibility: visible;
+}
+
+.modal.active .modal-content {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+
+/* ----- User Menu (PRD-036) ----- */
+.user-menu {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.user-name {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  font-weight: var(--font-medium);
+}
+
+.logout-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xs);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.logout-btn:hover {
+  color: var(--danger);
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.logout-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
 /* ----- Responsive ----- */
 @media (max-width: 640px) {
   .modal-content {

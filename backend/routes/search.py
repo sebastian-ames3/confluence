@@ -28,7 +28,7 @@ from backend.models import (
     AnalyzedContent,
     Source
 )
-from backend.utils.auth import verify_credentials
+from backend.utils.auth import verify_jwt_or_basic
 from backend.utils.rate_limiter import limiter, RATE_LIMITS
 from backend.utils.sanitization import sanitize_search_query
 
@@ -44,7 +44,7 @@ async def search_content(
     days: int = Query(7, ge=1, le=365, description="Number of days to search"),
     limit: int = Query(10, ge=1, le=50, description="Maximum results"),
     db: AsyncSession = Depends(get_async_db),
-    user: str = Depends(verify_credentials)
+    user: str = Depends(verify_jwt_or_basic)
 ):
     """
     Search collected research content by keyword.
@@ -163,7 +163,7 @@ async def get_source_view(
     topic: str = Query(..., min_length=1, description="Topic to query"),
     days: int = Query(14, ge=1, le=90, description="Days to look back"),
     db: AsyncSession = Depends(get_async_db),
-    user: str = Depends(verify_credentials)
+    user: str = Depends(verify_jwt_or_basic)
 ):
     """
     Get a specific source's current view on a topic.
@@ -324,7 +324,7 @@ async def get_aggregated_themes(
     min_sources: int = Query(1, ge=1, le=10, description="Minimum number of sources"),
     days: int = Query(7, ge=1, le=90, description="Days to look back for active themes"),
     db: AsyncSession = Depends(get_async_db),
-    user: str = Depends(verify_credentials)
+    user: str = Depends(verify_jwt_or_basic)
 ):
     """
     Get aggregated themes from analyzed content.
@@ -459,7 +459,7 @@ async def get_recent_from_source(
     content_type: Optional[str] = Query(None, description="Filter by content type"),
     limit: int = Query(20, ge=1, le=100, description="Maximum items to return"),
     db: AsyncSession = Depends(get_async_db),
-    user: str = Depends(verify_credentials)
+    user: str = Depends(verify_jwt_or_basic)
 ):
     """
     Get recent content from a specific source.

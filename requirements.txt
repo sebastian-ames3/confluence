@@ -60,3 +60,6 @@ pytest-cov==4.1.0
 
 # Monitoring & Observability (PRD-034)
 sentry-sdk[fastapi]==2.19.0
+
+# Authentication (PRD-036)
+PyJWT>=2.8.0,<3.0.0

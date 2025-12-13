@@ -27,7 +27,7 @@ from backend.models import (
     Source,
     RawContent
 )
-from backend.utils.auth import verify_credentials
+from backend.utils.auth import verify_jwt_or_basic
 from backend.utils.rate_limiter import limiter, RATE_LIMITS
 
 logger = logging.getLogger(__name__)
@@ -49,7 +49,7 @@ async def list_confluence_scores(
     meets_threshold: Optional[bool] = None,
     source: Optional[str] = None,
     days: Optional[int] = Query(None, ge=1, le=365),
-    user: str = Depends(verify_credentials)
+    user: str = Depends(verify_jwt_or_basic)
 ):
     """
     List confluence scores with filtering options.
@@ -149,7 +149,7 @@ async def get_confluence_score(
     request: Request,
     score_id: int,
     db: Session = Depends(get_db),
-    user: str = Depends(verify_credentials)
+    user: str = Depends(verify_jwt_or_basic)
 ):
     """
     Get detailed confluence score by ID.
@@ -239,7 +239,7 @@ async def score_content(
     analyzed_content_id: int,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    user: str = Depends(verify_credentials)
+    user: str = Depends(verify_jwt_or_basic)
 ):
     """
     Score analyzed content using the confluence scorer agent.
@@ -356,7 +356,7 @@ async def list_themes(
     min_conviction: Optional[float] = Query(None, ge=0.0, le=1.0),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
-    user: str = Depends(verify_credentials)
+    user: str = Depends(verify_jwt_or_basic)
 ):
     """
     List investment themes with filtering.
@@ -429,7 +429,7 @@ async def get_theme(
     request: Request,
     theme_id: int,
     db: Session = Depends(get_db),
-    user: str = Depends(verify_credentials)
+    user: str = Depends(verify_jwt_or_basic)
 ):
     """
     Get detailed theme information with evidence and Bayesian history.
@@ -525,7 +525,7 @@ async def update_theme_status(
     theme_id: int,
     status: str = Query(..., regex="^(active|acted_upon|invalidated|archived)$"),
     db: Session = Depends(get_db),
-    user: str = Depends(verify_credentials)
+    user: str = Depends(verify_jwt_or_basic)
 ):
     """
     Update theme status.
@@ -569,7 +569,7 @@ async def run_cross_reference(
     db: Session = Depends(get_db),
     time_window_days: int = Query(7, ge=1, le=90),
     min_sources: int = Query(2, ge=1, le=6),
-    user: str = Depends(verify_credentials)
+    user: str = Depends(verify_jwt_or_basic)
 ):
     """
     Run cross-reference analysis on recent confluence scores.
@@ -686,7 +686,7 @@ async def get_high_conviction_ideas(
     min_conviction: float = Query(0.75, ge=0.0, le=1.0),
     min_sources: int = Query(2, ge=1, le=6),
     limit: int = Query(10, ge=1, le=50),
-    user: str = Depends(verify_credentials)
+    user: str = Depends(verify_jwt_or_basic)
 ):
     """
     Get high-conviction investment ideas.
@@ -779,7 +779,7 @@ async def get_confluence_stats(
     request: Request,
     db: Session = Depends(get_db),
     days: int = Query(30, ge=1, le=365),
-    user: str = Depends(verify_credentials)
+    user: str = Depends(verify_jwt_or_basic)
 ):
     """
     Get confluence scoring statistics.
