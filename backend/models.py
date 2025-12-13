@@ -481,6 +481,128 @@ class ThemeFeedback(Base):
         return f"<ThemeFeedback(id={self.id}, theme_id={self.theme_id}, user='{self.user}')>"
 
 
+class SymbolLevel(Base):
+    """
+    Price levels per symbol from various sources (PRD-039).
+
+    Stores support, resistance, targets, invalidation levels extracted
+    from KT Technical (Elliott Wave) and Discord Options Insight.
+    """
+    __tablename__ = "symbol_levels"
+
+    id = Column(Integer, primary_key=True)
+    symbol = Column(String(10), nullable=False, index=True)
+    source = Column(String(20), nullable=False)  # kt_technical, discord
+
+    # Level details
+    level_type = Column(String(20), nullable=False)
+    # Types: support, resistance, target, invalidation, gamma, volume_shelf, fib_level
+    price = Column(Float, nullable=False)
+    price_upper = Column(Float)  # For ranges like "313-319"
+    significance = Column(String(10))  # critical, important, minor
+
+    # Direction vector - disambiguates how to trade the level
+    # "support at 313" (bullish_reversal) vs "breakdown below 313" (bearish_breakdown)
+    direction = Column(String(20))
+    # Values: bullish_reversal, bearish_reversal, bullish_breakout, bearish_breakdown, neutral
+
+    # Context from source
+    wave_context = Column(String(100))  # "wave iv support", "wave 5 target"
+    options_context = Column(String(100))  # "peak gamma", "put wall", "volume shelf"
+    fib_level = Column(String(10))  # "0.236", "0.382", "0.5", "0.618", "1.236"
+
+    # Context snippet for verification (5-10 words surrounding the extraction)
+    context_snippet = Column(String(200))  # e.g., "support likely holding at 313 if bulls defend"
+
+    # Extraction metadata
+    confidence = Column(Float, default=0.8)  # 0.0-1.0, flag for review if < 0.7
+    extracted_from_content_id = Column(Integer, ForeignKey("raw_content.id"))
+    extraction_method = Column(String(20))  # transcript, chart_image, text_post, compass_image
+
+    # Validity tracking
+    is_active = Column(Boolean, default=True)
+    invalidation_price = Column(Float)  # Price at which this level becomes invalid (extracted from KT)
+    invalidated_at = Column(DateTime)  # When manually marked invalid
+    invalidation_reason = Column(String(100))
+
+    # Staleness (14-day default)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    last_confirmed_at = Column(DateTime, default=datetime.utcnow)
+    is_stale = Column(Boolean, default=False)
+    stale_reason = Column(String(100))
+
+    # Relationships
+    raw_content = relationship("RawContent", foreign_keys=[extracted_from_content_id])
+
+    # Constraints and indexes
+    __table_args__ = (
+        Index('idx_symbol_source', 'symbol', 'source'),
+        Index('idx_symbol_active', 'symbol', 'is_active'),
+        CheckConstraint(
+            "direction IN ('bullish_reversal', 'bearish_reversal', 'bullish_breakout', 'bearish_breakdown', 'neutral')",
+            name='check_direction_values'
+        ),
+    )
+
+    def __repr__(self):
+        return f"<SymbolLevel(id={self.id}, symbol='{self.symbol}', type='{self.level_type}', price={self.price})>"
+
+
+class SymbolState(Base):
+    """
+    Current consolidated state per symbol (PRD-039).
+
+    Aggregates the latest KT Technical and Discord views for each tracked symbol.
+    """
+    __tablename__ = "symbol_states"
+
+    id = Column(Integer, primary_key=True)
+    symbol = Column(String(10), nullable=False, unique=True, index=True)
+
+    # KT Technical state
+    kt_wave_degree = Column(String(20))  # minor, intermediate, primary
+    kt_wave_position = Column(String(20))  # wave_1, wave_2, wave_3, wave_4, wave_5
+    kt_wave_direction = Column(String(10))  # up, down (impulse direction)
+    kt_wave_phase = Column(String(15))  # impulse (trending) or correction (choppy)
+    kt_bias = Column(String(10))  # bullish, bearish, neutral
+    kt_primary_target = Column(Float)
+    kt_primary_support = Column(Float)
+    kt_invalidation = Column(Float)
+    kt_notes = Column(Text)  # AI-extracted key points
+    kt_last_updated = Column(DateTime)
+    kt_is_stale = Column(Boolean, default=False)
+    kt_stale_warning = Column(String(100))
+    kt_source_content_id = Column(Integer, ForeignKey("raw_content.id"))
+
+    # Discord Options state
+    discord_quadrant = Column(String(20))  # buy_call, buy_put, sell_call, sell_put, neutral
+    discord_iv_regime = Column(String(15))  # cheap, neutral, expensive
+    discord_strategy_rec = Column(String(100))  # "call spreads", "put calendars", etc.
+    discord_key_strikes = Column(Text)  # JSON array of important strikes
+    discord_notes = Column(Text)
+    discord_last_updated = Column(DateTime)
+    discord_is_stale = Column(Boolean, default=False)
+    discord_source_content_id = Column(Integer, ForeignKey("raw_content.id"))
+
+    # Confluence scoring
+    # NOTE: Confluence requires DIRECTION alignment, not just price proximity
+    # "Support at 313" (bullish) + "Buy Call quadrant" (bullish) = HIGH confluence
+    # "Support at 313" (bullish) + "Sell Call quadrant" (bearish) = CONFLICT, not confluence
+    sources_directionally_aligned = Column(Boolean)  # Both bullish or both bearish
+    confluence_score = Column(Float)  # 0.0 to 1.0
+    confluence_summary = Column(Text)  # AI-generated alignment analysis
+    trade_setup_suggestion = Column(Text)  # AI-generated trade idea when aligned
+
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    kt_source_content = relationship("RawContent", foreign_keys=[kt_source_content_id])
+    discord_source_content = relationship("RawContent", foreign_keys=[discord_source_content_id])
+
+    def __repr__(self):
+        return f"<SymbolState(id={self.id}, symbol='{self.symbol}', confluence={self.confluence_score})>"
+
+
 # ============================================================================
 # Utility Functions
 # ============================================================================

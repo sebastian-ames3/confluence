@@ -145,6 +145,34 @@ class ConfluenceClient:
         active = self.get_themes(status="active")
         return active + emerging
 
+    # PRD-039: Symbol-Level Confluence Methods
+    def get_all_symbols(self) -> Dict[str, Any]:
+        """Get all tracked symbols with state summary."""
+        return self._request("GET", "/api/symbols")
+
+    def get_symbol_detail(self, symbol: str) -> Dict[str, Any]:
+        """Get full detail for one symbol."""
+        return self._request("GET", f"/api/symbols/{symbol}")
+
+    def get_symbol_levels(
+        self,
+        symbol: str,
+        source: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Get all active price levels for a symbol."""
+        params = {}
+        if source:
+            params["source"] = source
+        endpoint = f"/api/symbols/{symbol}/levels"
+        if params:
+            query_string = "&".join(f"{k}={v}" for k, v in params.items())
+            endpoint = f"{endpoint}?{query_string}"
+        return self._request("GET", endpoint)
+
+    def get_confluence_opportunities(self) -> Dict[str, Any]:
+        """Get symbols where KT and Discord are aligned (high confluence)."""
+        return self._request("GET", "/api/symbols/confluence/opportunities")
+
 
 # Convenience functions for extracting synthesis components
 
