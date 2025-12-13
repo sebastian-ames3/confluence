@@ -1,15 +1,19 @@
 """
 Authentication Utilities
 
-HTTP Basic Auth implementation for protecting API endpoints.
+HTTP Basic Auth and JWT implementation for protecting API endpoints.
 Part of PRD-015: Security Hardening.
+Part of PRD-036: Session Authentication (JWT).
 """
 
 import os
 import secrets
-from fastapi import HTTPException, Security, status, Depends
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from datetime import datetime, timedelta, timezone
 from typing import Optional
+
+import jwt
+from fastapi import HTTPException, Security, status, Depends
+from fastapi.security import HTTPBasic, HTTPBasicCredentials, HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -17,9 +21,18 @@ load_dotenv()
 # HTTP Basic Auth security scheme
 security = HTTPBasic(auto_error=False)
 
+# HTTP Bearer (JWT) security scheme (PRD-036)
+bearer_scheme = HTTPBearer(auto_error=False)
+
 # Credentials from environment
 AUTH_USERNAME = os.getenv("AUTH_USERNAME", "admin")
 AUTH_PASSWORD = os.getenv("AUTH_PASSWORD")  # Required in production
+
+# JWT Configuration (PRD-036)
+JWT_SECRET = os.getenv("JWT_SECRET") or AUTH_PASSWORD or "dev-secret-key-change-in-production"
+JWT_ALGORITHM = "HS256"
+JWT_EXPIRATION_HOURS = 24
+JWT_REFRESH_THRESHOLD_MINUTES = 60  # Refresh if expires within 60 minutes
 
 
 def verify_credentials(
@@ -99,3 +112,154 @@ def get_optional_user(
         return verify_credentials(credentials)
     except HTTPException:
         return None
+
+
+# ============================================================================
+# PRD-036: JWT Session Authentication
+# ============================================================================
+
+def create_access_token(username: str) -> tuple[str, datetime]:
+    """
+    Create a JWT access token for the given username.
+
+    Args:
+        username: The username to encode in the token
+
+    Returns:
+        Tuple of (token_string, expiration_datetime)
+    """
+    expires_at = datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRATION_HOURS)
+    payload = {
+        "sub": username,
+        "exp": expires_at,
+        "iat": datetime.now(timezone.utc),
+        "type": "access"
+    }
+    token = jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+    return token, expires_at
+
+
+def decode_token(token: str) -> dict:
+    """
+    Decode and validate a JWT token.
+
+    Args:
+        token: The JWT token string
+
+    Returns:
+        The decoded payload dict
+
+    Raises:
+        HTTPException: 401 if token is invalid or expired
+    """
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        return payload
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has expired",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except jwt.InvalidTokenError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Invalid token: {str(e)}",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+
+def get_token_expiration(token: str) -> Optional[datetime]:
+    """
+    Get the expiration time of a token without full validation.
+
+    Args:
+        token: The JWT token string
+
+    Returns:
+        Expiration datetime or None if invalid
+    """
+    try:
+        # Decode without verification to get expiration
+        payload = jwt.decode(token, options={"verify_signature": False})
+        exp = payload.get("exp")
+        if exp:
+            return datetime.fromtimestamp(exp, tz=timezone.utc)
+        return None
+    except Exception:
+        return None
+
+
+def should_refresh_token(token: str) -> bool:
+    """
+    Check if a token should be refreshed (expires within threshold).
+
+    Args:
+        token: The JWT token string
+
+    Returns:
+        True if token expires within JWT_REFRESH_THRESHOLD_MINUTES
+    """
+    exp = get_token_expiration(token)
+    if not exp:
+        return True  # Invalid token, should refresh
+
+    threshold = datetime.now(timezone.utc) + timedelta(minutes=JWT_REFRESH_THRESHOLD_MINUTES)
+    return exp <= threshold
+
+
+def verify_jwt_or_basic(
+    credentials: Optional[HTTPBasicCredentials] = Security(security),
+    bearer_token: Optional[HTTPAuthorizationCredentials] = Security(bearer_scheme)
+) -> str:
+    """
+    Verify authentication via JWT Bearer token OR HTTP Basic Auth.
+
+    Provides backward compatibility - local scripts can use Basic Auth
+    while the frontend uses JWT tokens.
+
+    Priority: Bearer token > Basic Auth
+
+    Args:
+        credentials: HTTP Basic Auth credentials from request
+        bearer_token: Bearer token from Authorization header
+
+    Returns:
+        Username if authenticated
+
+    Raises:
+        HTTPException: 401 if neither auth method succeeds
+    """
+    # Try Bearer token first (JWT)
+    if bearer_token and bearer_token.credentials:
+        try:
+            payload = decode_token(bearer_token.credentials)
+            username = payload.get("sub")
+            if username:
+                return username
+        except HTTPException:
+            # Token invalid, fall through to try Basic Auth
+            pass
+
+    # Fall back to Basic Auth
+    if credentials:
+        try:
+            return verify_credentials(credentials)
+        except HTTPException:
+            pass
+
+    # Development mode: allow unauthenticated access if no password configured
+    if not AUTH_PASSWORD:
+        import logging
+        logging.warning(
+            "AUTH_PASSWORD not configured - allowing unauthenticated access. "
+            "Set AUTH_PASSWORD environment variable for production!"
+        )
+        return "anonymous"
+
+    # Neither method succeeded
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Authentication required",
+        headers={"WWW-Authenticate": "Bearer"},
+    )

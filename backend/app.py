@@ -177,8 +177,9 @@ async def health_check():
 
 
 # Import and include route modules
-from backend.routes import dashboard, websocket, heartbeat, confluence, synthesis, trigger, search, collect, analyze, themes
+from backend.routes import dashboard, websocket, heartbeat, confluence, synthesis, trigger, search, collect, analyze, themes, auth
 
+app.include_router(auth.router, prefix="/api/auth", tags=["auth"])  # PRD-036: JWT Auth
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["dashboard"])
 app.include_router(confluence.router, prefix="/api/confluence", tags=["confluence"])
 app.include_router(synthesis.router, prefix="/api/synthesis", tags=["synthesis"])

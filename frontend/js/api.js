@@ -1,6 +1,8 @@
 /**
  * API Utilities
  * Handles all backend API calls
+ *
+ * PRD-036: Updated to support JWT Bearer token authentication.
  */
 
 // API base URL - change for production
@@ -10,17 +12,35 @@ const API_BASE = window.location.hostname === 'localhost'
 
 
 /**
- * Generic fetch wrapper with error handling
+ * Generic fetch wrapper with error handling and JWT authentication
+ *
+ * PRD-036: Added Bearer token support and 401 handling.
  */
 async function apiFetch(endpoint, options = {}) {
     try {
+        // Build headers with Bearer token if available
+        const headers = {
+            'Content-Type': 'application/json',
+            ...options.headers,
+        };
+
+        // Add Bearer token if logged in (PRD-036)
+        if (typeof AuthManager !== 'undefined' && AuthManager.getToken()) {
+            headers['Authorization'] = `Bearer ${AuthManager.getToken()}`;
+        }
+
         const response = await fetch(`${API_BASE}${endpoint}`, {
             ...options,
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers,
-            },
+            headers,
         });
+
+        // Handle 401 Unauthorized - trigger login modal (PRD-036)
+        if (response.status === 401) {
+            if (typeof AuthManager !== 'undefined') {
+                AuthManager.handleAuthError(response);
+            }
+            throw new Error('Authentication required');
+        }
 
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);

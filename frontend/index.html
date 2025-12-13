@@ -52,6 +52,18 @@
 
             <!-- Header Actions -->
             <div class="header-actions">
+                <!-- User Menu (PRD-036) -->
+                <div class="user-menu" id="user-menu" style="display: none;">
+                    <span class="user-name" id="user-name"></span>
+                    <button class="logout-btn" id="logout-btn" title="Sign out">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                            <polyline points="16 17 21 12 16 7"></polyline>
+                            <line x1="21" y1="12" x2="9" y2="12"></line>
+                        </svg>
+                    </button>
+                </div>
+
                 <!-- Connection Status -->
                 <div class="connection-status">
                     <span class="live-dot"></span>
@@ -421,13 +433,43 @@
         </div>
     </div>
 
+    <!-- Login Modal (PRD-036) -->
+    <div class="modal" id="login-modal" aria-hidden="true">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content login-modal-content">
+            <div class="login-modal-header">
+                <img src="images/brain-network.svg" alt="" class="login-logo">
+                <h2 class="login-title">Macro Confluence</h2>
+                <p class="login-subtitle">Sign in to continue</p>
+            </div>
+            <form id="login-form" class="login-form">
+                <div class="input-group">
+                    <label for="login-username">Username</label>
+                    <input type="text" id="login-username" class="input" required autocomplete="username">
+                </div>
+                <div class="input-group">
+                    <label for="login-password">Password</label>
+                    <input type="password" id="login-password" class="input" required autocomplete="current-password">
+                </div>
+                <div id="login-error" class="login-error" style="display: none;"></div>
+                <button type="submit" class="fab-btn fab-btn-primary w-full">
+                    <span class="btn-text">Sign In</span>
+                    <span class="btn-loading" style="display: none;">Signing in...</span>
+                </button>
+            </form>
+        </div>
+    </div>
+
     <!-- Toast Container -->
     <div class="toast-container" id="toast-container"></div>
 
+    <!-- Auth & API (PRD-036) - Must load before other scripts -->
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+
     <!-- Application JavaScript -->
     <script>
-        // API Base URL
-        const API_BASE = '/api';
+        // API_BASE is defined in js/api.js (loaded above)
 
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', () => {

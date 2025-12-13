@@ -26,7 +26,7 @@ from backend.models import (
     RawContent,
     Source
 )
-from backend.utils.auth import verify_credentials
+from backend.utils.auth import verify_jwt_or_basic
 from backend.utils.rate_limiter import limiter, RATE_LIMITS
 from agents.theme_extractor import extract_and_track_themes
 
@@ -79,7 +79,7 @@ class StatusResponse(BaseModel):
 async def migrate_synthesis_v2(
     request: Request,
     db: Session = Depends(get_db),
-    user: str = Depends(verify_credentials)
+    user: str = Depends(verify_jwt_or_basic)
 ):
     """
     Migrate database schema for v2 synthesis (PRD-020).
@@ -143,7 +143,7 @@ async def migrate_synthesis_v2(
 async def debug_synthesis(
     request: Request,
     db: Session = Depends(get_db),
-    user: str = Depends(verify_credentials)
+    user: str = Depends(verify_jwt_or_basic)
 ):
     """
     Debug endpoint to test synthesis pipeline step by step.
@@ -244,7 +244,7 @@ async def generate_synthesis(
     synthesis_request: SynthesisGenerateRequest,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    user: str = Depends(verify_credentials)
+    user: str = Depends(verify_jwt_or_basic)
 ):
     """
     Generate a new research synthesis.
@@ -421,7 +421,7 @@ async def get_latest_synthesis(
     request: Request,
     time_window: Optional[str] = Query(None, description="Filter by time window"),
     db: Session = Depends(get_db),
-    user: str = Depends(verify_credentials)
+    user: str = Depends(verify_jwt_or_basic)
 ):
     """
     Get the most recent synthesis.
@@ -480,7 +480,7 @@ async def get_synthesis_history(
     limit: int = Query(10, ge=1, le=50),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
-    user: str = Depends(verify_credentials)
+    user: str = Depends(verify_jwt_or_basic)
 ):
     """
     Get synthesis history.
@@ -518,7 +518,7 @@ async def get_synthesis_by_id(
     request: Request,
     synthesis_id: int,
     db: Session = Depends(get_db),
-    user: str = Depends(verify_credentials)
+    user: str = Depends(verify_jwt_or_basic)
 ):
     """
     Get a specific synthesis by ID.
@@ -553,7 +553,7 @@ async def get_synthesis_by_id(
 async def get_status_overview(
     request: Request,
     db: Session = Depends(get_db),
-    user: str = Depends(verify_credentials)
+    user: str = Depends(verify_jwt_or_basic)
 ):
     """
     Get collection status overview for dashboard.
@@ -649,7 +649,7 @@ async def get_collection_history(
     request: Request,
     limit: int = Query(10, ge=1, le=50),
     db: Session = Depends(get_db),
-    user: str = Depends(verify_credentials)
+    user: str = Depends(verify_jwt_or_basic)
 ):
     """
     Get recent collection runs.

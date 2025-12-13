@@ -26,7 +26,7 @@ from backend.models import (
     Source,
     RawContent
 )
-from backend.utils.auth import verify_credentials
+from backend.utils.auth import verify_jwt_or_basic
 from backend.utils.rate_limiter import limiter, RATE_LIMITS
 
 router = APIRouter()
@@ -41,7 +41,7 @@ router = APIRouter()
 async def get_today_view(
     request: Request,
     db: Session = Depends(get_db),
-    user: str = Depends(verify_credentials)
+    user: str = Depends(verify_jwt_or_basic)
 ):
     """
     Get data for Today's View dashboard page.
@@ -142,7 +142,7 @@ async def get_all_themes(
     status: Optional[str] = Query(None, description="Filter by status: active, acted_upon, invalidated"),
     min_conviction: Optional[float] = Query(None, description="Minimum conviction threshold"),
     db: Session = Depends(get_db),
-    user: str = Depends(verify_credentials)
+    user: str = Depends(verify_jwt_or_basic)
 ):
     """
     Get all themes with optional filters.
@@ -203,7 +203,7 @@ async def get_theme_detail(
     request: Request,
     theme_id: int,
     db: Session = Depends(get_db),
-    user: str = Depends(verify_credentials)
+    user: str = Depends(verify_jwt_or_basic)
 ):
     """
     Get detailed information about a specific theme.
@@ -283,7 +283,7 @@ async def update_theme_status(
     theme_id: int,
     status: str = Query(..., description="New status: active, acted_upon, invalidated, archived"),
     db: Session = Depends(get_db),
-    user: str = Depends(verify_credentials)
+    user: str = Depends(verify_jwt_or_basic)
 ):
     """
     Update theme status (e.g., mark as acted upon or invalidated).
@@ -317,7 +317,7 @@ async def update_theme_status(
 async def get_all_sources(
     request: Request,
     db: Session = Depends(get_db),
-    user: str = Depends(verify_credentials)
+    user: str = Depends(verify_jwt_or_basic)
 ):
     """Get list of all sources with recent activity stats."""
     sources = db.query(Source).all()
@@ -359,7 +359,7 @@ async def get_source_content(
     limit: int = Query(50, description="Number of items to return"),
     offset: int = Query(0, description="Offset for pagination"),
     db: Session = Depends(get_db),
-    user: str = Depends(verify_credentials)
+    user: str = Depends(verify_jwt_or_basic)
 ):
     """
     Get content from a specific source with pagination.
@@ -443,7 +443,7 @@ async def get_confluence_matrix(
     days: int = Query(30, description="Number of days to include"),
     min_score: int = Query(4, description="Minimum total score to include"),
     db: Session = Depends(get_db),
-    user: str = Depends(verify_credentials)
+    user: str = Depends(verify_jwt_or_basic)
 ):
     """
     Get confluence matrix data (heatmap of pillar scores).
@@ -521,7 +521,7 @@ async def get_historical_data(
     request: Request,
     theme_id: int,
     db: Session = Depends(get_db),
-    user: str = Depends(verify_credentials)
+    user: str = Depends(verify_jwt_or_basic)
 ):
     """
     Get historical data for a specific theme.
@@ -616,7 +616,7 @@ async def get_historical_data(
 async def get_dashboard_stats(
     request: Request,
     db: Session = Depends(get_db),
-    user: str = Depends(verify_credentials)
+    user: str = Depends(verify_jwt_or_basic)
 ):
     """Get overall dashboard statistics."""
     return {
