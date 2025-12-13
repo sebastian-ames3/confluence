@@ -2,22 +2,86 @@
 Database Models
 
 SQLAlchemy ORM models for the Macro Confluence Hub database.
+
+PRD-035: Supports both sync and async sessions for migration.
+- Sync: Used by migrations, CLI scripts, and legacy code
+- Async: Used by FastAPI routes for non-blocking I/O
 """
 
+import logging
 from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Text, ForeignKey, Boolean, CheckConstraint, Index
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from datetime import datetime
 import os
 from dotenv import load_dotenv
 
+logger = logging.getLogger(__name__)
+
 # Load environment variables
 load_dotenv()
 
-# Database setup
+# Database URL setup
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///database/confluence.db")
+
+# PRD-035: Railway uses postgres://, SQLAlchemy requires postgresql://
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+
+def get_async_url(url: str) -> str:
+    """Convert sync database URL to async-compatible URL (PRD-035)."""
+    if "postgresql" in url:
+        return url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    elif "sqlite" in url:
+        return url.replace("sqlite:///", "sqlite+aiosqlite:///", 1)
+    return url
+
+
+# Sync engine (for migrations, CLI scripts, backwards compatibility)
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# PRD-035: Async engine with connection pooling
+# Note: Async engine creation is deferred to avoid import errors when
+# aiosqlite/asyncpg are not installed (e.g., local development without async deps)
+ASYNC_DATABASE_URL = get_async_url(DATABASE_URL)
+
+async_engine = None
+AsyncSessionLocal = None
+
+try:
+    if "postgresql" in ASYNC_DATABASE_URL:
+        # PostgreSQL: Use connection pooling for production
+        async_engine = create_async_engine(
+            ASYNC_DATABASE_URL,
+            pool_size=20,
+            max_overflow=40,
+            pool_pre_ping=True,
+            pool_recycle=3600,
+            echo=False
+        )
+        logger.info("Initialized async PostgreSQL engine with connection pooling")
+    else:
+        # SQLite: Simpler setup for development
+        async_engine = create_async_engine(
+            ASYNC_DATABASE_URL,
+            echo=False
+        )
+        logger.info("Initialized async SQLite engine")
+
+    # PRD-035: Async session factory
+    AsyncSessionLocal = async_sessionmaker(
+        async_engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+        autocommit=False,
+        autoflush=False
+    )
+except ModuleNotFoundError as e:
+    logger.warning(f"Async database support not available: {e}. Install aiosqlite/asyncpg for async support.")
+
 Base = declarative_base()
 
 
@@ -286,6 +350,27 @@ class Synthesis(Base):
         return f"<Synthesis(id={self.id}, time_window='{self.time_window}', generated_at={self.generated_at})>"
 
 
+class ServiceHeartbeat(Base):
+    """
+    Service heartbeat tracking for monitoring (PRD-035).
+
+    Tracks when critical services (like Discord collector on laptop) last checked in.
+    Migrated from legacy heartbeat table using raw SQL.
+    """
+    __tablename__ = "service_heartbeats"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    service_name = Column(String, nullable=False, unique=True)
+    last_heartbeat = Column(DateTime, nullable=False)
+    heartbeat_count = Column(Integer, default=0)
+    status = Column(String, default="healthy")  # "healthy", "stale", "never_connected"
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<ServiceHeartbeat(service='{self.service_name}', status='{self.status}')>"
+
+
 class CollectionRun(Base):
     """Tracks collection runs for status display"""
     __tablename__ = "collection_runs"
@@ -325,12 +410,37 @@ class CollectionRun(Base):
 # ============================================================================
 
 def get_db():
-    """Dependency for FastAPI routes to get database session."""
+    """Dependency for FastAPI routes to get sync database session (legacy)."""
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
+
+
+async def get_async_db():
+    """
+    Dependency for FastAPI routes to get async database session (PRD-035).
+
+    Usage:
+        @router.get("/items")
+        async def get_items(db: AsyncSession = Depends(get_async_db)):
+            result = await db.execute(select(Item))
+            return result.scalars().all()
+
+    Raises:
+        RuntimeError: If async database support is not available
+    """
+    if AsyncSessionLocal is None:
+        raise RuntimeError(
+            "Async database support not available. "
+            "Install aiosqlite (for SQLite) or asyncpg (for PostgreSQL)."
+        )
+    async with AsyncSessionLocal() as session:
+        try:
+            yield session
+        finally:
+            await session.close()
 
 
 def init_db():

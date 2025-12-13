@@ -10,17 +10,20 @@ allowing Claude Desktop to search content via API calls.
 Security (PRD-015):
 - All endpoints require HTTP Basic Auth
 - Rate limited to prevent abuse
+
+PRD-035: Migrated to async ORM using SQLAlchemy AsyncSession.
 """
 
 from fastapi import APIRouter, Depends, Query, Request
-from sqlalchemy.orm import Session
-from sqlalchemy import desc
+from sqlalchemy import select, desc, func
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 from typing import Optional, List
 from datetime import datetime, timedelta
 import json
 
 from backend.models import (
-    get_db,
+    get_async_db,
     RawContent,
     AnalyzedContent,
     Source
@@ -40,7 +43,7 @@ async def search_content(
     source: Optional[str] = Query(None, description="Filter by source name"),
     days: int = Query(7, ge=1, le=365, description="Number of days to search"),
     limit: int = Query(10, ge=1, le=50, description="Maximum results"),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     user: str = Depends(verify_credentials)
 ):
     """
@@ -65,34 +68,52 @@ async def search_content(
     cutoff = datetime.utcnow() - timedelta(days=days)
     search_pattern = f"%{q}%"
 
-    # Build query
-    query = db.query(RawContent, AnalyzedContent, Source).outerjoin(
-        AnalyzedContent, RawContent.id == AnalyzedContent.raw_content_id
-    ).join(
-        Source, RawContent.source_id == Source.id
-    ).filter(
-        RawContent.collected_at >= cutoff
+    # Build query with joins
+    stmt = (
+        select(RawContent, AnalyzedContent, Source)
+        .outerjoin(AnalyzedContent, RawContent.id == AnalyzedContent.raw_content_id)
+        .join(Source, RawContent.source_id == Source.id)
+        .where(RawContent.collected_at >= cutoff)
     )
 
     # Apply source filter if provided
     if source:
-        query = query.filter(Source.name.ilike(f"%{source}%"))
+        stmt = stmt.where(Source.name.ilike(f"%{source}%"))
 
     # Apply search filter - search in content text and metadata
-    query = query.filter(
+    stmt = stmt.where(
         (RawContent.content_text.ilike(search_pattern)) |
         (RawContent.json_metadata.ilike(search_pattern)) |
         (AnalyzedContent.key_themes.ilike(search_pattern))
     )
 
     # Order by recency
-    query = query.order_by(desc(RawContent.collected_at))
+    stmt = stmt.order_by(desc(RawContent.collected_at))
 
-    # Get total count
-    total_matches = query.count()
+    # Get total count (separate query for efficiency)
+    count_stmt = (
+        select(func.count())
+        .select_from(RawContent)
+        .outerjoin(AnalyzedContent, RawContent.id == AnalyzedContent.raw_content_id)
+        .join(Source, RawContent.source_id == Source.id)
+        .where(RawContent.collected_at >= cutoff)
+        .where(
+            (RawContent.content_text.ilike(search_pattern)) |
+            (RawContent.json_metadata.ilike(search_pattern)) |
+            (AnalyzedContent.key_themes.ilike(search_pattern))
+        )
+    )
+    if source:
+        count_stmt = count_stmt.where(Source.name.ilike(f"%{source}%"))
+
+    count_result = await db.execute(count_stmt)
+    total_matches = count_result.scalar() or 0
 
     # Apply limit
-    results = query.limit(limit).all()
+    stmt = stmt.limit(limit)
+
+    result = await db.execute(stmt)
+    results = result.all()
 
     # Format results
     formatted_results = []
@@ -141,7 +162,7 @@ async def get_source_view(
     source_name: str,
     topic: str = Query(..., min_length=1, description="Topic to query"),
     days: int = Query(14, ge=1, le=90, description="Days to look back"),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     user: str = Depends(verify_credentials)
 ):
     """
@@ -166,7 +187,10 @@ async def get_source_view(
     search_pattern = f"%{topic}%"
 
     # Find the source
-    source = db.query(Source).filter(Source.name.ilike(f"%{source_name}%")).first()
+    source_result = await db.execute(
+        select(Source).where(Source.name.ilike(f"%{source_name}%"))
+    )
+    source = source_result.scalar_one_or_none()
 
     if not source:
         return {
@@ -178,18 +202,24 @@ async def get_source_view(
         }
 
     # Query content mentioning the topic
-    query = db.query(RawContent, AnalyzedContent).outerjoin(
-        AnalyzedContent, RawContent.id == AnalyzedContent.raw_content_id
-    ).filter(
-        RawContent.source_id == source.id,
-        RawContent.collected_at >= cutoff
-    ).filter(
-        (RawContent.content_text.ilike(search_pattern)) |
-        (RawContent.json_metadata.ilike(search_pattern)) |
-        (AnalyzedContent.key_themes.ilike(search_pattern))
-    ).order_by(desc(RawContent.collected_at)).limit(10)
+    stmt = (
+        select(RawContent, AnalyzedContent)
+        .outerjoin(AnalyzedContent, RawContent.id == AnalyzedContent.raw_content_id)
+        .where(
+            RawContent.source_id == source.id,
+            RawContent.collected_at >= cutoff
+        )
+        .where(
+            (RawContent.content_text.ilike(search_pattern)) |
+            (RawContent.json_metadata.ilike(search_pattern)) |
+            (AnalyzedContent.key_themes.ilike(search_pattern))
+        )
+        .order_by(desc(RawContent.collected_at))
+        .limit(10)
+    )
 
-    results = query.all()
+    result = await db.execute(stmt)
+    results = result.all()
 
     if not results:
         return {
@@ -293,7 +323,7 @@ async def get_aggregated_themes(
     active_only: bool = Query(True, description="Only include themes from recent content"),
     min_sources: int = Query(1, ge=1, le=10, description="Minimum number of sources"),
     days: int = Query(7, ge=1, le=90, description="Days to look back for active themes"),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     user: str = Depends(verify_credentials)
 ):
     """
@@ -318,17 +348,20 @@ async def get_aggregated_themes(
         cutoff = datetime(1970, 1, 1)
 
     # Query analyzed content with themes
-    query = db.query(AnalyzedContent, RawContent, Source).join(
-        RawContent, AnalyzedContent.raw_content_id == RawContent.id
-    ).join(
-        Source, RawContent.source_id == Source.id
-    ).filter(
-        AnalyzedContent.analyzed_at >= cutoff,
-        AnalyzedContent.key_themes.isnot(None),
-        AnalyzedContent.key_themes != ""
-    ).order_by(desc(AnalyzedContent.analyzed_at))
+    stmt = (
+        select(AnalyzedContent, RawContent, Source)
+        .join(RawContent, AnalyzedContent.raw_content_id == RawContent.id)
+        .join(Source, RawContent.source_id == Source.id)
+        .where(
+            AnalyzedContent.analyzed_at >= cutoff,
+            AnalyzedContent.key_themes.isnot(None),
+            AnalyzedContent.key_themes != ""
+        )
+        .order_by(desc(AnalyzedContent.analyzed_at))
+    )
 
-    results = query.all()
+    result = await db.execute(stmt)
+    results = result.all()
 
     # Aggregate themes across sources
     theme_data = {}
@@ -425,7 +458,7 @@ async def get_recent_from_source(
     days: int = Query(3, ge=1, le=30, description="Days to look back"),
     content_type: Optional[str] = Query(None, description="Filter by content type"),
     limit: int = Query(20, ge=1, le=100, description="Maximum items to return"),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     user: str = Depends(verify_credentials)
 ):
     """
@@ -443,7 +476,10 @@ async def get_recent_from_source(
     cutoff = datetime.utcnow() - timedelta(days=days)
 
     # Find the source
-    source = db.query(Source).filter(Source.name.ilike(f"%{source_name}%")).first()
+    source_result = await db.execute(
+        select(Source).where(Source.name.ilike(f"%{source_name}%"))
+    )
+    source = source_result.scalar_one_or_none()
 
     if not source:
         return {
@@ -455,19 +491,24 @@ async def get_recent_from_source(
         }
 
     # Build query
-    query = db.query(RawContent, AnalyzedContent).outerjoin(
-        AnalyzedContent, RawContent.id == AnalyzedContent.raw_content_id
-    ).filter(
-        RawContent.source_id == source.id,
-        RawContent.collected_at >= cutoff
+    stmt = (
+        select(RawContent, AnalyzedContent)
+        .outerjoin(AnalyzedContent, RawContent.id == AnalyzedContent.raw_content_id)
+        .where(
+            RawContent.source_id == source.id,
+            RawContent.collected_at >= cutoff
+        )
     )
 
     # Apply content type filter
     if content_type:
-        query = query.filter(RawContent.content_type == content_type)
+        stmt = stmt.where(RawContent.content_type == content_type)
 
     # Order by recency and limit
-    results = query.order_by(desc(RawContent.collected_at)).limit(limit).all()
+    stmt = stmt.order_by(desc(RawContent.collected_at)).limit(limit)
+
+    result = await db.execute(stmt)
+    results = result.all()
 
     # Format results
     items = []
