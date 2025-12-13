@@ -91,6 +91,7 @@
             <ul class="mobile-nav-links">
                 <li><a href="#overview" class="mobile-nav-link active" data-tab="overview">Overview</a></li>
                 <li><a href="#themes" class="mobile-nav-link" data-tab="themes">Themes</a></li>
+                <li><a href="#symbols" class="mobile-nav-link" data-tab="symbols">Symbols</a></li>
                 <li><a href="#sources" class="mobile-nav-link" data-tab="sources">Sources</a></li>
                 <li><a href="#history" class="mobile-nav-link" data-tab="history">History</a></li>
             </ul>
@@ -155,6 +156,7 @@
                     <div class="tabs-nav" role="tablist">
                         <button class="tab-btn active" role="tab" data-tab="overview" aria-selected="true">Overview</button>
                         <button class="tab-btn" role="tab" data-tab="themes" aria-selected="false">Themes</button>
+                        <button class="tab-btn" role="tab" data-tab="symbols" aria-selected="false">Symbols</button>
                         <button class="tab-btn" role="tab" data-tab="sources" aria-selected="false">Sources</button>
                         <button class="tab-btn" role="tab" data-tab="history" aria-selected="false">History</button>
                     </div>
@@ -329,6 +331,18 @@
                                 <div id="v3-stances-list" style="max-height: 400px; overflow-y: auto;"></div>
                             </div>
                         </aside>
+                    </div>
+                </div>
+
+                <!-- Symbols Tab -->
+                <div class="tab-panel" id="panel-symbols" role="tabpanel">
+                    <div class="content-main">
+                        <div class="sidebar-card">
+                            <div class="section-title">Tracked Symbols</div>
+                            <div id="symbols-list">
+                                <p style="color: var(--text-muted);">Loading symbols...</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -550,6 +564,21 @@
         </div>
     </div>
 
+    <!-- Symbol Detail Modal -->
+    <div class="modal" id="symbol-detail-modal" aria-hidden="true">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content" style="max-width: 1200px; max-height: 90vh; overflow-y: auto; position: relative;">
+            <button class="modal-close" id="close-symbol-detail" aria-label="Close">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+            </button>
+            <div id="symbol-detail-content">
+                <!-- Content populated by symbols.js -->
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Container -->
     <div class="toast-container" id="toast-container"></div>
 
@@ -557,6 +586,7 @@
     <script src="js/api.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/feedback.js"></script>
+    <script src="js/symbols.js"></script>
 
     <!-- Application JavaScript -->
     <script>
@@ -581,10 +611,20 @@
             }
         }
 
+        // Initialize SymbolsManager
+        let symbolsManager = null;
+
         // Listen for tab changes
         window.addEventListener('tabchange', (e) => {
             if (e.detail.tab === 'themes') {
                 loadThemes();
+            } else if (e.detail.tab === 'symbols') {
+                if (!symbolsManager) {
+                    symbolsManager = new SymbolsManager();
+                    symbolsManager.init();
+                } else {
+                    symbolsManager.loadSymbols();
+                }
             }
         });
 
@@ -1536,6 +1576,11 @@
                 case 'themes':
                     await loadThemes();
                     break;
+                case 'symbols':
+                    if (symbolsManager) {
+                        await symbolsManager.loadSymbols();
+                    }
+                    break;
                 case 'sources':
                     sourcesLoaded = false;
                     await loadSources();
@@ -1556,6 +1601,13 @@
 
             if (tab === 'themes') {
                 loadThemes();
+            } else if (tab === 'symbols') {
+                if (!symbolsManager) {
+                    symbolsManager = new SymbolsManager();
+                    symbolsManager.init();
+                } else {
+                    symbolsManager.loadSymbols();
+                }
             } else if (tab === 'sources') {
                 loadSources();
             } else if (tab === 'history') {
@@ -1572,6 +1624,11 @@
                 loadHistory();
             } else if (hash === 'themes') {
                 loadThemes();
+            } else if (hash === 'symbols') {
+                if (!symbolsManager) {
+                    symbolsManager = new SymbolsManager();
+                    symbolsManager.init();
+                }
             }
         });
     </script>

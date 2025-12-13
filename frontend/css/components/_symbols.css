@@ -1,0 +1,461 @@
+/**
+ * Symbols Tab Styling (PRD-039)
+ *
+ * Styles for symbol-level confluence tracking interface
+ */
+
+/* Symbols Grid Layout */
+.symbols-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: var(--spacing-lg);
+    padding: var(--spacing-md);
+}
+
+/* Symbol Card */
+.symbol-card {
+    padding: var(--spacing-lg);
+    cursor: pointer;
+    transition: all 0.3s var(--easing-smooth);
+    border: 1px solid var(--glass-border);
+}
+
+.symbol-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--accent-primary);
+}
+
+.symbol-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-md);
+}
+
+.symbol-header h3 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.level-count {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    background: var(--glass-bg);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-sm);
+}
+
+/* Symbol Views */
+.symbol-views {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+    padding: var(--spacing-md);
+    background: var(--glass-bg);
+    border-radius: var(--radius-md);
+}
+
+.view-column {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.view-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.view-value {
+    font-size: 1rem;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.view-meta {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+.stale-indicator {
+    font-size: 0.875rem;
+    cursor: help;
+}
+
+/* Confluence Indicator */
+.symbol-confluence {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--spacing-sm);
+}
+
+.symbol-confluence.confluence-high {
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(34, 197, 94, 0.05) 100%);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.symbol-confluence.confluence-medium {
+    background: linear-gradient(135deg, rgba(234, 179, 8, 0.1) 0%, rgba(234, 179, 8, 0.05) 100%);
+    border: 1px solid rgba(234, 179, 8, 0.3);
+}
+
+.symbol-confluence.confluence-low {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.05) 100%);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.symbol-confluence.confluence-none {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+}
+
+.confluence-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.confluence-score {
+    font-size: 1.125rem;
+    font-weight: 700;
+}
+
+/* Symbol Updated Info */
+.symbol-updated {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-align: center;
+    padding-top: var(--spacing-sm);
+    border-top: 1px solid var(--glass-border);
+}
+
+/* Symbol Detail Modal */
+#symbol-detail-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 1000;
+    padding: var(--spacing-xl);
+    overflow-y: auto;
+}
+
+#symbol-detail-modal.active {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#symbol-detail-content {
+    background: var(--bg-primary);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-xl);
+    max-width: 1200px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: var(--shadow-xl);
+}
+
+.detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-lg);
+    margin: var(--spacing-lg) 0;
+}
+
+.detail-section {
+    background: var(--glass-bg);
+    padding: var(--spacing-lg);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--glass-border);
+}
+
+.detail-section h3 {
+    margin-top: 0;
+    color: var(--text-primary);
+    font-size: 1.25rem;
+    margin-bottom: var(--spacing-md);
+}
+
+.detail-content p {
+    margin: var(--spacing-sm) 0;
+    color: var(--text-secondary);
+}
+
+.detail-content strong {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.notes {
+    font-style: italic;
+    color: var(--text-muted);
+    font-size: 0.875rem;
+}
+
+/* Bias Indicators */
+.bias-bullish {
+    color: var(--status-success);
+    font-weight: 600;
+}
+
+.bias-bearish {
+    color: var(--status-error);
+    font-weight: 600;
+}
+
+.bias-neutral {
+    color: var(--status-warning);
+    font-weight: 600;
+}
+
+/* Levels Table */
+.levels-section {
+    margin-top: var(--spacing-xl);
+}
+
+.levels-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: var(--spacing-md);
+}
+
+.levels-table thead {
+    background: var(--glass-bg);
+}
+
+.levels-table th {
+    padding: var(--spacing-sm) var(--spacing-md);
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.levels-table tbody tr {
+    border-bottom: 1px solid var(--glass-border);
+    transition: background-color 0.2s;
+}
+
+.levels-table tbody tr:hover {
+    background: var(--glass-bg-hover);
+}
+
+.levels-table tbody tr.level-stale {
+    opacity: 0.6;
+}
+
+.levels-table tbody tr[data-low-confidence="true"] {
+    background: rgba(234, 179, 8, 0.05);
+}
+
+.levels-table td {
+    padding: var(--spacing-md);
+    color: var(--text-secondary);
+}
+
+.level-price {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 1rem;
+}
+
+.fib-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-left: var(--spacing-xs);
+    background: var(--glass-bg);
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+}
+
+.level-type {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.level-type-support {
+    background: rgba(34, 197, 94, 0.1);
+    color: var(--status-success);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.level-type-resistance {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--status-error);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.level-type-target {
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--accent-primary);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.level-type-invalidation {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--status-error);
+    border: 1px solid var(--status-error);
+}
+
+.context-snippet {
+    font-size: 0.875rem;
+    font-style: italic;
+    color: var(--text-muted);
+    max-width: 250px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: help;
+}
+
+/* Direction Indicators */
+.direction-bullish_reversal {
+    color: var(--status-success);
+}
+
+.direction-bearish_reversal {
+    color: var(--status-error);
+}
+
+.direction-bullish_breakout {
+    color: var(--status-success);
+    font-weight: 600;
+}
+
+.direction-bearish_breakdown {
+    color: var(--status-error);
+    font-weight: 600;
+}
+
+.direction-neutral {
+    color: var(--text-muted);
+}
+
+/* Confluence Section */
+.confluence-section {
+    margin-top: var(--spacing-xl);
+    padding: var(--spacing-lg);
+    background: var(--glass-bg);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--glass-border);
+}
+
+.confluence-section h3 {
+    margin-top: 0;
+    color: var(--text-primary);
+}
+
+.trade-setup {
+    margin-top: var(--spacing-md);
+    padding: var(--spacing-md);
+    background: rgba(59, 130, 246, 0.05);
+    border-left: 3px solid var(--accent-primary);
+    border-radius: var(--radius-sm);
+}
+
+.trade-setup h4 {
+    margin-top: 0;
+    color: var(--accent-primary);
+    font-size: 1rem;
+}
+
+/* Close Button */
+#close-symbol-detail {
+    position: absolute;
+    top: var(--spacing-lg);
+    right: var(--spacing-lg);
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    color: var(--text-primary);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+#close-symbol-detail:hover {
+    background: var(--status-error);
+    color: white;
+    transform: rotate(90deg);
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: var(--spacing-xxl) var(--spacing-lg);
+    color: var(--text-muted);
+}
+
+.empty-state p {
+    margin: var(--spacing-sm) 0;
+}
+
+/* Alert Styles */
+.alert {
+    padding: var(--spacing-md);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--spacing-md);
+}
+
+.alert-warning {
+    background: rgba(234, 179, 8, 0.1);
+    border: 1px solid rgba(234, 179, 8, 0.3);
+    color: var(--status-warning);
+}
+
+.alert-error {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: var(--status-error);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .symbols-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .detail-grid {
+        grid-template-columns: 1fr;
+    }
+
+    #symbol-detail-content {
+        padding: var(--spacing-md);
+    }
+
+    .levels-table {
+        font-size: 0.875rem;
+    }
+
+    .levels-table th,
+    .levels-table td {
+        padding: var(--spacing-sm);
+    }
+}
