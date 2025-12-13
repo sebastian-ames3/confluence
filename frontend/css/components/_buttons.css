@@ -332,3 +332,119 @@
     min-width: 44px;
   }
 }
+
+/* ============================================
+   Feedback Buttons (PRD-038)
+   Thumbs up/down and detailed feedback
+   ============================================ */
+
+.feedback-buttons {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.feedback-btn {
+  color: var(--text-muted);
+  transition: color var(--transition-fast), transform var(--transition-fast);
+}
+
+.feedback-btn:hover {
+  color: var(--text-primary);
+  transform: scale(1.1);
+}
+
+.feedback-btn.active {
+  color: var(--primary);
+}
+
+.feedback-btn[data-feedback-up].active {
+  color: var(--success);
+}
+
+.feedback-btn[data-feedback-down].active {
+  color: var(--danger);
+}
+
+.feedback-btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.feedback-btn-sm {
+  min-width: 28px;
+  min-height: 28px;
+  padding: var(--spacing-xs);
+}
+
+.feedback-btn-detailed {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.feedback-btn-detailed:hover {
+  color: var(--primary);
+}
+
+/* ============================================
+   Star Rating (PRD-038)
+   5-star rating input for feedback modal
+   ============================================ */
+
+.star-rating {
+  display: inline-flex;
+  flex-direction: row-reverse;
+  justify-content: flex-end;
+  gap: 2px;
+}
+
+.star-rating input {
+  display: none;
+}
+
+.star-rating label {
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 28px;
+  padding: 0 2px;
+  transition: color var(--transition-fast), transform var(--transition-fast);
+  user-select: none;
+}
+
+.star-rating label::before {
+  content: '\2605'; /* Filled star unicode */
+}
+
+/* Highlight selected and all previous stars */
+.star-rating input:checked ~ label {
+  color: var(--warning);
+}
+
+/* Highlight on hover */
+.star-rating label:hover,
+.star-rating label:hover ~ label {
+  color: var(--warning);
+  transform: scale(1.1);
+}
+
+/* Focus state for accessibility */
+.star-rating input:focus-visible + label {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Rating group label */
+.rating-group {
+  margin-bottom: var(--spacing-md);
+}
+
+.rating-group label:first-child {
+  display: block;
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-xs);
+}
