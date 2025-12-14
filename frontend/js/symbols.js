@@ -27,8 +27,15 @@ class SymbolsManager {
         try {
             console.log('[SymbolsManager] Loading symbols...');
 
-            // Use apiFetch which handles JWT authentication (PRD-036)
-            const data = await apiFetch('/symbols');
+            const response = await fetch('/api/symbols', {
+                credentials: 'include'
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const data = await response.json();
             this.symbols = data.symbols || [];
 
             console.log(`[SymbolsManager] Loaded ${this.symbols.length} symbols`);
@@ -144,8 +151,15 @@ class SymbolsManager {
         try {
             console.log(`[SymbolsManager] Loading detail for ${symbolTicker}`);
 
-            // Use apiFetch which handles JWT authentication (PRD-036)
-            const data = await apiFetch(`/symbols/${symbolTicker}`);
+            const response = await fetch(`/api/symbols/${symbolTicker}`, {
+                credentials: 'include'
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const data = await response.json();
             this.selectedSymbol = data;
 
             this.renderSymbolDetail(data);
