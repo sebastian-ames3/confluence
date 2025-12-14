@@ -2,23 +2,23 @@
 Symbol-Level Confluence Tracking API (PRD-039)
 
 Endpoints for accessing symbol levels, state, and confluence analysis.
+
+PRD-036: Uses verify_jwt_or_basic for JWT + Basic Auth compatibility.
 """
 
 import logging
 from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, desc
 from datetime import datetime, timedelta
 from pydantic import BaseModel
 
 from backend.models import get_db, SymbolLevel, SymbolState, RawContent
-from backend.utils.auth import verify_credentials
+from backend.utils.auth import verify_jwt_or_basic
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/symbols", tags=["symbols"])
-security = HTTPBasic()
 
 
 # ============================================================================
@@ -39,7 +39,7 @@ class LevelUpdate(BaseModel):
 
 @router.get("")
 async def get_all_symbols(
-    credentials: HTTPBasicCredentials = Depends(security),
+    user: str = Depends(verify_jwt_or_basic),
     db: Session = Depends(get_db)
 ):
     """
@@ -51,7 +51,6 @@ async def get_all_symbols(
     - Confluence score
     - Staleness warnings
     """
-    verify_credentials(credentials)
 
     try:
         # Get all symbol states
@@ -104,7 +103,7 @@ async def get_all_symbols(
 @router.get("/{symbol}")
 async def get_symbol_detail(
     symbol: str,
-    credentials: HTTPBasicCredentials = Depends(security),
+    user: str = Depends(verify_jwt_or_basic),
     db: Session = Depends(get_db)
 ):
     """
@@ -116,7 +115,6 @@ async def get_symbol_detail(
     - Confluence analysis
     - Trade setup suggestion
     """
-    verify_credentials(credentials)
     symbol = symbol.upper()
 
     try:
@@ -200,7 +198,7 @@ async def get_symbol_detail(
 async def get_symbol_levels(
     symbol: str,
     source: Optional[str] = None,
-    credentials: HTTPBasicCredentials = Depends(security),
+    user: str = Depends(verify_jwt_or_basic),
     db: Session = Depends(get_db)
 ):
     """
@@ -210,7 +208,6 @@ async def get_symbol_levels(
         symbol: Symbol ticker
         source: Optional filter by source (kt_technical or discord)
     """
-    verify_credentials(credentials)
     symbol = symbol.upper()
 
     try:
@@ -253,7 +250,7 @@ async def get_symbol_levels(
 
 @router.get("/confluence/opportunities")
 async def get_confluence_opportunities(
-    credentials: HTTPBasicCredentials = Depends(security),
+    user: str = Depends(verify_jwt_or_basic),
     db: Session = Depends(get_db)
 ):
     """
@@ -264,7 +261,6 @@ async def get_confluence_opportunities(
     - sources_directionally_aligned = True
     - Trade setup suggestions
     """
-    verify_credentials(credentials)
 
     try:
         states = db.query(SymbolState).filter(
@@ -300,7 +296,7 @@ async def get_confluence_opportunities(
 @router.post("/refresh")
 async def refresh_symbol_data(
     background_tasks: BackgroundTasks,
-    credentials: HTTPBasicCredentials = Depends(security),
+    user: str = Depends(verify_jwt_or_basic),
     db: Session = Depends(get_db)
 ):
     """
@@ -308,7 +304,6 @@ async def refresh_symbol_data(
 
     Processes unprocessed KT Technical and Discord content from the last 7 days.
     """
-    verify_credentials(credentials)
 
     try:
         # This would trigger the extraction agent on recent content
@@ -329,7 +324,7 @@ async def refresh_symbol_data(
 async def update_level(
     level_id: int,
     updates: LevelUpdate,
-    credentials: HTTPBasicCredentials = Depends(security),
+    user: str = Depends(verify_jwt_or_basic),
     db: Session = Depends(get_db)
 ):
     """
@@ -337,7 +332,6 @@ async def update_level(
 
     Allows editing: price, level_type, direction, is_active (dismiss).
     """
-    verify_credentials(credentials)
 
     try:
         level = db.query(SymbolLevel).filter(SymbolLevel.id == level_id).first()
@@ -378,11 +372,10 @@ async def update_level(
 @router.delete("/levels/{level_id}")
 async def dismiss_level(
     level_id: int,
-    credentials: HTTPBasicCredentials = Depends(security),
+    user: str = Depends(verify_jwt_or_basic),
     db: Session = Depends(get_db)
 ):
     """Mark a level as inactive (AI made an error)."""
-    verify_credentials(credentials)
 
     try:
         level = db.query(SymbolLevel).filter(SymbolLevel.id == level_id).first()

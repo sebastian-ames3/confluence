@@ -75,6 +75,13 @@ def validate_environment():
 
 validate_environment()
 
+# ============================================================================
+# PRD-039: Initialize database tables (creates missing tables only)
+# ============================================================================
+from backend.models import init_db
+init_db()
+logger.info("Database tables initialized")
+
 # Import rate limiter
 from backend.utils.rate_limiter import limiter, rate_limit_exceeded_handler
 
