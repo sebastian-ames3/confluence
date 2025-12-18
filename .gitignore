@@ -77,4 +77,17 @@ dev/test_output/
 dev/debug/
 dev/.pytest_cache/
 dev/*.log
+dev/tests/__pycache__/
+dev/scripts/__pycache__/
+
+# SQLite temp files
+*.db-shm
+*.db-wal
+*.db-journal
+
+# Research files (local only)
+stock-analysis/
+*.pdf
+
+# Claude instructions
 CLAUDE.md
