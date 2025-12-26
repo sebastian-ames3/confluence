@@ -1,6 +1,6 @@
 # PRD-040: YouTube Channel Identification
 
-**Status**: In Progress
+**Status**: Complete
 **Priority**: Medium
 **Estimated Complexity**: Low-Medium
 
@@ -194,38 +194,38 @@ When displaying synthesis content that references sources, show channel names in
 
 ## Definition of Done
 
-- [ ] **40.1 Channel Mapping**
-  - [ ] `YOUTUBE_CHANNEL_DISPLAY` dict in synthesis.py
-  - [ ] All 4 channels mapped to display names
-  - [ ] Fallback logic for unknown channels
+- [x] **40.1 Channel Mapping**
+  - [x] `YOUTUBE_CHANNEL_DISPLAY` dict in synthesis.py
+  - [x] All 4 channels mapped to display names
+  - [x] Fallback logic for unknown channels
 
-- [ ] **40.2 Content Extraction**
-  - [ ] `_get_content_for_synthesis()` extracts channel info
-  - [ ] `channel` and `channel_display` fields added to content items
-  - [ ] YouTube source type preserved for weighting
+- [x] **40.2 Content Extraction**
+  - [x] `_get_content_for_synthesis()` extracts channel info
+  - [x] `channel` and `channel_display` fields added to content items
+  - [x] YouTube source type preserved for weighting
 
-- [ ] **40.3 Synthesis Prompt**
-  - [ ] Prompt groups YouTube content by channel name
-  - [ ] System prompt updated with channel context
-  - [ ] Weight still shows 0.8x for all YouTube channels
+- [x] **40.3 Synthesis Prompt**
+  - [x] Prompt groups YouTube content by channel name
+  - [x] System prompt updated with channel context
+  - [x] Weight still shows 0.8x for all YouTube channels
 
-- [ ] **40.4 Response Format**
-  - [ ] Channel attribution visible in synthesis text
-  - [ ] Backwards compatible with existing `sources_included`
+- [x] **40.4 Response Format**
+  - [x] Channel attribution visible in synthesis text
+  - [x] Backwards compatible with existing `sources_included`
 
-- [ ] **40.5 UI Updates**
-  - [ ] Channel names displayed in synthesis view
-  - [ ] Graceful fallback for missing channel info
+- [x] **40.5 UI Updates**
+  - [x] Channel names displayed in synthesis view (dynamic from source_stances)
+  - [x] Graceful fallback for missing channel info
 
-- [ ] **Tests**
-  - [ ] Backend tests in `tests/test_prd040_youtube_channels.py`
-  - [ ] UI tests for channel display
-  - [ ] All existing tests pass (`pytest` green)
+- [x] **Tests**
+  - [x] Backend tests in `tests/test_prd040_youtube_channels.py` (33 tests)
+  - [x] UI tests for channel display
+  - [x] All existing tests pass (`pytest` green)
 
-- [ ] **Git Workflow**
-  - [ ] Changes committed to feature branch
-  - [ ] CLI tests pass
-  - [ ] Ready for merge to main
+- [x] **Git Workflow**
+  - [x] Changes committed to feature branch
+  - [x] CLI tests pass
+  - [x] Ready for merge to main
 
 ## Future Considerations
 
