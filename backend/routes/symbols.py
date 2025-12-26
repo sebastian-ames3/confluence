@@ -300,19 +300,46 @@ async def refresh_symbol_data(
     db: Session = Depends(get_db)
 ):
     """
-    Manually trigger level extraction from recent content.
+    Manually trigger staleness check and recalculate confluence.
 
-    Processes unprocessed KT Technical and Discord content from the last 7 days.
+    Runs staleness check on all symbols and updates confluence scores.
     """
 
     try:
-        # This would trigger the extraction agent on recent content
-        # For now, just return a message
-        logger.info("Manual symbol refresh triggered")
+        from backend.utils.staleness_manager import (
+            check_and_mark_stale_data,
+            update_symbol_confluence
+        )
+
+        # Run staleness check
+        staleness_results = check_and_mark_stale_data(db)
+
+        # Recalculate confluence for all symbols
+        confluence_updates = []
+        states = db.query(SymbolState).all()
+        for state in states:
+            result = update_symbol_confluence(db, state.symbol)
+            if result.get("confluence", {}).get("aligned"):
+                confluence_updates.append({
+                    "symbol": state.symbol,
+                    "score": result["confluence"]["score"]
+                })
+
+        logger.info(f"Manual symbol refresh completed. "
+                   f"Staleness: {len(staleness_results.get('kt_stale_symbols', []))} KT, "
+                   f"{len(staleness_results.get('discord_stale_symbols', []))} Discord. "
+                   f"High confluence: {len(confluence_updates)} symbols")
 
         return {
-            "message": "Symbol refresh triggered",
-            "status": "processing"
+            "message": "Symbol refresh completed",
+            "status": "success",
+            "staleness_check": {
+                "kt_stale_symbols": staleness_results.get("kt_stale_symbols", []),
+                "discord_stale_symbols": staleness_results.get("discord_stale_symbols", []),
+                "levels_marked_stale": staleness_results.get("stale_levels_marked", 0)
+            },
+            "confluence_updated": confluence_updates,
+            "total_symbols_checked": len(states)
         }
 
     except Exception as e:

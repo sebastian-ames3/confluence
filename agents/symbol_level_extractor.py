@@ -158,17 +158,27 @@ class SymbolLevelExtractor(BaseAgent):
 
             # Build vision prompt
             prompt = self._get_chart_vision_prompt()
+            system_prompt = self._get_chart_vision_system_prompt()
 
-            # Call Claude vision (this would use the vision API)
-            # For now, this is a placeholder - vision API integration needed
-            result = {
-                "symbols": [],
-                "extraction_confidence": 0.0
-            }
+            # Call Claude vision API
+            result = self.call_claude_vision(
+                prompt=prompt,
+                image_path=image_path,
+                system_prompt=system_prompt,
+                max_tokens=4096,
+                temperature=0.0,
+                expect_json=True
+            )
 
-            logger.warning("Chart vision extraction not yet implemented - placeholder")
-            return result
+            # Validate and normalize
+            validated = self._validate_extraction(result, content_id, 'chart_image')
 
+            logger.info(f"Extracted {len(validated.get('symbols', []))} symbols from chart image")
+            return validated
+
+        except FileNotFoundError as e:
+            logger.error(f"Chart image not found: {e}")
+            return {"symbols": [], "extraction_confidence": 0.0, "error": str(e)}
         except Exception as e:
             logger.error(f"Chart vision extraction failed: {e}")
             raise
@@ -193,16 +203,40 @@ class SymbolLevelExtractor(BaseAgent):
 
             # Build vision prompt
             prompt = self._get_compass_vision_prompt()
+            system_prompt = self._get_compass_vision_system_prompt()
 
-            # Placeholder for vision API
-            result = {
-                "compass_data": [],
-                "extraction_confidence": 0.0
-            }
+            # Call Claude vision API
+            result = self.call_claude_vision(
+                prompt=prompt,
+                image_path=image_path,
+                system_prompt=system_prompt,
+                max_tokens=4096,
+                temperature=0.0,
+                expect_json=True
+            )
 
-            logger.warning("Compass vision extraction not yet implemented - placeholder")
+            # Add metadata
+            result["content_id"] = content_id
+            result["extraction_method"] = "compass_image"
+            result["extracted_at"] = datetime.utcnow().isoformat()
+
+            # Filter to only tracked symbols
+            if "compass_data" in result:
+                filtered_data = []
+                for item in result["compass_data"]:
+                    symbol = item.get("symbol", "")
+                    canonical = self.normalize_symbol(symbol)
+                    if canonical:
+                        item["symbol"] = canonical
+                        filtered_data.append(item)
+                result["compass_data"] = filtered_data
+
+            logger.info(f"Extracted {len(result.get('compass_data', []))} symbols from compass image")
             return result
 
+        except FileNotFoundError as e:
+            logger.error(f"Compass image not found: {e}")
+            return {"compass_data": [], "extraction_confidence": 0.0, "error": str(e)}
         except Exception as e:
             logger.error(f"Compass vision extraction failed: {e}")
             raise
@@ -362,7 +396,46 @@ For each ticker you can identify, return:
   "extraction_confidence": 0.85
 }}
 
-Only include symbols from: SPX, QQQ, IWM, BTC, SMH, TSLA, NVDA, GOOGL, AAPL, MSFT, AMZN"""
+Only include symbols from: SPX, QQQ, IWM, BTC, SMH, TSLA, NVDA, GOOGL, AAPL, MSFT, AMZN
+
+Return ONLY valid JSON, no markdown formatting."""
+
+    def _get_chart_vision_system_prompt(self) -> str:
+        """System prompt for chart vision analysis."""
+        return """You are an expert technical analyst extracting price levels from annotated trading charts.
+
+Your job is to:
+1. Identify the symbol from chart title or ticker
+2. Extract all annotated price levels (fib levels, support, resistance, targets)
+3. Determine wave structure (impulse vs correction)
+4. Assign direction vectors to each level
+
+Be rigorous:
+- Only extract levels that are clearly visible and labeled
+- Context snippets should use visible text annotations
+- If you cannot identify the symbol, set extraction_confidence to 0.0
+
+You must respond with valid JSON only."""
+
+    def _get_compass_vision_system_prompt(self) -> str:
+        """System prompt for compass vision analysis."""
+        return """You are an expert at reading Options Insight Stock Compass diagrams.
+
+The Stock Compass is a 2x2 quadrant chart:
+- Y-axis: Implied Volatility (high=top, low=bottom)
+- X-axis: Directional bias (bullish=left, bearish=right)
+
+Quadrants:
+- Top-left: SELL PUT (bullish, high IV) - sell premium into high vol
+- Top-right: SELL CALL (bearish, high IV) - sell premium into high vol
+- Bottom-left: BUY CALL (bullish, low IV) - long directional with cheap vol
+- Bottom-right: BUY PUT (bearish, low IV) - long directional with cheap vol
+- Center: Neutral/spread strategies
+
+Your job is to identify which tracked symbols appear and which quadrant they're in.
+Only include symbols from: SPX, QQQ, IWM, BTC, SMH, TSLA, NVDA, GOOGL, AAPL, MSFT, AMZN
+
+You must respond with valid JSON only."""
 
     def _validate_extraction(
         self,
