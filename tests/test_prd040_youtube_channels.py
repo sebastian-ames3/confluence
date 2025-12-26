@@ -258,23 +258,23 @@ class TestYouTubeCollectorIntegration:
 
 
 class TestPRD040Documentation:
-    """Test PRD-040 documentation exists."""
+    """Test PRD-040 documentation exists (archived after completion)."""
 
     def test_prd_file_exists(self):
-        """Verify PRD-040 documentation exists."""
-        prd_path = Path(__file__).parent.parent / "docs" / "PRD-040_YouTube_Channel_Identification.md"
-        assert prd_path.exists(), "PRD-040 documentation should exist"
+        """Verify PRD-040 documentation exists in archived folder."""
+        prd_path = Path(__file__).parent.parent / "docs" / "archived" / "PRD-040_YouTube_Channel_Identification.md"
+        assert prd_path.exists(), "PRD-040 documentation should exist in docs/archived/"
 
     def test_prd_has_definition_of_done(self):
         """Verify PRD has Definition of Done section."""
-        prd_path = Path(__file__).parent.parent / "docs" / "PRD-040_YouTube_Channel_Identification.md"
+        prd_path = Path(__file__).parent.parent / "docs" / "archived" / "PRD-040_YouTube_Channel_Identification.md"
         content = prd_path.read_text()
 
         assert "Definition of Done" in content, "PRD should have Definition of Done section"
 
     def test_prd_mentions_all_channels(self):
         """Verify PRD documents all 4 channels."""
-        prd_path = Path(__file__).parent.parent / "docs" / "PRD-040_YouTube_Channel_Identification.md"
+        prd_path = Path(__file__).parent.parent / "docs" / "archived" / "PRD-040_YouTube_Channel_Identification.md"
         content = prd_path.read_text()
 
         channels = ["Moonshots", "Jordi Visser", "Forward Guidance", "42 Macro"]

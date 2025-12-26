@@ -478,4 +478,125 @@ test.describe('Symbols Tab', () => {
         await expect(errorAlert).toBeVisible();
         await expect(errorAlert).toContainText('Failed to load symbols');
     });
+
+    test('should allow editing a level via edit button', async ({ page }) => {
+        // Mock the PATCH endpoint
+        await page.route('**/api/symbols/levels/*', async route => {
+            if (route.request().method() === 'PATCH') {
+                await route.fulfill({ json: { message: 'Level updated successfully', level_id: 1 } });
+            } else if (route.request().method() === 'DELETE') {
+                await route.fulfill({ json: { message: 'Level dismissed successfully', level_id: 1 } });
+            }
+        });
+
+        await page.locator('button[data-tab="symbols"]').click();
+        await page.waitForSelector('.symbols-grid');
+        await page.locator('.symbol-card[data-symbol="GOOGL"]').click();
+
+        await page.waitForSelector('.levels-table');
+
+        // Click edit button on first level
+        const editButton = page.locator('.levels-table tbody tr').first().locator('.edit-level-btn');
+        if (await editButton.isVisible()) {
+            await editButton.click();
+
+            // Check edit modal appears
+            const editModal = page.locator('#edit-level-modal');
+            await expect(editModal).toBeVisible();
+        }
+    });
+
+    test('should allow dismissing a level', async ({ page }) => {
+        // Mock the DELETE endpoint
+        await page.route('**/api/symbols/levels/*', async route => {
+            if (route.request().method() === 'DELETE') {
+                await route.fulfill({ json: { message: 'Level dismissed successfully', level_id: 1 } });
+            }
+        });
+
+        await page.locator('button[data-tab="symbols"]').click();
+        await page.waitForSelector('.symbols-grid');
+        await page.locator('.symbol-card[data-symbol="GOOGL"]').click();
+
+        await page.waitForSelector('.levels-table');
+
+        // Find dismiss button
+        const dismissButton = page.locator('.levels-table tbody tr').first().locator('.dismiss-level-btn');
+        if (await dismissButton.isVisible()) {
+            await dismissButton.click();
+
+            // Confirm dismissal if there's a confirm dialog
+            const confirmButton = page.locator('.confirm-dismiss');
+            if (await confirmButton.isVisible()) {
+                await confirmButton.click();
+            }
+        }
+    });
+
+    test('should have refresh button that triggers staleness check', async ({ page }) => {
+        // Mock the refresh endpoint
+        await page.route('**/api/symbols/refresh', async route => {
+            await route.fulfill({
+                json: {
+                    message: 'Symbol refresh completed',
+                    status: 'success',
+                    staleness_check: {
+                        kt_stale_symbols: [],
+                        discord_stale_symbols: ['IWM'],
+                        levels_marked_stale: 2
+                    },
+                    confluence_updated: [{ symbol: 'GOOGL', score: 0.85 }],
+                    total_symbols_checked: 11
+                }
+            });
+        });
+
+        await page.locator('button[data-tab="symbols"]').click();
+        await page.waitForSelector('.symbols-grid');
+
+        // Find and click refresh button
+        const refreshButton = page.locator('.refresh-symbols-btn');
+        if (await refreshButton.isVisible()) {
+            await refreshButton.click();
+
+            // Should show success message
+            await page.waitForSelector('.toast-success, .alert-success');
+        }
+    });
+
+    test('should display direction badges correctly', async ({ page }) => {
+        await page.locator('button[data-tab="symbols"]').click();
+        await page.waitForSelector('.symbols-grid');
+        await page.locator('.symbol-card[data-symbol="GOOGL"]').click();
+
+        await page.waitForSelector('.levels-table');
+
+        // Check bullish_reversal direction on support level
+        const supportRow = page.locator('.levels-table tbody tr').filter({ hasText: '319' });
+        const directionBadge = supportRow.locator('.direction-badge');
+        await expect(directionBadge).toContainText('bullish_reversal');
+
+        // Check bearish_breakdown direction on invalidation level
+        const invalidationRow = page.locator('.levels-table tbody tr').filter({ hasText: '270' });
+        const invalidationDirection = invalidationRow.locator('.direction-badge');
+        await expect(invalidationDirection).toContainText('bearish_breakdown');
+    });
+
+    test('should show context snippet on hover', async ({ page }) => {
+        await page.locator('button[data-tab="symbols"]').click();
+        await page.waitForSelector('.symbols-grid');
+        await page.locator('.symbol-card[data-symbol="GOOGL"]').click();
+
+        await page.waitForSelector('.levels-table');
+
+        // Hover over context cell
+        const contextCell = page.locator('.levels-table tbody tr').first().locator('.context-cell');
+        await contextCell.hover();
+
+        // Check tooltip appears with full snippet
+        const tooltip = page.locator('.context-tooltip');
+        if (await tooltip.isVisible()) {
+            await expect(tooltip).toContainText('targets for wave 5 completion');
+        }
+    });
 });

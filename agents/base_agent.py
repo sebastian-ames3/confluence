@@ -15,8 +15,9 @@ import os
 import json
 import logging
 import time
+import base64
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List, Union
 from anthropic import Anthropic
 from dotenv import load_dotenv
 
@@ -126,6 +127,116 @@ class BaseAgent:
                     logger.error(f"Claude API failed after {max_retries} attempts: {str(e)}")
 
         # All retries exhausted, raise the last exception
+        raise last_exception
+
+    def call_claude_vision(
+        self,
+        prompt: str,
+        image_path: str,
+        system_prompt: Optional[str] = None,
+        max_tokens: int = 4096,
+        temperature: float = 0.0,
+        expect_json: bool = True,
+        max_retries: int = 3
+    ) -> Dict[str, Any]:
+        """
+        Make a call to Claude Vision API with an image.
+
+        PRD-039: Added for chart and compass image analysis.
+
+        Args:
+            prompt: User prompt describing what to extract
+            image_path: Path to the image file
+            system_prompt: Optional system prompt
+            max_tokens: Maximum tokens in response
+            temperature: Sampling temperature (0.0 = deterministic)
+            expect_json: Whether to expect JSON response
+            max_retries: Maximum number of retry attempts (default: 3)
+
+        Returns:
+            Parsed response (dict if JSON, string otherwise)
+
+        Raises:
+            Exception: If API call fails after all retries
+            FileNotFoundError: If image file doesn't exist
+        """
+        # Validate image exists
+        image_file = Path(image_path)
+        if not image_file.exists():
+            raise FileNotFoundError(f"Image file not found: {image_path}")
+
+        # Read and encode image
+        with open(image_path, "rb") as f:
+            image_data = base64.standard_b64encode(f.read()).decode("utf-8")
+
+        # Determine media type
+        suffix = image_file.suffix.lower()
+        media_type_map = {
+            ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg",
+            ".png": "image/png",
+            ".gif": "image/gif",
+            ".webp": "image/webp"
+        }
+        media_type = media_type_map.get(suffix, "image/png")
+
+        last_exception = None
+
+        for attempt in range(max_retries):
+            try:
+                logger.debug(f"Calling Claude Vision for {image_path} (attempt {attempt + 1}/{max_retries})")
+
+                # Build messages with image content
+                messages = [{
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": media_type,
+                                "data": image_data
+                            }
+                        },
+                        {
+                            "type": "text",
+                            "text": prompt
+                        }
+                    ]
+                }]
+
+                # Make API call
+                response = self.client.messages.create(
+                    model=self.model,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                    system=system_prompt if system_prompt else "",
+                    messages=messages
+                )
+
+                # Extract text content
+                response_text = response.content[0].text
+                logger.debug(f"Received vision response length: {len(response_text)}")
+
+                # Parse JSON if expected
+                if expect_json:
+                    return self._parse_json_response(response_text)
+                else:
+                    return {"response": response_text}
+
+            except Exception as e:
+                last_exception = e
+
+                if attempt < max_retries - 1:
+                    delay = min(2 ** attempt, 30)
+                    logger.warning(
+                        f"Claude Vision API attempt {attempt + 1}/{max_retries} failed: {str(e)}. "
+                        f"Retrying in {delay}s..."
+                    )
+                    time.sleep(delay)
+                else:
+                    logger.error(f"Claude Vision API failed after {max_retries} attempts: {str(e)}")
+
         raise last_exception
 
     def _parse_json_response(self, response_text: str) -> Dict[str, Any]:

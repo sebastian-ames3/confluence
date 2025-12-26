@@ -694,8 +694,9 @@
             // Store synthesis id for feedback (PRD-038)
             currentSynthesisId = data.id;
 
-            // Check version
-            const isV3 = data.version === '3.0' || data.confluence_zones || data.attention_priorities;
+            // Check version - V4 is the tiered synthesis (PRD-041)
+            const isV4 = data.version === '4.0' || data.source_breakdowns;
+            const isV3 = isV4 || data.version === '3.0' || data.confluence_zones || data.attention_priorities;
 
             // Update meta info
             document.getElementById('synthesis-window').textContent = data.time_window;
@@ -769,7 +770,100 @@
                 displayV3AttentionPriorities(data.attention_priorities || []);
                 displayV3ConfluenceZones(data.confluence_zones || []);
                 displayV3ConflictWatch(data.conflict_watch || []);
-                displayV3SourceStances(data.source_stances || {});
+
+                // PRD-041: Use V4 source breakdowns if available, otherwise V3 source stances
+                if (isV4 && data.source_breakdowns) {
+                    displayV4SourceBreakdowns(data.source_breakdowns, data.content_summaries || []);
+                } else {
+                    displayV3SourceStances(data.source_stances || {});
+                }
+            }
+        }
+
+        // PRD-041: Display V4 source breakdowns with expandable content
+        function displayV4SourceBreakdowns(breakdowns, contentSummaries) {
+            const container = document.getElementById('v3-stances-list');
+            const section = document.getElementById('stances-section');
+
+            if (!breakdowns || Object.keys(breakdowns).length === 0) {
+                section.style.display = 'none';
+                return;
+            }
+            section.style.display = 'block';
+
+            // Group content summaries by source for Tier 3
+            const contentBySource = {};
+            contentSummaries.forEach(item => {
+                const key = item.channel ? `youtube:${item.channel}` : item.source;
+                if (!contentBySource[key]) contentBySource[key] = [];
+                contentBySource[key].push(item);
+            });
+
+            container.innerHTML = Object.entries(breakdowns).map(([sourceName, data], index) => {
+                const bias = data.overall_bias || 'neutral';
+                const biasColor = bias === 'bullish' ? 'success' : bias === 'bearish' ? 'danger' : 'warning';
+                const contentCount = data.content_count || 0;
+                const sourceContent = contentBySource[sourceName] || [];
+                const hasContent = sourceContent.length > 0;
+
+                // Format display name (youtube:Moonshots -> Moonshots)
+                const displayName = sourceName.startsWith('youtube:') ? sourceName.split(':')[1] : sourceName.replace('_', ' ');
+
+                return `
+                    <div class="source-breakdown-card" style="padding: var(--spacing-md); background: var(--glass-bg-light); border-radius: var(--radius-lg); margin-bottom: var(--spacing-sm);">
+                        <div class="source-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-sm); cursor: pointer;" onclick="toggleSourceDetails('source-details-${index}')">
+                            <div style="display: flex; align-items: center; gap: var(--spacing-sm);">
+                                <span style="font-weight: var(--font-semibold);">${displayName}</span>
+                                <span style="font-size: var(--text-xs); color: var(--text-muted);">(${contentCount} items)</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: var(--spacing-sm);">
+                                <span class="badge" style="background: var(--${biasColor}); color: white; padding: 2px 8px; border-radius: var(--radius-full); font-size: 10px;">${bias}</span>
+                                <span class="expand-icon" id="icon-source-details-${index}" style="font-size: 12px; transition: transform 0.2s;">▼</span>
+                            </div>
+                        </div>
+
+                        <!-- Summary always visible -->
+                        <div style="font-size: var(--text-sm); color: var(--text-secondary); margin-bottom: var(--spacing-sm);">${data.summary || ''}</div>
+
+                        <!-- Key insights (expandable) -->
+                        <div id="source-details-${index}" style="display: none; margin-top: var(--spacing-md); padding-top: var(--spacing-md); border-top: 1px solid var(--border-subtle);">
+                            ${data.key_insights && data.key_insights.length > 0 ? `
+                                <div style="margin-bottom: var(--spacing-md);">
+                                    <div style="font-size: var(--text-xs); color: var(--text-muted); margin-bottom: var(--spacing-xs);">KEY INSIGHTS</div>
+                                    <ul style="margin: 0; padding-left: var(--spacing-md); font-size: var(--text-sm); color: var(--text-secondary);">
+                                        ${data.key_insights.map(i => `<li style="margin-bottom: var(--spacing-xs);">${i}</li>`).join('')}
+                                    </ul>
+                                </div>
+                            ` : ''}
+
+                            ${hasContent ? `
+                                <div>
+                                    <div style="font-size: var(--text-xs); color: var(--text-muted); margin-bottom: var(--spacing-xs);">CONTENT</div>
+                                    ${sourceContent.slice(0, 5).map(c => `
+                                        <div style="padding: var(--spacing-xs); margin-bottom: var(--spacing-xs); background: var(--glass-bg); border-radius: var(--radius-md); font-size: var(--text-xs);">
+                                            <div style="font-weight: var(--font-medium);">${c.title || 'Untitled'}</div>
+                                            ${c.summary ? `<div style="color: var(--text-muted); margin-top: 2px;">${c.summary.substring(0, 150)}${c.summary.length > 150 ? '...' : ''}</div>` : ''}
+                                        </div>
+                                    `).join('')}
+                                    ${sourceContent.length > 5 ? `<div style="font-size: var(--text-xs); color: var(--text-muted); margin-top: var(--spacing-xs);">+ ${sourceContent.length - 5} more items</div>` : ''}
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Toggle source details visibility (PRD-041)
+        function toggleSourceDetails(id) {
+            const details = document.getElementById(id);
+            const icon = document.getElementById('icon-' + id);
+            if (details) {
+                const isHidden = details.style.display === 'none';
+                details.style.display = isHidden ? 'block' : 'none';
+                if (icon) {
+                    icon.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+                }
             }
         }
 
