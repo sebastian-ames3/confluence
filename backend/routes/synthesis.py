@@ -54,7 +54,7 @@ class SynthesisGenerateRequest(BaseModel):
     """Request model for synthesis generation"""
     time_window: str = "24h"  # "24h", "7d", "30d"
     focus_topic: Optional[str] = None
-    version: str = "3"  # "1" legacy, "2" actionable (PRD-020), "3" research hub (PRD-021)
+    version: str = "4"  # "1" legacy, "2" actionable (PRD-020), "3" research hub (PRD-021), "4" tiered (PRD-041)
 
 
 class SynthesisResponse(BaseModel):
@@ -299,7 +299,28 @@ async def generate_synthesis(
         # Determine version
         version = synthesis_request.version
 
-        if version == "3":
+        if version == "4":
+            # V4: Tiered Synthesis (PRD-041)
+            # Get older content for re-review recommendations (7-30 days ago)
+            older_cutoff_start = datetime.utcnow() - timedelta(days=30)
+            older_cutoff_end = cutoff
+            older_content = _get_content_for_synthesis(
+                db, older_cutoff_start, synthesis_request.focus_topic,
+                end_date=older_cutoff_end
+            )
+            logger.info(f"Found {len(older_content)} older items for Tier 3 scanning")
+
+            logger.info("Calling agent.analyze_v4() for tiered synthesis...")
+            result = agent.analyze_v4(
+                content_items=content_items,
+                older_content=older_content,
+                time_window=synthesis_request.time_window,
+                focus_topic=synthesis_request.focus_topic
+            )
+            logger.info(f"V4 Analysis complete: {len(result.get('source_breakdowns', {}))} source breakdowns, "
+                       f"{len(result.get('content_summaries', []))} content summaries")
+
+        elif version == "3":
             # V3: Research Consumption Hub (PRD-021)
             # Get older content for re-review recommendations (7-30 days ago)
             older_cutoff_start = datetime.utcnow() - timedelta(days=30)
@@ -339,11 +360,15 @@ async def generate_synthesis(
             logger.info(f"V1 Analysis complete, got result with keys: {list(result.keys())}")
 
         # Extract synthesis text based on version
-        if version == "3":
-            # V3: executive_summary.narrative
+        if version in ["3", "4"]:
+            # V3/V4: executive_summary.synthesis_narrative or narrative
             exec_summary = result.get("executive_summary", {})
-            synthesis_text = exec_summary.get("narrative", "") if isinstance(exec_summary, dict) else ""
-            market_regime_str = exec_summary.get("overall_tone", "unclear") if isinstance(exec_summary, dict) else "unclear"
+            if isinstance(exec_summary, dict):
+                synthesis_text = exec_summary.get("synthesis_narrative", exec_summary.get("narrative", ""))
+                market_regime_str = exec_summary.get("overall_tone", "unclear")
+            else:
+                synthesis_text = ""
+                market_regime_str = "unclear"
         else:
             # V2/V1: synthesis_summary or synthesis
             synthesis_text = result.get("synthesis_summary") or result.get("synthesis", "")
@@ -355,7 +380,9 @@ async def generate_synthesis(
                 market_regime_str = market_regime
 
         # Determine schema version
-        if version == "3":
+        if version == "4":
+            schema_ver = "4.0"
+        elif version == "3":
             schema_ver = "3.0"
         elif version == "2":
             schema_ver = "2.0"
@@ -371,7 +398,7 @@ async def generate_synthesis(
             contradictions=json.dumps(result.get("contradictions", []) or result.get("watch_list", []) or result.get("conflict_watch", [])),
             market_regime=market_regime_str,
             catalysts=json.dumps(result.get("catalysts", []) or result.get("catalyst_calendar", [])),
-            synthesis_json=json.dumps(result) if version in ["2", "3"] else None,
+            synthesis_json=json.dumps(result) if version in ["2", "3", "4"] else None,
             time_window=synthesis_request.time_window,
             content_count=result.get("content_count", len(content_items)),
             sources_included=json.dumps(result.get("sources_included", [])),
@@ -382,8 +409,8 @@ async def generate_synthesis(
         db.commit()
         db.refresh(synthesis)
 
-        # PRD-024: Extract and track themes from V3 synthesis
-        if version == "3":
+        # PRD-024: Extract and track themes from V3/V4 synthesis
+        if version in ["3", "4"]:
             try:
                 theme_result = extract_and_track_themes(result, db)
                 logger.info(f"Theme extraction complete: {theme_result.get('created', 0)} created, "
@@ -393,7 +420,15 @@ async def generate_synthesis(
                 logger.warning(f"Theme extraction failed (non-fatal): {str(theme_error)}")
 
         # Return appropriate response format
-        if version == "3":
+        if version == "4":
+            return {
+                "status": "success",
+                "version": "4.0",
+                "synthesis_id": synthesis.id,
+                **result,
+                "generated_at": synthesis.generated_at.isoformat()
+            }
+        elif version == "3":
             return {
                 "status": "success",
                 "version": "3.0",
@@ -432,13 +467,18 @@ async def generate_synthesis(
 async def get_latest_synthesis(
     request: Request,
     time_window: Optional[str] = Query(None, description="Filter by time window"),
+    tier: int = Query(default=3, ge=1, le=3, description="Detail level: 1=executive, 2=+sources, 3=+content"),
     db: Session = Depends(get_db),
     user: str = Depends(verify_jwt_or_basic)
 ):
     """
     Get the most recent synthesis.
 
-    Optionally filter by time_window (24h, 7d, 30d).
+    Args:
+        time_window: Filter by time window (24h, 7d, 30d)
+        tier: Detail level (1=executive only, 2=+source breakdowns, 3=full with content summaries)
+
+    PRD-041: Tier parameter controls response detail level for V4 syntheses.
     """
     query = db.query(Synthesis)
 
@@ -453,16 +493,26 @@ async def get_latest_synthesis(
             "message": "No synthesis found. Generate one first."
         }
 
-    # Check if this is a v2/v3 synthesis with full JSON
+    # Check if this is a v2/v3/v4 synthesis with full JSON
     schema_version = getattr(synthesis, 'schema_version', '1.0') or '1.0'
     synthesis_json = getattr(synthesis, 'synthesis_json', None)
 
-    if schema_version in ["2.0", "3.0"] and synthesis_json:
-        # Return full v2/v3 response
+    if schema_version in ["2.0", "3.0", "4.0"] and synthesis_json:
         try:
             data = json.loads(synthesis_json)
             data["id"] = synthesis.id
             data["version"] = schema_version
+
+            # PRD-041: Filter response by tier for V4
+            if schema_version == "4.0" and tier < 3:
+                if tier == 1:
+                    # Tier 1: Executive summary only
+                    data.pop("source_breakdowns", None)
+                    data.pop("content_summaries", None)
+                elif tier == 2:
+                    # Tier 2: Include source breakdowns, exclude content summaries
+                    data.pop("content_summaries", None)
+
             return data
         except json.JSONDecodeError:
             pass  # Fall back to v1 format

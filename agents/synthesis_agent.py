@@ -1134,6 +1134,262 @@ RESPOND WITH VALID JSON ONLY."""
 
         return response
 
+    # =========================================================================
+    # V4 METHODS (PRD-041: Tiered Synthesis)
+    # =========================================================================
+
+    def _build_source_breakdown_prompt(
+        self,
+        content_items: List[Dict[str, Any]],
+        source_key: str
+    ) -> str:
+        """Build prompt for generating a source breakdown (Tier 2)."""
+
+        # Get items for this source
+        items = [item for item in content_items if self._get_source_key(item) == source_key]
+
+        content_text = ""
+        for item in items[:10]:  # Limit to 10 items per source
+            title = item.get("title", "Untitled")
+            content_type = item.get("type", item.get("content_type", "unknown"))
+            timestamp = item.get("timestamp", item.get("collected_at", ""))
+            summary = str(item.get("summary", item.get("content_text", "")))[:800]
+            themes = item.get("themes", [])
+            sentiment = item.get("sentiment", "")
+
+            content_text += f"\n### {title} ({content_type})\n"
+            if timestamp:
+                content_text += f"Time: {timestamp}\n"
+            if themes:
+                content_text += f"Themes: {', '.join(themes[:5])}\n"
+            if sentiment:
+                content_text += f"Sentiment: {sentiment}\n"
+            if summary:
+                content_text += f"Content: {summary}\n"
+
+        return f"""Generate a detailed breakdown for content from {source_key}.
+
+CONTENT TO ANALYZE:
+{content_text}
+
+Generate a JSON response with:
+{{
+  "summary": "3-5 sentences covering the key insights from this source. Be specific about topics discussed, levels mentioned, and conclusions drawn.",
+  "key_insights": [
+    "Specific insight 1 (with any numbers/levels mentioned)",
+    "Specific insight 2",
+    "Specific insight 3",
+    "Specific insight 4 (if applicable)",
+    "Specific insight 5 (if applicable)"
+  ],
+  "themes": ["theme1", "theme2", "theme3"],
+  "overall_bias": "bullish|bearish|neutral|mixed|cautious",
+  "content_titles": ["Title 1", "Title 2", ...]
+}}
+
+Be SPECIFIC. Include price levels, dates, and key data points mentioned in the content.
+Respond with valid JSON only."""
+
+    def _get_source_key(self, item: Dict[str, Any]) -> str:
+        """Get the source key for an item, with YouTube channel granularity."""
+        source = item.get("source", "unknown")
+        if source == "youtube" and item.get("channel_display"):
+            return f"youtube:{item['channel_display']}"
+        return source
+
+    def _generate_content_summaries(
+        self,
+        content_items: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """
+        Generate Tier 3 content summaries from existing analyzed content.
+
+        Uses analysis_result.content_summary if available, otherwise generates minimal summary.
+        """
+        summaries = []
+
+        for item in content_items:
+            content_id = item.get("id", item.get("content_id"))
+
+            # Check if there's a pre-computed content summary
+            analysis = item.get("analysis_result", {})
+            if isinstance(analysis, str):
+                try:
+                    import json
+                    analysis = json.loads(analysis)
+                except:
+                    analysis = {}
+
+            content_summary = analysis.get("content_summary", {})
+
+            summary_entry = {
+                "id": content_id,
+                "source": item.get("source", "unknown"),
+                "channel": item.get("channel_display"),
+                "title": item.get("title", "Untitled"),
+                "collected_at": item.get("collected_at", item.get("timestamp", "")),
+                "content_type": item.get("type", item.get("content_type", "unknown")),
+                "summary": content_summary.get("summary") or item.get("summary", "")[:300],
+                "themes": content_summary.get("themes") or item.get("themes", []),
+                "key_points": content_summary.get("key_points", []),
+                "tickers_mentioned": item.get("tickers", []),
+                "sentiment": item.get("sentiment", "neutral")
+            }
+
+            summaries.append(summary_entry)
+
+        return summaries
+
+    def _empty_synthesis_v4(self, time_window: str) -> Dict[str, Any]:
+        """Return empty v4 synthesis when no content available."""
+        return {
+            "version": "4.0",
+            "executive_summary": {
+                "macro_context": f"No content collected in the past {time_window}.",
+                "synthesis_narrative": "Run collection to gather research data.",
+                "key_takeaways": [],
+                "overall_tone": "uncertain",
+                "dominant_theme": None
+            },
+            "confluence_zones": [],
+            "conflict_watch": [],
+            "attention_priorities": [],
+            "catalyst_calendar": [],
+            "source_breakdowns": {},
+            "content_summaries": [],
+            "time_window": time_window,
+            "content_count": 0,
+            "sources_included": [],
+            "youtube_channels_included": [],
+            "generated_at": datetime.utcnow().isoformat()
+        }
+
+    def analyze_v4(
+        self,
+        content_items: List[Dict[str, Any]],
+        older_content: Optional[List[Dict[str, Any]]] = None,
+        time_window: str = "24h",
+        focus_topic: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Generate tiered synthesis (V4 - PRD-041).
+
+        Returns three tiers of detail:
+        - Tier 1: Executive summary, confluence zones, conflicts, priorities
+        - Tier 2: Per-source detailed breakdowns (YouTube by channel)
+        - Tier 3: Per-content item summaries
+
+        Args:
+            content_items: Recent content items (within time_window)
+            older_content: Older content (7-30 days) for re-review scanning
+            time_window: Time window being analyzed ("24h", "7d", "30d")
+            focus_topic: Optional specific topic to focus on
+
+        Returns:
+            Tiered synthesis (v4 schema)
+        """
+        if not content_items:
+            return self._empty_synthesis_v4(time_window)
+
+        logger.info(f"Generating v4 tiered synthesis for {len(content_items)} items over {time_window}")
+
+        # TIER 1: Generate executive summary using V3 (existing logic)
+        tier1_response = self.analyze_v3(
+            content_items=content_items,
+            older_content=older_content,
+            time_window=time_window,
+            focus_topic=focus_topic
+        )
+
+        # TIER 2: Generate source breakdowns
+        # Group content by source (with YouTube channel granularity)
+        source_groups = {}
+        for item in content_items:
+            source_key = self._get_source_key(item)
+            if source_key not in source_groups:
+                source_groups[source_key] = []
+            source_groups[source_key].append(item)
+
+        source_breakdowns = {}
+        youtube_channels = []
+
+        for source_key, items in source_groups.items():
+            # Get base source and weight
+            if source_key.startswith("youtube:"):
+                channel_name = source_key.split(":", 1)[1]
+                base_source = "youtube"
+                youtube_channels.append(channel_name)
+            else:
+                base_source = source_key
+                channel_name = None
+
+            weight = self.SOURCE_WEIGHTS_V2.get(base_source, 1.0)
+
+            # Generate breakdown for this source
+            try:
+                prompt = self._build_source_breakdown_prompt(content_items, source_key)
+                breakdown = self.call_claude(
+                    prompt=prompt,
+                    system_prompt="You are summarizing research content from a specific source. Be specific and include key data points.",
+                    max_tokens=1500,
+                    temperature=0.2,
+                    expect_json=True
+                )
+            except Exception as e:
+                logger.warning(f"Failed to generate breakdown for {source_key}: {e}")
+                breakdown = {
+                    "summary": f"Content from {source_key}",
+                    "key_insights": [],
+                    "themes": [],
+                    "overall_bias": "neutral",
+                    "content_titles": [item.get("title", "Untitled") for item in items]
+                }
+
+            # Add metadata
+            breakdown["weight"] = weight
+            breakdown["content_count"] = len(items)
+
+            source_breakdowns[source_key] = breakdown
+
+        # TIER 3: Generate content summaries
+        content_summaries = self._generate_content_summaries(content_items)
+
+        # Combine all tiers
+        result = {
+            "version": "4.0",
+
+            # TIER 1: Executive Summary
+            "executive_summary": tier1_response.get("executive_summary", {}),
+            "confluence_zones": tier1_response.get("confluence_zones", []),
+            "conflict_watch": tier1_response.get("conflict_watch", []),
+            "attention_priorities": tier1_response.get("attention_priorities", []),
+            "catalyst_calendar": tier1_response.get("catalyst_calendar", []),
+            "re_review_recommendations": tier1_response.get("re_review_recommendations", []),
+
+            # TIER 2: Source Breakdowns
+            "source_breakdowns": source_breakdowns,
+
+            # TIER 3: Content Summaries
+            "content_summaries": content_summaries,
+
+            # Metadata
+            "time_window": time_window,
+            "content_count": len(content_items),
+            "older_content_scanned": len(older_content) if older_content else 0,
+            "sources_included": list(set(item.get("source", "unknown") for item in content_items)),
+            "youtube_channels_included": youtube_channels,
+            "generated_at": datetime.utcnow().isoformat()
+        }
+
+        if focus_topic:
+            result["focus_topic"] = focus_topic
+
+        logger.info(f"Generated v4 synthesis: {len(source_breakdowns)} source breakdowns, "
+                   f"{len(content_summaries)} content summaries, "
+                   f"{len(youtube_channels)} YouTube channels")
+
+        return result
+
 
 # Convenience function for quick synthesis
 def generate_synthesis(
