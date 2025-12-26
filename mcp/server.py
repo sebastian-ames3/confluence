@@ -68,16 +68,26 @@ async def list_tools():
             name="get_latest_synthesis",
             description="""Get the latest research synthesis from Confluence Hub.
 
-Returns the full v3 synthesis including:
-- Executive summary (what your sources are saying)
+Returns the full tiered synthesis (V4) including:
+
+TIER 1 - Executive Overview:
+- Macro context and synthesis narrative
+- Key takeaways (3-5 bullets)
 - Confluence zones (where sources align)
 - Conflict watch (where sources disagree)
 - Attention priorities (what to focus on)
-- Re-review recommendations (older content now relevant)
-- Source stances (what each source is thinking)
 - Catalyst calendar (upcoming events)
 
-Use this for a comprehensive overview of your research.""",
+TIER 2 - Source Breakdowns (PRD-041):
+- Per-source detailed summaries (YouTube channels shown separately)
+- Key insights from each source with specific data points
+- Each YouTube channel (Moonshots, Forward Guidance, etc.) gets its own breakdown
+
+TIER 3 - Content Detail:
+- Per-content summaries (each video, PDF, post)
+- Themes and tickers mentioned in each piece of content
+
+Use this for a comprehensive overview of your research with drill-down capability.""",
             inputSchema={
                 "type": "object",
                 "properties": {},

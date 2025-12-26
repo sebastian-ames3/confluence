@@ -37,8 +37,14 @@ class ConfluenceClient:
             return response.json()
 
     def get_latest_synthesis(self) -> Dict[str, Any]:
-        """Get the latest v3 research synthesis."""
-        return self._request("GET", "/api/synthesis/latest")
+        """Get the latest research synthesis with full detail (tier=3).
+
+        PRD-041: Always request tier=3 to get all V4 data including:
+        - Executive summary (tier 1)
+        - Source breakdowns with YouTube channel granularity (tier 2)
+        - Per-content summaries (tier 3)
+        """
+        return self._request("GET", "/api/synthesis/latest?tier=3")
 
     def get_synthesis_history(self, limit: int = 5) -> List[Dict[str, Any]]:
         """Get recent synthesis history."""
