@@ -33,6 +33,18 @@ from agents.theme_extractor import extract_and_track_themes
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+# ============================================================================
+# YouTube Channel Display Names (PRD-040)
+# ============================================================================
+# Maps collector channel keys to human-readable display names
+# Used for attribution in synthesis output instead of generic "Youtube"
+YOUTUBE_CHANNEL_DISPLAY = {
+    "peter_diamandis": "Moonshots",
+    "jordi_visser": "Jordi Visser Labs",
+    "forward_guidance": "Forward Guidance",
+    "42macro": "42 Macro"
+}
+
 
 # ============================================================================
 # Pydantic Models for Request/Response
@@ -755,8 +767,20 @@ def _get_content_for_synthesis(
         except json.JSONDecodeError:
             metadata = {}
 
+        # PRD-040: Extract YouTube channel info for granular attribution
+        channel_name = None
+        channel_display = None
+        if source.name == "youtube":
+            channel_name = metadata.get("channel_name")
+            if channel_name:
+                channel_display = YOUTUBE_CHANNEL_DISPLAY.get(channel_name, channel_name.replace("_", " ").title())
+            else:
+                channel_display = "Youtube"  # Fallback for old data without channel_name
+
         content_items.append({
             "source": source.name,
+            "channel": channel_name,  # PRD-040: Raw channel key (e.g., "peter_diamandis")
+            "channel_display": channel_display,  # PRD-040: Display name (e.g., "Moonshots")
             "type": raw.content_type,
             "title": metadata.get("title", f"{source.name} content"),
             "timestamp": raw.collected_at.isoformat() if raw.collected_at else None,

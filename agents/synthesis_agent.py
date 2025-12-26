@@ -91,7 +91,11 @@ SOURCE CONTEXT:
 - Discord (Imran): Tactical options flow, specific trade ideas - the ONLY source that gives trades
 - KT Technical: Elliott Wave analysis on ~10 instruments - provides levels that may align with other views
 - 42Macro: Institutional macro research - provides backdrop/context, NOT trade ideas
-- YouTube: Macro commentary - provides backdrop/context, NOT trade ideas
+- YouTube channels: Macro commentary - provides backdrop/context, NOT trade ideas
+  - Moonshots: AI, technology, and abundance focus (Peter Diamandis podcast with guests)
+  - Jordi Visser Labs: Information synthesis, macro perspectives
+  - Forward Guidance: Macroeconomics, Fed policy, finance
+  - 42 Macro: Institutional macro research (video format)
 - Substack: Thematic research - provides backdrop/context, NOT trade ideas
 
 CONFLUENCE MEANS: "Does the macro backdrop (42Macro, YouTube, Substack) support the tactical positioning (Discord)?"
@@ -217,19 +221,31 @@ Be direct. Be specific. Be actionable."""
     ) -> str:
         """Build the prompt for synthesis generation."""
 
-        # Group content by source
+        # Group content by source (PRD-040: use channel_display for YouTube)
         by_source = {}
         for item in content_items:
             source = item.get("source", "unknown")
-            if source not in by_source:
-                by_source[source] = []
-            by_source[source].append(item)
+            # PRD-040: Use channel display name for YouTube content
+            if source == "youtube" and item.get("channel_display"):
+                display_key = f"youtube:{item['channel_display']}"
+            else:
+                display_key = source
+            if display_key not in by_source:
+                by_source[display_key] = []
+            by_source[display_key].append(item)
 
         # Build content summary section
         content_section = ""
-        for source, items in by_source.items():
-            reliability = self.SOURCE_WEIGHTS.get(source, "medium")
-            content_section += f"\n### {source.upper()} (Reliability: {reliability})\n"
+        for source_key, items in by_source.items():
+            # PRD-040: Extract display name and base source for weight lookup
+            if source_key.startswith("youtube:"):
+                channel_name = source_key.split(":", 1)[1]
+                base_source = "youtube"
+                reliability = self.SOURCE_WEIGHTS.get(base_source, "medium")
+                content_section += f"\n### YOUTUBE - {channel_name} (Reliability: {reliability})\n"
+            else:
+                reliability = self.SOURCE_WEIGHTS.get(source_key, "medium")
+                content_section += f"\n### {source_key.upper()} (Reliability: {reliability})\n"
 
             for item in items:
                 title = item.get("title", "Untitled")
@@ -511,20 +527,33 @@ Respond with valid JSON only."""
     ) -> str:
         """Build enhanced prompt for actionable synthesis (v2)."""
 
-        # Group content by source
+        # Group content by source (PRD-040: use channel_display for YouTube)
         by_source = {}
         for item in content_items:
             source = item.get("source", "unknown")
-            if source not in by_source:
-                by_source[source] = []
-            by_source[source].append(item)
+            # PRD-040: Use channel display name for YouTube content
+            if source == "youtube" and item.get("channel_display"):
+                display_key = f"youtube:{item['channel_display']}"
+            else:
+                display_key = source
+            if display_key not in by_source:
+                by_source[display_key] = []
+            by_source[display_key].append(item)
 
         # Build content summary section with source weights
         content_section = ""
-        for source, items in by_source.items():
-            weight = self.SOURCE_WEIGHTS_V2.get(source, 1.0)
-            reliability = self.SOURCE_WEIGHTS.get(source, "medium")
-            content_section += f"\n### {source.upper()} (Weight: {weight}x, {reliability})\n"
+        for source_key, items in by_source.items():
+            # PRD-040: Extract display name and base source for weight lookup
+            if source_key.startswith("youtube:"):
+                channel_name = source_key.split(":", 1)[1]
+                base_source = "youtube"
+                weight = self.SOURCE_WEIGHTS_V2.get(base_source, 1.0)
+                reliability = self.SOURCE_WEIGHTS.get(base_source, "medium")
+                content_section += f"\n### YOUTUBE - {channel_name} (Weight: {weight}x, {reliability})\n"
+            else:
+                weight = self.SOURCE_WEIGHTS_V2.get(source_key, 1.0)
+                reliability = self.SOURCE_WEIGHTS.get(source_key, "medium")
+                content_section += f"\n### {source_key.upper()} (Weight: {weight}x, {reliability})\n"
 
             for item in items[:15]:  # Limit items per source
                 title = item.get("title", "Untitled")
@@ -782,19 +811,31 @@ RESPOND WITH VALID JSON ONLY. Be SPECIFIC with all levels, dates, and numbers.""
     ) -> str:
         """Build prompt for research consumption synthesis (v3)."""
 
-        # Group content by source
+        # Group content by source (PRD-040: use channel_display for YouTube)
         by_source = {}
         for item in content_items:
             source = item.get("source", "unknown")
-            if source not in by_source:
-                by_source[source] = []
-            by_source[source].append(item)
+            # PRD-040: Use channel display name for YouTube content
+            if source == "youtube" and item.get("channel_display"):
+                display_key = f"youtube:{item['channel_display']}"
+            else:
+                display_key = source
+            if display_key not in by_source:
+                by_source[display_key] = []
+            by_source[display_key].append(item)
 
         # Build content summary section
         content_section = ""
-        for source, items in by_source.items():
-            weight = self.SOURCE_WEIGHTS_V2.get(source, 1.0)
-            content_section += f"\n### {source.upper()} (Weight: {weight}x)\n"
+        for source_key, items in by_source.items():
+            # PRD-040: Extract display name and base source for weight lookup
+            if source_key.startswith("youtube:"):
+                channel_name = source_key.split(":", 1)[1]
+                base_source = "youtube"
+                weight = self.SOURCE_WEIGHTS_V2.get(base_source, 1.0)
+                content_section += f"\n### YOUTUBE - {channel_name} (Weight: {weight}x)\n"
+            else:
+                weight = self.SOURCE_WEIGHTS_V2.get(source_key, 1.0)
+                content_section += f"\n### {source_key.upper()} (Weight: {weight}x)\n"
 
             for item in items[:15]:
                 title = item.get("title", "Untitled")
@@ -818,15 +859,26 @@ RESPOND WITH VALID JSON ONLY. Be SPECIFIC with all levels, dates, and numbers.""
         older_section = ""
         if older_content:
             older_section = "\n## OLDER CONTENT (7-30 days ago) - scan for re-review candidates\n"
+            # PRD-040: Group older content by channel_display for YouTube
             older_by_source = {}
             for item in older_content:
                 source = item.get("source", "unknown")
-                if source not in older_by_source:
-                    older_by_source[source] = []
-                older_by_source[source].append(item)
+                # PRD-040: Use channel display name for YouTube content
+                if source == "youtube" and item.get("channel_display"):
+                    display_key = f"youtube:{item['channel_display']}"
+                else:
+                    display_key = source
+                if display_key not in older_by_source:
+                    older_by_source[display_key] = []
+                older_by_source[display_key].append(item)
 
-            for source, items in older_by_source.items():
-                older_section += f"\n### {source.upper()} (older)\n"
+            for source_key, items in older_by_source.items():
+                # PRD-040: Format header with channel name for YouTube
+                if source_key.startswith("youtube:"):
+                    channel_name = source_key.split(":", 1)[1]
+                    older_section += f"\n### YOUTUBE - {channel_name} (older)\n"
+                else:
+                    older_section += f"\n### {source_key.upper()} (older)\n"
                 for item in items[:10]:
                     title = item.get("title", "Untitled")
                     timestamp = item.get("timestamp", item.get("collected_at", ""))
