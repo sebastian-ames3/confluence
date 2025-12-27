@@ -76,7 +76,7 @@ class CrossReferenceAgent(BaseAgent):
     def __init__(
         self,
         api_key: Optional[str] = None,
-        model: str = "claude-sonnet-4-5-20250514"
+        model: str = "claude-sonnet-4-20250514"
     ):
         """
         Initialize Cross-Reference Agent.

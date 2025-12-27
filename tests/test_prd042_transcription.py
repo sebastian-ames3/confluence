@@ -15,33 +15,33 @@ from pathlib import Path
 class TestClaudeModelUpdate:
     """Test Claude model has been updated to Sonnet 4.5 across all agents."""
 
-    def test_base_agent_default_model_is_sonnet_4_5(self):
-        """BaseAgent should default to claude-sonnet-4-5-20250514."""
+    def test_base_agent_default_model_is_sonnet_4(self):
+        """BaseAgent should default to claude-sonnet-4-20250514."""
         base_agent_path = Path(__file__).parent.parent / "agents" / "base_agent.py"
         content = base_agent_path.read_text()
 
-        assert 'model: str = "claude-sonnet-4-5-20250514"' in content, \
-            "BaseAgent should default to claude-sonnet-4-5-20250514"
+        assert 'model: str = "claude-sonnet-4-20250514"' in content, \
+            "BaseAgent should default to claude-sonnet-4-20250514"
 
-    def test_transcript_harvester_uses_sonnet_4_5(self):
-        """TranscriptHarvesterAgent should use claude-sonnet-4-5-20250514."""
+    def test_transcript_harvester_uses_sonnet_4(self):
+        """TranscriptHarvesterAgent should use claude-sonnet-4-20250514."""
         harvester_path = Path(__file__).parent.parent / "agents" / "transcript_harvester.py"
         content = harvester_path.read_text()
 
-        assert 'model: str = "claude-sonnet-4-5-20250514"' in content, \
-            "TranscriptHarvesterAgent should use claude-sonnet-4-5-20250514"
+        assert 'model: str = "claude-sonnet-4-20250514"' in content, \
+            "TranscriptHarvesterAgent should use claude-sonnet-4-20250514"
 
-    def test_no_old_model_references_in_agents(self):
-        """No agent files should reference the old claude-sonnet-4-20250514 model."""
+    def test_no_invalid_model_references_in_agents(self):
+        """No agent files should reference the invalid claude-sonnet-4-5-20250514 model."""
         agents_dir = Path(__file__).parent.parent / "agents"
 
         for agent_file in agents_dir.glob("*.py"):
             content = agent_file.read_text()
-            assert "claude-sonnet-4-20250514" not in content, \
-                f"{agent_file.name} still references old model claude-sonnet-4-20250514"
+            assert "claude-sonnet-4-5-20250514" not in content, \
+                f"{agent_file.name} references invalid model claude-sonnet-4-5-20250514"
 
-    def test_all_agents_updated_to_sonnet_4_5(self):
-        """All agent files with model parameters should use Sonnet 4.5."""
+    def test_all_agents_updated_to_sonnet_4(self):
+        """All agent files with model parameters should use Sonnet 4."""
         agents_dir = Path(__file__).parent.parent / "agents"
         agents_with_model = [
             "base_agent.py",
@@ -60,8 +60,8 @@ class TestClaudeModelUpdate:
             if agent_path.exists():
                 content = agent_path.read_text()
                 if "model: str =" in content:
-                    assert "claude-sonnet-4-5-20250514" in content, \
-                        f"{agent_name} should use claude-sonnet-4-5-20250514"
+                    assert "claude-sonnet-4-20250514" in content, \
+                        f"{agent_name} should use claude-sonnet-4-20250514"
 
 
 class TestAssemblyAIDependency:
