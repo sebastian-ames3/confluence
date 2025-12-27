@@ -900,3 +900,96 @@ async def clear_source_data(
         db.rollback()
         logger.error(f"Failed to clear source data: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/retranscribe/42macro")
+async def retranscribe_42macro_videos(
+    db: Session = Depends(get_db)
+):
+    """
+    Re-trigger transcription for 42macro videos that don't have transcripts.
+
+    This endpoint finds all 42macro video content that lacks transcripts
+    and queues them for transcription using the updated pipeline with
+    proper Vimeo authentication (referer + cookies).
+
+    Returns:
+        Count of videos queued for transcription
+    """
+    try:
+        # Get 42macro source
+        source = db.query(Source).filter(Source.name == "42macro").first()
+
+        if not source:
+            return {
+                "status": "error",
+                "message": "42macro source not found",
+                "queued": 0
+            }
+
+        # Find all 42macro videos
+        videos = db.query(RawContent).filter(
+            RawContent.source_id == source.id,
+            RawContent.content_type == "video"
+        ).all()
+
+        logger.info(f"Found {len(videos)} 42macro videos to check")
+
+        # Filter to videos without transcripts
+        videos_to_transcribe = []
+        for video in videos:
+            # Check if content_text looks like just a title (no transcript)
+            content_text = video.content_text or ""
+            has_transcript = len(content_text) > 200  # Transcripts are much longer than titles
+
+            # Also check json_metadata for transcript field
+            metadata = {}
+            if video.json_metadata:
+                try:
+                    metadata = json.loads(video.json_metadata)
+                except:
+                    pass
+
+            has_transcript = has_transcript or bool(metadata.get("transcript"))
+
+            if not has_transcript and video.url:
+                videos_to_transcribe.append({
+                    "raw_content_id": video.id,
+                    "url": video.url,
+                    "title": metadata.get("title", ""),
+                    "embed_url": metadata.get("embed_url"),
+                    "metadata": metadata
+                })
+                logger.info(f"Queuing video {video.id} for transcription: {video.url[:50]}...")
+
+        logger.info(f"Found {len(videos_to_transcribe)} videos without transcripts")
+
+        # Queue transcriptions
+        transcription_queued = 0
+        for video in videos_to_transcribe:
+            try:
+                asyncio.create_task(_transcribe_video_async(
+                    raw_content_id=video["raw_content_id"],
+                    video_url=video["url"],
+                    source="42macro",
+                    title=video["title"],
+                    metadata=video.get("metadata")
+                ))
+                transcription_queued += 1
+            except Exception as e:
+                logger.error(f"Failed to queue transcription for {video['raw_content_id']}: {e}")
+
+        return {
+            "status": "success",
+            "message": f"Queued {transcription_queued} 42macro videos for transcription",
+            "total_videos": len(videos),
+            "videos_without_transcripts": len(videos_to_transcribe),
+            "queued": transcription_queued,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to retranscribe 42macro videos: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
