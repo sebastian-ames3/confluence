@@ -347,6 +347,112 @@ async def refresh_symbol_data(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/extract/{content_id}")
+async def extract_symbols_from_content(
+    content_id: int,
+    force: bool = False,
+    user: str = Depends(verify_jwt_or_basic),
+    db: Session = Depends(get_db)
+):
+    """
+    Manually trigger symbol extraction on specific content (PRD-039).
+
+    Use this to re-extract symbols from existing KT Technical or Discord content.
+
+    Args:
+        content_id: ID of raw_content to process
+        force: If True, re-extract even if content was already processed
+    """
+    from agents.symbol_level_extractor import SymbolLevelExtractor
+
+    try:
+        # Get the raw content
+        raw_content = db.query(RawContent).filter(RawContent.id == content_id).first()
+        if not raw_content:
+            raise HTTPException(status_code=404, detail=f"Content {content_id} not found")
+
+        # Check source eligibility
+        source_name = raw_content.source.name if raw_content.source else ""
+        if source_name not in ('kt_technical', 'discord'):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Source '{source_name}' not eligible for symbol extraction. Must be 'kt_technical' or 'discord'."
+            )
+
+        # Check if content has text
+        content_text = raw_content.content_text
+        if not content_text or len(content_text.strip()) < 100:
+            raise HTTPException(
+                status_code=400,
+                detail="Content has insufficient text for symbol extraction (min 100 chars required)"
+            )
+
+        # Check if already has symbol extraction (unless force=True)
+        if not force:
+            existing_levels = db.query(SymbolLevel).filter(
+                SymbolLevel.extracted_from_content_id == content_id
+            ).count()
+            if existing_levels > 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Content {content_id} already has {existing_levels} extracted levels. Use force=true to re-extract."
+                )
+
+        # If forcing, clear existing levels from this content
+        if force:
+            deleted = db.query(SymbolLevel).filter(
+                SymbolLevel.extracted_from_content_id == content_id
+            ).delete()
+            logger.info(f"Force re-extraction: cleared {deleted} existing levels for content {content_id}")
+
+        # Run extraction
+        extractor = SymbolLevelExtractor()
+        extraction_result = extractor.extract_from_transcript(
+            transcript=content_text,
+            source=source_name,
+            content_id=content_id
+        )
+
+        # Save to database
+        if extraction_result.get("symbols"):
+            save_summary = extractor.save_extraction_to_db(
+                db=db,
+                extraction_result=extraction_result,
+                source=source_name,
+                content_id=content_id
+            )
+
+            logger.info(f"Manual symbol extraction for content {content_id}: "
+                       f"{save_summary['symbols_processed']} symbols, "
+                       f"{save_summary['levels_created']} levels")
+
+            return {
+                "message": "Symbol extraction completed",
+                "content_id": content_id,
+                "source": source_name,
+                "symbols_extracted": save_summary["symbols_processed"],
+                "levels_created": save_summary["levels_created"],
+                "states_updated": save_summary["states_updated"],
+                "symbols": [s.get("symbol") for s in extraction_result.get("symbols", [])],
+                "extraction_confidence": extraction_result.get("extraction_confidence"),
+                "errors": save_summary.get("errors", [])
+            }
+        else:
+            return {
+                "message": "No symbols found in content",
+                "content_id": content_id,
+                "source": source_name,
+                "symbols_extracted": 0,
+                "levels_created": 0
+            }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error extracting symbols from content {content_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.patch("/levels/{level_id}")
 async def update_level(
     level_id: int,

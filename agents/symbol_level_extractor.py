@@ -14,6 +14,8 @@ import re
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 
+from sqlalchemy.orm import Session
+
 from agents.base_agent import BaseAgent
 from backend.utils.sanitization import sanitize_content_text, truncate_for_prompt
 
@@ -485,3 +487,225 @@ You must respond with valid JSON only."""
         result["extracted_at"] = datetime.utcnow().isoformat()
 
         return result
+
+    def save_extraction_to_db(
+        self,
+        db: Session,
+        extraction_result: Dict[str, Any],
+        source: str,
+        content_id: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """
+        Save extraction results to database.
+
+        Creates SymbolLevel records for each level and updates SymbolState
+        for each symbol. Calculates confluence scores after saving.
+
+        Args:
+            db: Database session
+            extraction_result: Result from extract_from_transcript or vision methods
+            source: Source type ('kt_technical' or 'discord')
+            content_id: ID of raw_content this came from
+
+        Returns:
+            Summary of saved records
+        """
+        from backend.models import SymbolLevel, SymbolState
+        from backend.utils.staleness_manager import update_symbol_confluence
+
+        summary = {
+            "symbols_processed": 0,
+            "levels_created": 0,
+            "states_updated": 0,
+            "errors": []
+        }
+
+        try:
+            symbols_data = extraction_result.get("symbols", [])
+
+            for sym_data in symbols_data:
+                symbol = sym_data.get("symbol")
+                if not symbol:
+                    continue
+
+                try:
+                    # Get or create SymbolState
+                    state = db.query(SymbolState).filter_by(symbol=symbol).first()
+                    if not state:
+                        state = SymbolState(symbol=symbol)
+                        db.add(state)
+                        db.flush()
+
+                    # Update state based on source
+                    now = datetime.utcnow()
+
+                    if source == 'kt_technical':
+                        state.kt_wave_position = sym_data.get("wave_position")
+                        state.kt_wave_direction = sym_data.get("wave_direction")
+                        state.kt_wave_phase = sym_data.get("wave_phase")
+                        state.kt_bias = sym_data.get("bias")
+                        state.kt_notes = sym_data.get("notes")
+                        state.kt_last_updated = now
+                        state.kt_is_stale = False
+                        state.kt_stale_warning = None
+                        state.kt_source_content_id = content_id
+
+                        # Extract primary target/support/invalidation from levels
+                        for level in sym_data.get("levels", []):
+                            level_type = level.get("type")
+                            price = level.get("price")
+                            if level_type == "target" and price:
+                                state.kt_primary_target = price
+                            elif level_type == "support" and price:
+                                if not state.kt_primary_support or price > state.kt_primary_support:
+                                    state.kt_primary_support = price
+                            elif level_type == "invalidation" and price:
+                                state.kt_invalidation = price
+
+                    elif source == 'discord':
+                        # For Discord text posts with quadrant info
+                        if "quadrant" in sym_data:
+                            state.discord_quadrant = sym_data.get("quadrant")
+                            state.discord_iv_regime = sym_data.get("iv_regime")
+                            state.discord_strategy_rec = sym_data.get("strategy_rec")
+                        state.discord_notes = sym_data.get("notes")
+                        state.discord_last_updated = now
+                        state.discord_is_stale = False
+                        state.discord_source_content_id = content_id
+
+                    state.updated_at = now
+                    summary["states_updated"] += 1
+
+                    # Create SymbolLevel records for each level
+                    for level in sym_data.get("levels", []):
+                        level_record = SymbolLevel(
+                            symbol=symbol,
+                            source=source,
+                            level_type=level.get("type", "unknown"),
+                            price=level.get("price"),
+                            price_upper=level.get("price_upper"),
+                            significance=level.get("significance"),
+                            direction=level.get("direction"),
+                            wave_context=level.get("context"),
+                            fib_level=level.get("fib"),
+                            context_snippet=level.get("context_snippet"),
+                            confidence=extraction_result.get("extraction_confidence", 0.8),
+                            extracted_from_content_id=content_id,
+                            extraction_method=sym_data.get("extraction_method", "transcript"),
+                            invalidation_price=level.get("invalidation_price"),
+                            is_active=True,
+                            is_stale=False
+                        )
+                        db.add(level_record)
+                        summary["levels_created"] += 1
+
+                    summary["symbols_processed"] += 1
+
+                except Exception as e:
+                    logger.error(f"Error saving data for {symbol}: {e}")
+                    summary["errors"].append(f"{symbol}: {str(e)}")
+
+            # Commit all changes
+            db.commit()
+
+            # Update confluence scores for all processed symbols
+            for sym_data in symbols_data:
+                symbol = sym_data.get("symbol")
+                if symbol:
+                    try:
+                        update_symbol_confluence(db, symbol)
+                    except Exception as e:
+                        logger.warning(f"Failed to update confluence for {symbol}: {e}")
+
+            logger.info(f"Saved extraction: {summary['symbols_processed']} symbols, "
+                       f"{summary['levels_created']} levels, {summary['states_updated']} states updated")
+
+            return summary
+
+        except Exception as e:
+            logger.error(f"Failed to save extraction to database: {e}")
+            db.rollback()
+            summary["errors"].append(str(e))
+            return summary
+
+    def save_compass_to_db(
+        self,
+        db: Session,
+        compass_result: Dict[str, Any],
+        content_id: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """
+        Save Stock Compass extraction results to database.
+
+        Updates SymbolState with Discord quadrant/IV data.
+
+        Args:
+            db: Database session
+            compass_result: Result from extract_from_compass_image
+            content_id: ID of raw_content this came from
+
+        Returns:
+            Summary of saved records
+        """
+        from backend.models import SymbolState
+        from backend.utils.staleness_manager import update_symbol_confluence
+
+        summary = {
+            "symbols_processed": 0,
+            "states_updated": 0,
+            "errors": []
+        }
+
+        try:
+            compass_data = compass_result.get("compass_data", [])
+            now = datetime.utcnow()
+
+            for item in compass_data:
+                symbol = item.get("symbol")
+                if not symbol:
+                    continue
+
+                try:
+                    # Get or create SymbolState
+                    state = db.query(SymbolState).filter_by(symbol=symbol).first()
+                    if not state:
+                        state = SymbolState(symbol=symbol)
+                        db.add(state)
+                        db.flush()
+
+                    # Update Discord state from compass
+                    state.discord_quadrant = item.get("quadrant")
+                    state.discord_iv_regime = item.get("iv_regime")
+                    state.discord_last_updated = now
+                    state.discord_is_stale = False
+                    state.discord_source_content_id = content_id
+                    state.updated_at = now
+
+                    summary["states_updated"] += 1
+                    summary["symbols_processed"] += 1
+
+                except Exception as e:
+                    logger.error(f"Error saving compass data for {symbol}: {e}")
+                    summary["errors"].append(f"{symbol}: {str(e)}")
+
+            # Commit all changes
+            db.commit()
+
+            # Update confluence scores
+            for item in compass_data:
+                symbol = item.get("symbol")
+                if symbol:
+                    try:
+                        update_symbol_confluence(db, symbol)
+                    except Exception as e:
+                        logger.warning(f"Failed to update confluence for {symbol}: {e}")
+
+            logger.info(f"Saved compass data: {summary['symbols_processed']} symbols updated")
+
+            return summary
+
+        except Exception as e:
+            logger.error(f"Failed to save compass data to database: {e}")
+            db.rollback()
+            summary["errors"].append(str(e))
+            return summary
