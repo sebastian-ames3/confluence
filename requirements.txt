@@ -28,6 +28,7 @@ Pillow==10.2.0  # For image processing (Chart Intelligence)
 # AI APIs
 anthropic>=0.40.0,<1.0.0
 openai==1.12.0
+assemblyai>=0.30.0  # AssemblyAI SDK for transcription with speaker diarization (PRD-042)
 httpx>=0.25.0  # Explicit httpx for OpenAI client configuration
 
 # YouTube

@@ -55,7 +55,7 @@ Extract high-level themes and key insights."""
         claude_api_key: Optional[str] = None,
         openai_api_key: Optional[str] = None,
         downloads_dir: Optional[Path] = None,
-        model: str = "claude-sonnet-4-20250514"
+        model: str = "claude-sonnet-4-5-20250514"
     ):
         """
         Initialize Transcript Harvester Agent.
@@ -80,6 +80,20 @@ Extract high-level themes and key insights."""
             api_key=self.openai_api_key,
             http_client=http_client
         )
+
+        # Initialize AssemblyAI client if API key available (PRD-042)
+        self.assemblyai_api_key = os.getenv("ASSEMBLYAI_API_KEY")
+        self.assemblyai_client = None
+        if self.assemblyai_api_key:
+            try:
+                import assemblyai as aai
+                aai.settings.api_key = self.assemblyai_api_key
+                self.assemblyai_client = aai.Transcriber()
+                logger.info("AssemblyAI client initialized (primary transcription with speaker diarization)")
+            except ImportError:
+                logger.warning("AssemblyAI package not installed, using Whisper only")
+        else:
+            logger.info("ASSEMBLYAI_API_KEY not found, using Whisper as primary transcription")
 
         # Setup downloads directory
         if downloads_dir:
@@ -356,16 +370,99 @@ Extract high-level themes and key insights."""
 
     async def transcribe(self, audio_file: Path) -> Dict[str, Any]:
         """
-        Transcribe audio using Whisper API.
+        Transcribe audio using AssemblyAI (primary) or Whisper (fallback).
+
+        PRD-042: AssemblyAI provides speaker diarization for financial videos.
 
         Args:
             audio_file: Path to audio file
 
         Returns:
-            Transcript with timestamps
+            Transcript with timestamps and optional speaker labels
+        """
+        # Try AssemblyAI first if available (PRD-042)
+        if self.assemblyai_client:
+            try:
+                logger.info("Transcribing with AssemblyAI (speaker diarization enabled)")
+                return await self._transcribe_assemblyai(audio_file)
+            except Exception as e:
+                logger.warning(f"AssemblyAI transcription failed, falling back to Whisper: {e}")
+
+        # Fallback to Whisper
+        logger.info("Transcribing with Whisper")
+        return await self._transcribe_whisper(audio_file)
+
+    async def _transcribe_assemblyai(self, audio_file: Path) -> Dict[str, Any]:
+        """
+        Transcribe audio using AssemblyAI with speaker diarization.
+
+        PRD-042: Primary transcription method with speaker labels.
+
+        Args:
+            audio_file: Path to audio file
+
+        Returns:
+            Transcript with timestamps and speaker labels
+        """
+        import assemblyai as aai
+
+        logger.info(f"AssemblyAI transcribing: {audio_file}")
+
+        # Configure transcription with speaker diarization
+        config = aai.TranscriptionConfig(
+            speaker_labels=True,  # Enable speaker diarization
+            language_code="en"
+        )
+
+        # Transcribe (AssemblyAI handles any file size)
+        transcript = self.assemblyai_client.transcribe(
+            str(audio_file),
+            config=config
+        )
+
+        if transcript.status == aai.TranscriptStatus.error:
+            raise Exception(f"AssemblyAI transcription failed: {transcript.error}")
+
+        # Convert utterances to segment format with speaker labels
+        segments = []
+        for i, utterance in enumerate(transcript.utterances or []):
+            segments.append({
+                "id": i,
+                "start": utterance.start / 1000,  # Convert ms to seconds
+                "end": utterance.end / 1000,
+                "text": utterance.text,
+                "speaker": utterance.speaker  # "A", "B", etc.
+            })
+
+        # Count unique speakers
+        speakers = set(u.speaker for u in transcript.utterances or [])
+        speaker_count = len(speakers)
+
+        logger.info(f"AssemblyAI transcription complete. Length: {len(transcript.text)} characters")
+        logger.info(f"Segments: {len(segments)}, Speakers detected: {speaker_count}")
+
+        return {
+            "text": transcript.text,
+            "segments": segments,
+            "duration": transcript.audio_duration,
+            "speaker_count": speaker_count,
+            "transcription_provider": "assemblyai"
+        }
+
+    async def _transcribe_whisper(self, audio_file: Path) -> Dict[str, Any]:
+        """
+        Transcribe audio using OpenAI Whisper API.
+
+        Fallback transcription method when AssemblyAI is unavailable.
+
+        Args:
+            audio_file: Path to audio file
+
+        Returns:
+            Transcript with timestamps (no speaker labels)
         """
         try:
-            logger.info(f"Transcribing audio file: {audio_file}")
+            logger.info(f"Whisper transcribing: {audio_file}")
 
             # Check file size (Whisper has 25MB limit)
             file_size_mb = audio_file.stat().st_size / (1024 * 1024)
@@ -388,17 +485,29 @@ Extract high-level themes and key insights."""
             transcript_text = transcript_response.text
             segments = transcript_response.segments if hasattr(transcript_response, 'segments') else []
 
-            logger.info(f"Transcription complete. Length: {len(transcript_text)} characters")
-            logger.info(f"Segments: {len(segments)}")
+            # Convert segments to dict format for consistency
+            segment_list = []
+            for i, seg in enumerate(segments):
+                segment_dict = {
+                    "id": i,
+                    "start": getattr(seg, 'start', seg.get('start', 0) if isinstance(seg, dict) else 0),
+                    "end": getattr(seg, 'end', seg.get('end', 0) if isinstance(seg, dict) else 0),
+                    "text": getattr(seg, 'text', seg.get('text', '') if isinstance(seg, dict) else '')
+                }
+                segment_list.append(segment_dict)
+
+            logger.info(f"Whisper transcription complete. Length: {len(transcript_text)} characters")
+            logger.info(f"Segments: {len(segment_list)}")
 
             return {
                 "text": transcript_text,
-                "segments": segments,
-                "duration": transcript_response.duration if hasattr(transcript_response, 'duration') else None
+                "segments": segment_list,
+                "duration": transcript_response.duration if hasattr(transcript_response, 'duration') else None,
+                "transcription_provider": "whisper"
             }
 
         except Exception as e:
-            logger.error(f"Transcription failed: {e}")
+            logger.error(f"Whisper transcription failed: {e}")
             raise
 
     async def _transcribe_chunked(self, audio_file: Path) -> Dict[str, Any]:
@@ -490,7 +599,8 @@ Extract high-level themes and key insights."""
             "segments": all_segments,
             "duration": total_duration_sec,
             "chunked": True,
-            "chunk_count": len(chunks)
+            "chunk_count": len(chunks),
+            "transcription_provider": "whisper"
         }
 
     async def analyze_transcript(
@@ -502,13 +612,15 @@ Extract high-level themes and key insights."""
         """
         Analyze transcript with Claude to extract insights.
 
+        PRD-042: Enhanced to handle speaker diarization from AssemblyAI.
+
         Args:
-            transcript: Transcript dict with text and segments
+            transcript: Transcript dict with text, segments, and optional speaker labels
             metadata: Video metadata (speaker, date, title)
             priority: Priority tier for prompt selection
 
         Returns:
-            Structured analysis
+            Structured analysis with optional speaker attribution
         """
         try:
             transcript_text = transcript["text"]
@@ -518,6 +630,14 @@ Extract high-level themes and key insights."""
 
             logger.info(f"Analyzing transcript for: {speaker} - {title}")
 
+            # Check if transcript has speaker diarization (PRD-042)
+            segments = transcript.get("segments", [])
+            has_speakers = any(seg.get("speaker") for seg in segments)
+            speaker_count = transcript.get("speaker_count", 0)
+
+            if has_speakers:
+                logger.info(f"Speaker diarization detected: {speaker_count} speakers")
+
             # Select system prompt based on priority
             if priority.lower() == "high":
                 system_prompt = self.TIER1_SYSTEM_PROMPT
@@ -525,6 +645,17 @@ Extract high-level themes and key insights."""
                 system_prompt = self.TIER2_SYSTEM_PROMPT
             else:
                 system_prompt = self.TIER3_SYSTEM_PROMPT
+
+            # Build speaker-aware instructions (PRD-042)
+            if has_speakers:
+                speaker_instruction = """
+- This transcript includes speaker diarization (Speaker A, B, etc.)
+- For key_quotes: Include the speaker label (e.g., {"speaker": "A", "timestamp": "...", "text": "..."})
+- Note if different speakers have conflicting views on a topic
+- Try to identify which speaker is the host vs guest/analyst based on context
+- Weight opinions from different speakers appropriately (analysts may have more conviction than hosts asking questions)"""
+            else:
+                speaker_instruction = ""
 
             # Build analysis prompt
             user_prompt = f"""Analyze this financial market analysis video transcript.
@@ -547,7 +678,7 @@ Extract the following information in JSON format:
     "catalysts": ["upcoming events that matter for this thesis"],
     "falsification_criteria": ["what would invalidate this view"],
     "key_quotes": [
-        {{"timestamp": "HH:MM:SS", "text": "quote text"}},
+        {{"timestamp": "HH:MM:SS", "text": "quote text", "speaker": "A or B (if available)"}},
         ...
     ]
 }}
@@ -557,7 +688,7 @@ Instructions:
 - For key_quotes: Extract 3-5 most important quotes with timestamps
 - For conviction: Rate 0-10 based on speaker's confidence and data backing
 - For falsification_criteria: Be specific (e.g., "If VIX drops below 15", not "if market rallies")
-- If speaker discusses multiple distinct theses, focus on the primary/strongest one
+- If speaker discusses multiple distinct theses, focus on the primary/strongest one{speaker_instruction}
 
 Return ONLY valid JSON, no markdown formatting."""
 
@@ -582,8 +713,13 @@ Return ONLY valid JSON, no markdown formatting."""
 
             # Add transcript to response
             analysis["transcript"] = transcript_text
-            analysis["transcript_segments"] = transcript.get("segments", [])
+            analysis["transcript_segments"] = segments
             analysis["video_duration_seconds"] = transcript.get("duration")
+
+            # Add transcription metadata (PRD-042)
+            analysis["transcription_provider"] = transcript.get("transcription_provider", "unknown")
+            if has_speakers:
+                analysis["speaker_count"] = speaker_count
 
             logger.info(f"Analysis complete: {analysis['sentiment']} sentiment, conviction {analysis['conviction']}/10")
 
