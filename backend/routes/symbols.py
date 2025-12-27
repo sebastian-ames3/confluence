@@ -471,8 +471,6 @@ async def extract_symbols_from_image(
     """
     from agents.symbol_level_extractor import SymbolLevelExtractor
     import os
-    import tempfile
-    import httpx
 
     try:
         # Get the raw content
@@ -495,120 +493,85 @@ async def extract_symbols_from_image(
                 detail=f"Content type '{raw_content.content_type}' is not an image. Use /extract/ for text content."
             )
 
-        # Get image file - try local first, then download from URL
+        # Check if file exists
         file_path = raw_content.file_path
-        temp_file = None
-
-        if file_path and os.path.exists(file_path):
-            # Local file exists
-            image_path = file_path
-        elif raw_content.url:
-            # Download from URL to temp file
-            try:
-                async with httpx.AsyncClient() as client:
-                    response = await client.get(raw_content.url, timeout=30.0)
-                    response.raise_for_status()
-
-                    # Determine extension from URL or content-type
-                    ext = '.png'
-                    if '.jpg' in raw_content.url or '.jpeg' in raw_content.url:
-                        ext = '.jpg'
-                    elif '.webp' in raw_content.url:
-                        ext = '.webp'
-
-                    # Save to temp file
-                    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=ext)
-                    temp_file.write(response.content)
-                    temp_file.close()
-                    image_path = temp_file.name
-                    logger.info(f"Downloaded image from URL to {image_path}")
-            except Exception as e:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Failed to download image from URL: {str(e)}"
-                )
-        else:
+        if not file_path or not os.path.exists(file_path):
             raise HTTPException(
                 status_code=400,
-                detail=f"No image file or URL available for content {content_id}"
+                detail=f"Image file not found: {file_path}"
             )
 
-        try:
-            # Initialize extractor
-            extractor = SymbolLevelExtractor()
+        # Initialize extractor
+        extractor = SymbolLevelExtractor()
 
-            # Determine extraction method based on source
-            if source_name == 'discord':
-                # Discord images are typically Stock Compass
-                extraction_result = extractor.extract_from_compass_image(
-                    image_path=image_path,
+        # Determine extraction method based on source
+        if source_name == 'discord':
+            # Discord images are typically Stock Compass
+            extraction_result = extractor.extract_from_compass_image(
+                image_path=file_path,
+                content_id=content_id
+            )
+
+            # Save compass data
+            if extraction_result.get("compass_data"):
+                save_summary = extractor.save_compass_to_db(
+                    db=db,
+                    compass_result=extraction_result,
                     content_id=content_id
                 )
 
-                # Save compass data
-                if extraction_result.get("compass_data"):
-                    save_summary = extractor.save_compass_to_db(
-                        db=db,
-                        compass_result=extraction_result,
-                        content_id=content_id
-                    )
-
-                    return {
-                        "message": "Compass extraction completed",
-                        "content_id": content_id,
-                        "source": source_name,
-                        "extraction_type": "compass",
-                        "symbols_extracted": save_summary["symbols_processed"],
-                        "states_updated": save_summary["states_updated"],
-                        "symbols": [item.get("symbol") for item in extraction_result.get("compass_data", [])],
-                        "extraction_confidence": extraction_result.get("extraction_confidence"),
-                        "errors": save_summary.get("errors", [])
-                    }
-                else:
-                    return {
-                        "message": "No compass data found in image",
-                        "content_id": content_id,
-                        "source": source_name,
-                        "symbols_extracted": 0
-                    }
+                return {
+                    "message": "Compass extraction completed",
+                    "content_id": content_id,
+                    "source": source_name,
+                    "extraction_type": "compass",
+                    "symbols_extracted": save_summary["symbols_processed"],
+                    "states_updated": save_summary["states_updated"],
+                    "symbols": [item.get("symbol") for item in extraction_result.get("compass_data", [])],
+                    "extraction_confidence": extraction_result.get("extraction_confidence"),
+                    "errors": save_summary.get("errors", [])
+                }
             else:
-                # KT Technical images are charts
-                extraction_result = extractor.extract_from_chart_image(
-                    image_path=image_path,
+                return {
+                    "message": "No compass data found in image",
+                    "content_id": content_id,
+                    "source": source_name,
+                    "symbols_extracted": 0
+                }
+        else:
+            # KT Technical images are charts
+            extraction_result = extractor.extract_from_chart_image(
+                image_path=file_path,
+                content_id=content_id
+            )
+
+            # Save chart extraction (uses same method as transcript)
+            if extraction_result.get("symbols"):
+                save_summary = extractor.save_extraction_to_db(
+                    db=db,
+                    extraction_result=extraction_result,
+                    source=source_name,
                     content_id=content_id
                 )
 
-                # Save chart extraction (uses same method as transcript)
-                if extraction_result.get("symbols"):
-                    save_summary = extractor.save_extraction_to_db(
-                        db=db,
-                        extraction_result=extraction_result,
-                        source=source_name,
-                        content_id=content_id
-                    )
-
-                    return {
-                        "message": "Chart extraction completed",
-                        "content_id": content_id,
-                        "source": source_name,
-                        "extraction_type": "chart",
-                        "symbols_extracted": save_summary["symbols_processed"],
-                        "levels_created": save_summary["levels_created"],
-                        "symbols": [s.get("symbol") for s in extraction_result.get("symbols", [])],
-                        "extraction_confidence": extraction_result.get("extraction_confidence"),
-                        "errors": save_summary.get("errors", [])
-                    }
-                else:
-                    return {
-                        "message": "No symbols found in chart image",
-                        "content_id": content_id,
-                        "source": source_name,
-                        "symbols_extracted": 0
-                    }
-        finally:
-            # Clean up temp file if created
-            if temp_file and os.path.exists(temp_file.name):
-                os.unlink(temp_file.name)
+                return {
+                    "message": "Chart extraction completed",
+                    "content_id": content_id,
+                    "source": source_name,
+                    "extraction_type": "chart",
+                    "symbols_extracted": save_summary["symbols_processed"],
+                    "levels_created": save_summary["levels_created"],
+                    "symbols": [s.get("symbol") for s in extraction_result.get("symbols", [])],
+                    "extraction_confidence": extraction_result.get("extraction_confidence"),
+                    "errors": save_summary.get("errors", [])
+                }
+            else:
+                return {
+                    "message": "No symbols found in chart image",
+                    "content_id": content_id,
+                    "source": source_name,
+                    "symbols_extracted": 0
+                }
 
     except HTTPException:
         raise
