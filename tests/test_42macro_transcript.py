@@ -309,3 +309,101 @@ class TestRetranscribeEndpoint:
 
         for field in expected_fields:
             assert field in content, f"Response should include {field}"
+
+
+class TestLocalTranscriptionScript:
+    """Test the local transcription script (macro42_local.py)."""
+
+    def test_script_has_transcription_function(self):
+        """Verify transcribe_videos_locally function exists."""
+        script_path = Path(__file__).parent.parent / "dev" / "scripts" / "macro42_local.py"
+        content = script_path.read_text()
+
+        assert "async def transcribe_videos_locally(" in content, \
+            "transcribe_videos_locally function should exist"
+
+    def test_script_has_cleanup_function(self):
+        """Verify cleanup_temp_files function exists."""
+        script_path = Path(__file__).parent.parent / "dev" / "scripts" / "macro42_local.py"
+        content = script_path.read_text()
+
+        assert "async def cleanup_temp_files(" in content, \
+            "cleanup_temp_files function should exist"
+
+    def test_script_has_skip_transcription_arg(self):
+        """Verify --skip-transcription argument exists."""
+        script_path = Path(__file__).parent.parent / "dev" / "scripts" / "macro42_local.py"
+        content = script_path.read_text()
+
+        assert '"--skip-transcription"' in content, \
+            "--skip-transcription argument should exist"
+
+    def test_script_uses_transcript_harvester(self):
+        """Verify script imports and uses TranscriptHarvesterAgent."""
+        script_path = Path(__file__).parent.parent / "dev" / "scripts" / "macro42_local.py"
+        content = script_path.read_text()
+
+        assert "from agents.transcript_harvester import TranscriptHarvesterAgent" in content, \
+            "Should import TranscriptHarvesterAgent"
+        assert "harvester.harvest(" in content, \
+            "Should call harvester.harvest()"
+
+    def test_script_adds_transcript_to_metadata(self):
+        """Verify script adds transcript to video metadata."""
+        script_path = Path(__file__).parent.parent / "dev" / "scripts" / "macro42_local.py"
+        content = script_path.read_text()
+
+        assert '"transcript": result["transcript"]' in content, \
+            "Should add transcript to metadata"
+        assert '"transcribed_locally": True' in content, \
+            "Should mark as transcribed locally"
+
+    def test_script_sets_content_text(self):
+        """Verify script sets content_text to transcript."""
+        script_path = Path(__file__).parent.parent / "dev" / "scripts" / "macro42_local.py"
+        content = script_path.read_text()
+
+        assert 'video["content_text"] = result["transcript"]' in content, \
+            "Should set content_text to transcript"
+
+    def test_script_cleans_up_files(self):
+        """Verify script cleans up temporary audio files."""
+        script_path = Path(__file__).parent.parent / "dev" / "scripts" / "macro42_local.py"
+        content = script_path.read_text()
+
+        assert 'glob("42macro_*.mp3")' in content, \
+            "Should clean up .mp3 files"
+        assert 'glob("42macro_*.part*")' in content, \
+            "Should clean up partial downloads"
+
+    def test_script_separates_videos_from_other_content(self):
+        """Verify script only transcribes videos, not PDFs."""
+        script_path = Path(__file__).parent.parent / "dev" / "scripts" / "macro42_local.py"
+        content = script_path.read_text()
+
+        assert 'item.get("content_type") == "video"' in content, \
+            "Should filter for video content type"
+        assert 'item.get("content_type") != "video"' in content, \
+            "Should separate non-video content"
+
+    def test_script_handles_transcription_errors(self):
+        """Verify script handles transcription errors gracefully."""
+        script_path = Path(__file__).parent.parent / "dev" / "scripts" / "macro42_local.py"
+        content = script_path.read_text()
+
+        assert "failed_count" in content, \
+            "Should track failed transcriptions"
+        assert "Transcription failed for" in content, \
+            "Should log transcription failures"
+
+    def test_docstring_documents_flow(self):
+        """Verify docstring documents the transcription flow."""
+        script_path = Path(__file__).parent.parent / "dev" / "scripts" / "macro42_local.py"
+        content = script_path.read_text()
+
+        assert "Video Transcription Flow:" in content, \
+            "Docstring should document the flow"
+        assert "yt-dlp downloads videos locally" in content, \
+            "Docstring should mention yt-dlp"
+        assert "Whisper API transcribes audio" in content, \
+            "Docstring should mention Whisper"
