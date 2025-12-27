@@ -113,7 +113,7 @@ Extract high-level themes and key insights."""
             logger.info(f"Source: {source}, Priority: {priority}")
 
             # Step 1: Download video and extract audio
-            audio_file = await self.download_and_extract_audio(video_url, source)
+            audio_file = await self.download_and_extract_audio(video_url, source, metadata)
 
             # Step 2: Transcribe with Whisper
             transcript = await self.transcribe(audio_file)
@@ -139,10 +139,14 @@ Extract high-level themes and key insights."""
             logger.error(f"Harvest failed: {e}")
             raise
 
+    # Path to 42macro cookies file (saved by macro42_selenium.py)
+    MACRO42_COOKIES_FILE = "temp/42macro_cookies.json"
+
     async def download_and_extract_audio(
         self,
         video_url: str,
-        source: str
+        source: str,
+        metadata: Optional[Dict[str, Any]] = None
     ) -> Path:
         """
         Download video and extract audio.
@@ -150,10 +154,14 @@ Extract high-level themes and key insights."""
         Args:
             video_url: URL to video
             source: Source identifier
+            metadata: Optional metadata with embed_url for Vimeo auth
 
         Returns:
             Path to extracted audio file (MP3)
         """
+        if metadata is None:
+            metadata = {}
+
         try:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             safe_source = source.replace("/", "_").replace(":", "_")
@@ -164,27 +172,13 @@ Extract high-level themes and key insights."""
 
             logger.info(f"Downloading video from: {video_url}")
 
-            # Download video using yt-dlp
-            # yt-dlp handles YouTube, Zoom, Webex, Twitter, Vimeo and many other platforms
-            cmd = [
-                "yt-dlp",
-                "-f", "bestaudio/best",  # Get best audio quality
-                "-x",  # Extract audio
-                "--audio-format", "mp3",  # Convert to MP3
-                "--audio-quality", "0",  # Best quality
-                "-o", str(video_path),  # Output template
-                "--no-playlist",  # Don't download playlists
-                "--no-warnings",  # Suppress warnings
-                # Use Android client for YouTube to avoid 403 errors
-                "--extractor-args", "youtube:player_client=android",
-                # Anti-bot measures for YouTube/Vimeo
-                "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                "--referer", "https://www.google.com/",
-                # Retry on failure
-                "--retries", "3",
-                "--fragment-retries", "3",
-                video_url
-            ]
+            # Build yt-dlp command with source-specific options
+            cmd = self._build_ytdlp_command(
+                video_url=video_url,
+                source=source,
+                metadata=metadata,
+                output_path=str(video_path)
+            )
 
             result = subprocess.run(
                 cmd,
@@ -195,7 +189,28 @@ Extract high-level themes and key insights."""
 
             if result.returncode != 0:
                 logger.error(f"yt-dlp error: {result.stderr}")
-                raise Exception(f"Video download failed: {result.stderr}")
+
+                # For 42macro, try embed_url as fallback if main URL fails
+                if source == "42macro" and metadata.get("embed_url"):
+                    logger.info("Retrying with embed URL for 42macro...")
+                    embed_url = metadata["embed_url"]
+                    cmd = self._build_ytdlp_command(
+                        video_url=embed_url,
+                        source=source,
+                        metadata=metadata,
+                        output_path=str(video_path)
+                    )
+                    result = subprocess.run(
+                        cmd,
+                        capture_output=True,
+                        text=True,
+                        timeout=600
+                    )
+                    if result.returncode != 0:
+                        logger.error(f"yt-dlp embed URL error: {result.stderr}")
+                        raise Exception(f"Video download failed (both URLs): {result.stderr}")
+                else:
+                    raise Exception(f"Video download failed: {result.stderr}")
 
             logger.info(f"Audio extracted to: {audio_path}")
 
@@ -214,6 +229,124 @@ Extract high-level themes and key insights."""
         except Exception as e:
             logger.error(f"Download/extraction failed: {e}")
             raise
+
+    def _build_ytdlp_command(
+        self,
+        video_url: str,
+        source: str,
+        metadata: Dict[str, Any],
+        output_path: str
+    ) -> List[str]:
+        """
+        Build yt-dlp command with source-specific options.
+
+        Args:
+            video_url: URL to download
+            source: Source identifier (42macro, youtube, etc.)
+            metadata: Metadata with platform info
+            output_path: Output file path
+
+        Returns:
+            yt-dlp command as list of arguments
+        """
+        # Base command
+        cmd = [
+            "yt-dlp",
+            "-f", "bestaudio/best",  # Get best audio quality
+            "-x",  # Extract audio
+            "--audio-format", "mp3",  # Convert to MP3
+            "--audio-quality", "0",  # Best quality
+            "-o", output_path,  # Output template
+            "--no-playlist",  # Don't download playlists
+            "--no-warnings",  # Suppress warnings
+            "--retries", "3",
+            "--fragment-retries", "3",
+        ]
+
+        # Source-specific options
+        if source == "42macro":
+            # 42macro uses private Vimeo embeds - need correct referer and cookies
+            logger.info("Using 42macro-specific download options (referer + cookies)")
+            cmd.extend([
+                "--referer", "https://app.42macro.com/",
+                "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            ])
+
+            # Add cookies if available
+            cookies_path = Path(self.MACRO42_COOKIES_FILE)
+            if cookies_path.exists():
+                # Convert JSON cookies to Netscape format for yt-dlp
+                netscape_cookies = self._convert_cookies_to_netscape(cookies_path)
+                if netscape_cookies:
+                    cmd.extend(["--cookies", str(netscape_cookies)])
+                    logger.info(f"Using 42macro cookies from {netscape_cookies}")
+            else:
+                logger.warning(f"42macro cookies not found at {cookies_path}")
+
+        elif source == "youtube" or "youtube.com" in video_url:
+            # YouTube-specific options
+            cmd.extend([
+                "--extractor-args", "youtube:player_client=android",
+                "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "--referer", "https://www.youtube.com/",
+            ])
+
+        else:
+            # Generic options for other platforms
+            cmd.extend([
+                "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "--referer", "https://www.google.com/",
+            ])
+
+        # Add the video URL last
+        cmd.append(video_url)
+
+        return cmd
+
+    def _convert_cookies_to_netscape(self, json_cookies_path: Path) -> Optional[Path]:
+        """
+        Convert JSON cookies (from Selenium) to Netscape format for yt-dlp.
+
+        Args:
+            json_cookies_path: Path to JSON cookies file
+
+        Returns:
+            Path to Netscape format cookies file, or None if conversion fails
+        """
+        import json
+
+        try:
+            with open(json_cookies_path, "r") as f:
+                cookies = json.load(f)
+
+            # Create Netscape format cookies file
+            netscape_path = json_cookies_path.parent / "42macro_cookies_netscape.txt"
+
+            with open(netscape_path, "w") as f:
+                # Netscape cookie file header
+                f.write("# Netscape HTTP Cookie File\n")
+                f.write("# This file was generated from 42macro Selenium cookies\n\n")
+
+                for cookie in cookies:
+                    # Netscape format: domain, include_subdomains, path, secure, expiry, name, value
+                    domain = cookie.get("domain", "")
+                    # Handle domain starting with . for subdomain matching
+                    include_subdomains = "TRUE" if domain.startswith(".") else "FALSE"
+                    path = cookie.get("path", "/")
+                    secure = "TRUE" if cookie.get("secure", False) else "FALSE"
+                    expiry = str(int(cookie.get("expiry", 0))) if cookie.get("expiry") else "0"
+                    name = cookie.get("name", "")
+                    value = cookie.get("value", "")
+
+                    # Write cookie line
+                    f.write(f"{domain}\t{include_subdomains}\t{path}\t{secure}\t{expiry}\t{name}\t{value}\n")
+
+            logger.info(f"Converted {len(cookies)} cookies to Netscape format")
+            return netscape_path
+
+        except Exception as e:
+            logger.warning(f"Failed to convert cookies to Netscape format: {e}")
+            return None
 
     async def transcribe(self, audio_file: Path) -> Dict[str, Any]:
         """

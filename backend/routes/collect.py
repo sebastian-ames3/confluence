@@ -36,7 +36,8 @@ def _transcribe_video_sync(
     raw_content_id: int,
     video_url: str,
     source: str,
-    title: Optional[str] = None
+    title: Optional[str] = None,
+    source_metadata: Optional[Dict[str, Any]] = None
 ) -> bool:
     """
     Transcribe a video and update the database record.
@@ -49,6 +50,7 @@ def _transcribe_video_sync(
         video_url: URL of the video to transcribe
         source: Source name (discord, 42macro, youtube)
         title: Optional title for metadata
+        source_metadata: Optional source-specific metadata (embed_url for Vimeo, etc.)
 
     Returns:
         True if transcription succeeded, False otherwise
@@ -68,11 +70,14 @@ def _transcribe_video_sync(
         else:
             priority = "standard"  # Tier 3 - YouTube, etc.
 
-        # Build metadata
+        # Build metadata - merge source metadata with basic info
         metadata = {
             "title": title or f"Video from {source}",
             "source": source,
         }
+        # Include source-specific metadata (embed_url, platform, etc.)
+        if source_metadata:
+            metadata.update(source_metadata)
 
         # Run the harvest pipeline (download -> transcribe -> analyze)
         import asyncio
@@ -157,7 +162,8 @@ async def _transcribe_video_async(
     raw_content_id: int,
     video_url: str,
     source: str,
-    title: Optional[str] = None
+    title: Optional[str] = None,
+    metadata: Optional[Dict[str, Any]] = None
 ):
     """
     Run video transcription in background thread pool.
@@ -169,17 +175,23 @@ async def _transcribe_video_async(
         video_url: URL of the video
         source: Source name
         title: Optional title
+        metadata: Optional metadata (embed_url for Vimeo auth, etc.)
     """
     loop = asyncio.get_event_loop()
 
     try:
+        # Use functools.partial to pass all args including metadata
+        import functools
         await loop.run_in_executor(
             transcription_executor,
-            _transcribe_video_sync,
-            raw_content_id,
-            video_url,
-            source,
-            title
+            functools.partial(
+                _transcribe_video_sync,
+                raw_content_id,
+                video_url,
+                source,
+                title,
+                metadata
+            )
         )
     except Exception as e:
         logger.error(f"Async transcription wrapper failed: {e}")
@@ -447,7 +459,9 @@ async def ingest_42macro_data(
                     videos_to_transcribe.append({
                         "raw_content_id": raw_content.id,
                         "url": url,
-                        "title": metadata.get("title") or f"{report_type} - {date}" if report_type else ""
+                        "title": metadata.get("title") or f"{report_type} - {date}" if report_type else "",
+                        "embed_url": metadata.get("embed_url"),  # For Vimeo auth
+                        "metadata": metadata  # Pass full metadata for source-specific handling
                     })
                     logger.info(f"Queued 42macro video for transcription: {url[:50]}...")
 
@@ -477,7 +491,8 @@ async def ingest_42macro_data(
                     raw_content_id=video["raw_content_id"],
                     video_url=video["url"],
                     source="42macro",
-                    title=video["title"]
+                    title=video["title"],
+                    metadata=video.get("metadata")  # Pass metadata for Vimeo auth
                 ))
                 transcription_queued += 1
             except Exception as e:
