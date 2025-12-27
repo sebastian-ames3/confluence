@@ -55,7 +55,7 @@ Extract high-level themes and key insights."""
         claude_api_key: Optional[str] = None,
         openai_api_key: Optional[str] = None,
         downloads_dir: Optional[Path] = None,
-        model: str = "claude-sonnet-4-5-20250514"
+        model: str = "claude-sonnet-4-20250514"
     ):
         """
         Initialize Transcript Harvester Agent.
