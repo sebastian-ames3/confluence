@@ -125,7 +125,7 @@ class SymbolLevelExtractor(BaseAgent):
             result = self.call_claude(
                 prompt=prompt,
                 system_prompt=self._get_transcript_extraction_system_prompt(),
-                max_tokens=4096,
+                max_tokens=16384,
                 temperature=0.0,
                 expect_json=True
             )
