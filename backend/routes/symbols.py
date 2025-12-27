@@ -453,6 +453,133 @@ async def extract_symbols_from_content(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/extract-image/{content_id}")
+async def extract_symbols_from_image(
+    content_id: int,
+    force: bool = False,
+    user: str = Depends(verify_jwt_or_basic),
+    db: Session = Depends(get_db)
+):
+    """
+    Extract symbols from image content (Stock Compass or charts).
+
+    Use this for Discord Stock Compass images or KT Technical chart images.
+
+    Args:
+        content_id: ID of raw_content with image
+        force: If True, re-extract even if already processed
+    """
+    from agents.symbol_level_extractor import SymbolLevelExtractor
+    import os
+
+    try:
+        # Get the raw content
+        raw_content = db.query(RawContent).filter(RawContent.id == content_id).first()
+        if not raw_content:
+            raise HTTPException(status_code=404, detail=f"Content {content_id} not found")
+
+        # Check source eligibility
+        source_name = raw_content.source.name if raw_content.source else ""
+        if source_name not in ('kt_technical', 'discord'):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Source '{source_name}' not eligible. Must be 'kt_technical' or 'discord'."
+            )
+
+        # Check content type is image
+        if raw_content.content_type != 'image':
+            raise HTTPException(
+                status_code=400,
+                detail=f"Content type '{raw_content.content_type}' is not an image. Use /extract/ for text content."
+            )
+
+        # Check if file exists
+        file_path = raw_content.file_path
+        if not file_path or not os.path.exists(file_path):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Image file not found: {file_path}"
+            )
+
+        # Initialize extractor
+        extractor = SymbolLevelExtractor()
+
+        # Determine extraction method based on source
+        if source_name == 'discord':
+            # Discord images are typically Stock Compass
+            extraction_result = extractor.extract_from_compass_image(
+                image_path=file_path,
+                content_id=content_id
+            )
+
+            # Save compass data
+            if extraction_result.get("compass_data"):
+                save_summary = extractor.save_compass_to_db(
+                    db=db,
+                    compass_result=extraction_result,
+                    content_id=content_id
+                )
+
+                return {
+                    "message": "Compass extraction completed",
+                    "content_id": content_id,
+                    "source": source_name,
+                    "extraction_type": "compass",
+                    "symbols_extracted": save_summary["symbols_processed"],
+                    "states_updated": save_summary["states_updated"],
+                    "symbols": [item.get("symbol") for item in extraction_result.get("compass_data", [])],
+                    "extraction_confidence": extraction_result.get("extraction_confidence"),
+                    "errors": save_summary.get("errors", [])
+                }
+            else:
+                return {
+                    "message": "No compass data found in image",
+                    "content_id": content_id,
+                    "source": source_name,
+                    "symbols_extracted": 0
+                }
+        else:
+            # KT Technical images are charts
+            extraction_result = extractor.extract_from_chart_image(
+                image_path=file_path,
+                content_id=content_id
+            )
+
+            # Save chart extraction (uses same method as transcript)
+            if extraction_result.get("symbols"):
+                save_summary = extractor.save_extraction_to_db(
+                    db=db,
+                    extraction_result=extraction_result,
+                    source=source_name,
+                    content_id=content_id
+                )
+
+                return {
+                    "message": "Chart extraction completed",
+                    "content_id": content_id,
+                    "source": source_name,
+                    "extraction_type": "chart",
+                    "symbols_extracted": save_summary["symbols_processed"],
+                    "levels_created": save_summary["levels_created"],
+                    "symbols": [s.get("symbol") for s in extraction_result.get("symbols", [])],
+                    "extraction_confidence": extraction_result.get("extraction_confidence"),
+                    "errors": save_summary.get("errors", [])
+                }
+            else:
+                return {
+                    "message": "No symbols found in chart image",
+                    "content_id": content_id,
+                    "source": source_name,
+                    "symbols_extracted": 0
+                }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error extracting from image {content_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.patch("/levels/{level_id}")
 async def update_level(
     level_id: int,
