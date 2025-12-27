@@ -296,44 +296,111 @@ class TestBackwardsCompatibility:
 
 ## Definition of Done
 
-### Dependencies
-- [ ] `assemblyai>=0.30.0` added to requirements.txt
+This PRD is complete when ALL of the following criteria are met:
 
-### Claude Model
-- [ ] `BaseAgent` default model updated to `claude-sonnet-4-5-20250514`
-- [ ] All agents inherit updated model
+### 1. Dependencies (REQUIRED)
 
-### AssemblyAI Integration
-- [ ] AssemblyAI client initialized when API key present
-- [ ] `_transcribe_assemblyai()` method implemented
-- [ ] Speaker diarization enabled
-- [ ] Segments include `speaker` field
-- [ ] Timestamps converted from ms to seconds
+| Criterion | Verification |
+|-----------|--------------|
+| `assemblyai>=0.30.0` in requirements.txt | `grep "assemblyai" requirements.txt` returns version constraint |
+| Package installs without errors | `pip install -r requirements.txt` succeeds |
 
-### Fallback Logic
-- [ ] Whisper used when `ASSEMBLYAI_API_KEY` not set
-- [ ] Whisper used when AssemblyAI fails
-- [ ] Existing `_transcribe_chunked()` preserved for Whisper
+### 2. Claude Model Update (REQUIRED)
 
-### Analysis Enhancement
-- [ ] Analysis prompt includes speaker instructions when available
-- [ ] `key_quotes` can include optional `speaker` field
-- [ ] Backwards compatible with speaker-less transcripts
+| Criterion | Verification |
+|-----------|--------------|
+| BaseAgent default model is `claude-sonnet-4-5-20250514` | Line 43 of `agents/base_agent.py` shows new model string |
+| TranscriptHarvesterAgent uses Sonnet 4.5 | Agent instantiation inherits from BaseAgent default |
+| No hardcoded `claude-sonnet-4-20250514` references remain | `grep -r "claude-sonnet-4-20250514" agents/` returns empty |
 
-### Local Script
-- [ ] `macro42_local.py` uses AssemblyAI when available
+### 3. AssemblyAI Integration (REQUIRED)
 
-### Testing
-- [ ] Unit tests for AssemblyAI transcription
-- [ ] Unit tests for speaker diarization
-- [ ] Unit tests for Claude model update
-- [ ] Backwards compatibility tests pass
-- [ ] Existing tests still pass
+| Criterion | Verification |
+|-----------|--------------|
+| `ASSEMBLYAI_API_KEY` env var checked in `__init__` | Code reads from `os.getenv("ASSEMBLYAI_API_KEY")` |
+| AssemblyAI client created when key present | `self.assemblyai_client` is not None when key set |
+| `_transcribe_assemblyai()` method exists | Method defined in `TranscriptHarvesterAgent` class |
+| Speaker diarization enabled | `speaker_labels=True` in TranscriptionConfig |
+| Return dict includes `speaker` field in segments | Each segment dict has `"speaker"` key |
+| Return dict includes `speaker_count` metadata | Top-level `"speaker_count"` key in response |
+| Return dict includes `transcription_provider` field | Value is `"assemblyai"` or `"whisper"` |
+| Timestamps in seconds (not milliseconds) | `start` and `end` values are floats in seconds |
 
-### Documentation
-- [ ] Environment variable documented
-- [ ] CLAUDE.md updated if needed
-- [ ] PRD moved to archived on completion
+### 4. Fallback Logic (REQUIRED)
+
+| Criterion | Verification |
+|-----------|--------------|
+| Whisper used when `ASSEMBLYAI_API_KEY` not set | Without env var, transcription uses OpenAI client |
+| Whisper used when AssemblyAI raises exception | Try/except catches AssemblyAI errors, falls back |
+| `_transcribe_chunked()` still exists and works | Method preserved for Whisper large file handling |
+| Whisper response includes `transcription_provider: "whisper"` | Metadata distinguishes provider |
+
+### 5. Analysis Enhancement (REQUIRED)
+
+| Criterion | Verification |
+|-----------|--------------|
+| Analysis prompt checks for speaker presence | Code checks `if any(seg.get("speaker") for seg in segments)` |
+| Speaker instruction added to prompt when available | Prompt includes speaker attribution instructions |
+| `key_quotes` schema supports optional `speaker` field | No validation errors when speaker included |
+| Analysis works without speaker field (backwards compat) | Transcripts without speakers still analyze successfully |
+
+### 6. Local Script Update (REQUIRED)
+
+| Criterion | Verification |
+|-----------|--------------|
+| `dev/scripts/macro42_local.py` uses AssemblyAI | Script uses same TranscriptHarvesterAgent (inherits behavior) |
+
+### 7. Tests (REQUIRED)
+
+| Criterion | Verification |
+|-----------|--------------|
+| Test file `tests/test_prd042_transcription.py` exists | File created with test classes |
+| Tests cover AssemblyAI client initialization | `test_assemblyai_client_initialized_with_key` passes |
+| Tests cover Whisper fallback | `test_whisper_fallback_without_key` passes |
+| Tests cover segment format with speaker | `test_segment_format_includes_speaker` passes |
+| Tests cover timestamp conversion | `test_timestamps_converted_from_ms` passes |
+| Tests cover Claude model update | `test_default_model_is_sonnet_4_5` passes |
+| Tests cover backwards compatibility | `test_existing_transcripts_still_analyzed` passes |
+| All existing tests pass | `pytest tests/` returns 0 exit code |
+| New tests pass | `pytest tests/test_prd042_transcription.py` returns 0 exit code |
+
+### 8. Code Quality (REQUIRED)
+
+| Criterion | Verification |
+|-----------|--------------|
+| No syntax errors | `python -m py_compile agents/transcript_harvester.py` succeeds |
+| Imports resolve | `python -c "from agents.transcript_harvester import TranscriptHarvesterAgent"` succeeds |
+| Logging added for new code paths | `logger.info()` calls for AssemblyAI transcription |
+
+### 9. Documentation (REQUIRED)
+
+| Criterion | Verification |
+|-----------|--------------|
+| `ASSEMBLYAI_API_KEY` documented | Mentioned in PRD environment variables table |
+| PRD moved to `docs/archived/` on completion | File location updated after all criteria met |
+
+### Acceptance Test
+
+Run the following command to verify the implementation:
+
+```bash
+# 1. Verify dependencies
+pip install -r requirements.txt
+
+# 2. Verify model update
+grep "claude-sonnet-4-5-20250514" agents/base_agent.py
+
+# 3. Verify AssemblyAI integration
+python -c "from agents.transcript_harvester import TranscriptHarvesterAgent; print('Import OK')"
+
+# 4. Run all tests
+pytest tests/ -v
+
+# 5. Run new tests specifically
+pytest tests/test_prd042_transcription.py -v
+```
+
+All commands must succeed for the PRD to be considered complete.
 
 ## Rollout
 
