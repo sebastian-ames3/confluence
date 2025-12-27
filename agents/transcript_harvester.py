@@ -73,7 +73,13 @@ Extract high-level themes and key insights."""
         if not self.openai_api_key:
             raise ValueError("OpenAI API key required for Whisper. Set WHISPER_API_KEY or OPENAI_API_KEY.")
 
-        self.openai_client = openai.OpenAI(api_key=self.openai_api_key)
+        # Create OpenAI client with explicit httpx client to avoid proxy issues on Railway
+        import httpx
+        http_client = httpx.Client()
+        self.openai_client = openai.OpenAI(
+            api_key=self.openai_api_key,
+            http_client=http_client
+        )
 
         # Setup downloads directory
         if downloads_dir:
