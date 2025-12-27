@@ -15,6 +15,7 @@ from backend.models import get_db, RawContent, AnalyzedContent
 from agents.content_classifier import ContentClassifierAgent
 from agents.image_intelligence import ImageIntelligenceAgent
 from agents.pdf_analyzer import PDFAnalyzerAgent
+from agents.symbol_level_extractor import SymbolLevelExtractor
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/analyze", tags=["analyze"])
@@ -24,6 +25,7 @@ router = APIRouter(prefix="/analyze", tags=["analyze"])
 classifier_agent = None
 image_agent = None
 pdf_agent = None
+symbol_extractor_agent = None
 
 
 def get_classifier():
@@ -48,6 +50,76 @@ def get_pdf_agent():
     if pdf_agent is None:
         pdf_agent = PDFAnalyzerAgent()
     return pdf_agent
+
+
+def get_symbol_extractor():
+    """Get or create symbol level extractor agent instance."""
+    global symbol_extractor_agent
+    if symbol_extractor_agent is None:
+        symbol_extractor_agent = SymbolLevelExtractor()
+    return symbol_extractor_agent
+
+
+def run_symbol_extraction(raw_content, db: Session) -> Dict:
+    """
+    Run symbol level extraction on KT Technical or Discord content (PRD-039).
+
+    Extracts price levels, wave counts, and positioning data from transcripts
+    and saves to SymbolLevel and SymbolState tables.
+
+    Args:
+        raw_content: RawContent object with transcript/text content
+        db: Database session
+
+    Returns:
+        Extraction summary
+    """
+    source_name = raw_content.source.name if raw_content.source else ""
+
+    # Only run for KT Technical and Discord sources
+    if source_name not in ('kt_technical', 'discord'):
+        return {"skipped": True, "reason": f"Source {source_name} not eligible for symbol extraction"}
+
+    # Only run for content types with text
+    if raw_content.content_type not in ('blog_post', 'discord_message', 'transcript', 'video'):
+        return {"skipped": True, "reason": f"Content type {raw_content.content_type} not eligible"}
+
+    content_text = raw_content.content_text
+    if not content_text or len(content_text.strip()) < 100:
+        return {"skipped": True, "reason": "Insufficient text content"}
+
+    try:
+        agent = get_symbol_extractor()
+
+        # Extract from transcript/text
+        extraction_result = agent.extract_from_transcript(
+            transcript=content_text,
+            source=source_name,
+            content_id=raw_content.id
+        )
+
+        # Save to database
+        if extraction_result.get("symbols"):
+            save_summary = agent.save_extraction_to_db(
+                db=db,
+                extraction_result=extraction_result,
+                source=source_name,
+                content_id=raw_content.id
+            )
+            logger.info(f"Symbol extraction for content {raw_content.id}: "
+                       f"{save_summary['symbols_processed']} symbols, "
+                       f"{save_summary['levels_created']} levels")
+            return {
+                "extraction": extraction_result,
+                "save_summary": save_summary
+            }
+        else:
+            logger.info(f"No symbols found in content {raw_content.id}")
+            return {"symbols_found": 0}
+
+    except Exception as e:
+        logger.error(f"Symbol extraction failed for content {raw_content.id}: {str(e)}")
+        return {"error": str(e)}
 
 
 def run_image_analysis(raw_content, metadata: Dict, db: Session) -> List[Dict]:
@@ -407,6 +479,10 @@ async def classify_batch(
                     logger.info(f"Running text analysis for blog_post {raw_content.id}")
                     text_result = run_text_analysis(raw_content, metadata, db)
 
+                # PRD-039: Run symbol level extraction for KT Technical and Discord content
+                symbol_result = run_symbol_extraction(raw_content, db)
+                symbols_extracted = symbol_result.get("save_summary", {}).get("symbols_processed", 0)
+
                 # Mark as processed
                 raw_content.processed = True
 
@@ -417,7 +493,8 @@ async def classify_batch(
                     "route_to": route_to,
                     "pdf_analyzed": "analysis" in pdf_result,
                     "images_analyzed": len([r for r in image_results if "analysis" in r]),
-                    "text_analyzed": "analysis" in text_result
+                    "text_analyzed": "analysis" in text_result,
+                    "symbols_extracted": symbols_extracted
                 })
 
             except Exception as e:
