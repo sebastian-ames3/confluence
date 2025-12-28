@@ -1,14 +1,42 @@
 /**
- * Symbols Tab - Symbol-Level Confluence Tracking (PRD-039)
+ * Symbols Tab - Symbol-Level Confluence Tracking (PRD-039, PRD-043)
  *
  * Displays tracked symbols with KT Technical and Discord views,
  * confluence scoring, and price level analysis.
+ *
+ * PRD-043: 4×4×3 grid layout with fixed symbol ordering
  */
+
+// Fixed symbol order for 4×4×3 grid layout (PRD-043)
+const SYMBOL_ORDER = [
+    // Row 1: Indices + Crypto
+    'SPX', 'QQQ', 'IWM', 'BTC',
+    // Row 2: Semis + Mega-cap start
+    'SMH', 'NVDA', 'TSLA', 'GOOGL',
+    // Row 3: Remaining mega-cap (centered)
+    'AAPL', 'MSFT', 'AMZN'
+];
 
 class SymbolsManager {
     constructor() {
         this.symbols = [];
         this.selectedSymbol = null;
+    }
+
+    /**
+     * Sort symbols according to fixed grid order (PRD-043)
+     */
+    sortSymbolsForGrid(symbols) {
+        return [...symbols].sort((a, b) => {
+            const indexA = SYMBOL_ORDER.indexOf(a.symbol);
+            const indexB = SYMBOL_ORDER.indexOf(b.symbol);
+
+            // Unknown symbols go to end
+            if (indexA === -1) return 1;
+            if (indexB === -1) return -1;
+
+            return indexA - indexB;
+        });
     }
 
     /**
@@ -41,7 +69,7 @@ class SymbolsManager {
     }
 
     /**
-     * Render the symbols list view
+     * Render the symbols list view (PRD-043: 4×4×3 grid with fixed order)
      */
     renderSymbolsList() {
         const container = document.getElementById('symbols-list');
@@ -60,19 +88,32 @@ class SymbolsManager {
             return;
         }
 
+        // PRD-043: Sort for consistent 4×4×3 grid layout
+        const sortedSymbols = this.sortSymbolsForGrid(this.symbols);
+
         const html = `
-            <div class="symbols-grid">
-                ${this.symbols.map(symbol => this.renderSymbolCard(symbol)).join('')}
+            <div class="symbols-grid" role="list" aria-label="Tracked symbols">
+                ${sortedSymbols.map(symbol => this.renderSymbolCard(symbol)).join('')}
             </div>
         `;
 
         container.innerHTML = html;
 
-        // Attach click handlers
-        this.symbols.forEach(symbol => {
+        // Attach click handlers and keyboard accessibility (PRD-043)
+        sortedSymbols.forEach(symbol => {
             const card = document.querySelector(`[data-symbol="${symbol.symbol}"]`);
             if (card) {
                 card.addEventListener('click', () => this.showSymbolDetail(symbol.symbol));
+
+                // PRD-043: Keyboard accessibility
+                card.setAttribute('role', 'listitem');
+                card.setAttribute('tabindex', '0');
+                card.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        this.showSymbolDetail(symbol.symbol);
+                    }
+                });
             }
         });
     }

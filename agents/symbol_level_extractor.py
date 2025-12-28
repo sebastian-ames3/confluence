@@ -1,16 +1,19 @@
 """
-Symbol Level Extractor Agent (PRD-039)
+Symbol Level Extractor Agent (PRD-039, PRD-043)
 
 Extracts symbol-specific price levels from multiple sources:
 - KT Technical transcripts (Elliott Wave analysis)
 - KT Technical chart images (annotated levels)
 - Discord text posts (options analysis, gamma levels)
 - Discord Stock Compass images (quadrant positioning)
+- Discord Macro Compass images (asset class positioning) [PRD-043]
+- Discord Sector Compass images (sector ETF positioning) [PRD-043]
 """
 
 import os
 import logging
 import re
+from enum import Enum
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 
@@ -20,6 +23,14 @@ from agents.base_agent import BaseAgent
 from backend.utils.sanitization import sanitize_content_text, truncate_for_prompt
 
 logger = logging.getLogger(__name__)
+
+
+class CompassType(Enum):
+    """Types of compass images from Discord (PRD-043)."""
+    STOCK_COMPASS = "stock_compass"      # Individual stocks in quadrants
+    MACRO_COMPASS = "macro_compass"      # Asset classes (equities, bonds, gold)
+    SECTOR_COMPASS = "sector_compass"    # Sector ETFs (XLK, XLF, SMH, etc.)
+    UNKNOWN = "unknown"
 
 
 class SymbolLevelExtractor(BaseAgent):
@@ -61,6 +72,22 @@ class SymbolLevelExtractor(BaseAgent):
         'BITCOIN': 'BTC', 'BTCUSD': 'BTC',
         # SMH variations
         'SEMIS': 'SMH', 'SEMICONDUCTORS': 'SMH',
+
+        # PRD-043: Futures notation (with slash prefix)
+        '/ES': 'SPX', '/SP': 'SPX',
+        '/NQ': 'QQQ',
+        '/RTY': 'IWM', '/RUT': 'IWM',
+        '/BTC': 'BTC', '/BTCUSD': 'BTC',
+
+        # PRD-043: Yahoo Finance / TradingView futures notation
+        'ES=F': 'SPX', 'ES_F': 'SPX',
+        'NQ=F': 'QQQ', 'NQ_F': 'QQQ',
+        'RTY=F': 'IWM', 'RTY_F': 'IWM',
+
+        # PRD-043: Micro futures
+        '/MES': 'SPX', '/MNQ': 'QQQ', '/M2K': 'IWM',
+        'MES': 'SPX', 'MNQ': 'QQQ', 'M2K': 'IWM',
+        'MES=F': 'SPX', 'MNQ=F': 'QQQ', 'M2K=F': 'IWM',
     }
 
     # Transcript chunking: Long videos (30+ min) must be split to avoid "lost in middle" errors
@@ -79,20 +106,40 @@ class SymbolLevelExtractor(BaseAgent):
         """
         Normalize symbol variations to canonical ticker.
 
+        Handles:
+        - Standard tickers (GOOGL, AAPL)
+        - Company names (Google, Apple)
+        - Futures notation (/ES, /NQ, ES=F) [PRD-043]
+        - Index names (S&P 500, Nasdaq 100)
+
         Args:
-            symbol_text: Raw symbol text (e.g., "Google", "S&P", "GOOGL")
+            symbol_text: Raw symbol text (e.g., "Google", "S&P", "GOOGL", "/ES")
 
         Returns:
             Canonical ticker or None if not tracked
         """
-        symbol_upper = symbol_text.strip().upper()
+        if not symbol_text:
+            return None
+
+        symbol_clean = symbol_text.strip().upper()
 
         # Check if already canonical
-        if symbol_upper in self.TRACKED_SYMBOLS:
-            return symbol_upper
+        if symbol_clean in self.TRACKED_SYMBOLS:
+            return symbol_clean
 
-        # Check aliases
-        return self.SYMBOL_ALIASES.get(symbol_upper)
+        # Check aliases (includes /ES, ES=F, etc.)
+        if symbol_clean in self.SYMBOL_ALIASES:
+            return self.SYMBOL_ALIASES[symbol_clean]
+
+        # PRD-043: Try stripping leading slash and check again
+        if symbol_clean.startswith('/'):
+            without_slash = symbol_clean[1:]
+            if without_slash in self.TRACKED_SYMBOLS:
+                return without_slash
+            if without_slash in self.SYMBOL_ALIASES:
+                return self.SYMBOL_ALIASES[without_slash]
+
+        return None
 
     def extract_from_transcript(
         self,
@@ -242,6 +289,363 @@ class SymbolLevelExtractor(BaseAgent):
         except Exception as e:
             logger.error(f"Compass vision extraction failed: {e}")
             raise
+
+    def classify_compass_image(self, image_path: str) -> CompassType:
+        """
+        Classify compass image type before extraction (PRD-043).
+
+        Uses Claude vision to determine if image is:
+        - Stock Compass (individual stocks)
+        - Macro Compass (asset classes)
+        - Sector Compass (sector ETFs)
+        - Unknown (not a compass chart)
+
+        Args:
+            image_path: Path to image file
+
+        Returns:
+            CompassType enum value
+        """
+        try:
+            logger.info(f"Classifying compass image: {image_path}")
+
+            prompt = """Classify this image. Is it a:
+1. STOCK_COMPASS - Shows individual stock tickers (AAPL, GOOGL, TSLA, etc.) positioned in quadrants
+2. MACRO_COMPASS - Shows asset classes (Equities, Bonds, Gold, Oil, Crypto, etc.) positioned in quadrants
+3. SECTOR_COMPASS - Shows sector ETFs (XLK, XLF, XLE, SMH, XLY, etc.) positioned in quadrants
+4. UNKNOWN - Not a compass/quadrant chart, or cannot determine type
+
+Look for:
+- Stock Compass: Individual company tickers like AAPL, MSFT, GOOGL, NVDA
+- Macro Compass: Asset class labels like "Equities", "Bonds", "Commodities", "Crypto"
+- Sector Compass: Sector ETF tickers like XLK, XLF, XLE, SMH, XLY, XLC
+
+Return ONLY one of: STOCK_COMPASS, MACRO_COMPASS, SECTOR_COMPASS, UNKNOWN"""
+
+            result = self.call_claude_vision(
+                prompt=prompt,
+                image_path=image_path,
+                system_prompt="You are classifying financial chart images. Respond with only the classification type.",
+                max_tokens=50,
+                temperature=0.0
+            )
+
+            # Parse response
+            response_text = str(result) if not isinstance(result, dict) else result.get("response", str(result))
+            response_upper = response_text.upper().strip()
+
+            if "STOCK" in response_upper:
+                logger.info(f"Classified as STOCK_COMPASS")
+                return CompassType.STOCK_COMPASS
+            elif "MACRO" in response_upper:
+                logger.info(f"Classified as MACRO_COMPASS")
+                return CompassType.MACRO_COMPASS
+            elif "SECTOR" in response_upper:
+                logger.info(f"Classified as SECTOR_COMPASS")
+                return CompassType.SECTOR_COMPASS
+
+            logger.info(f"Classified as UNKNOWN")
+            return CompassType.UNKNOWN
+
+        except Exception as e:
+            logger.error(f"Compass classification failed: {e}")
+            return CompassType.UNKNOWN
+
+    def extract_from_macro_compass(
+        self,
+        image_path: str,
+        content_id: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """
+        Extract asset class positioning from Macro Compass (PRD-043).
+
+        Maps relevant asset classes to tracked symbols:
+        - "Equities" positioning informs SPX/QQQ bias
+        - "Crypto" positioning informs BTC
+        - "Semiconductors" informs SMH/NVDA
+
+        Args:
+            image_path: Path to macro compass image
+            content_id: ID of raw_content this came from
+
+        Returns:
+            Compass data with symbol positions mapped from asset classes
+        """
+        try:
+            logger.info(f"Extracting from Macro Compass: {image_path}")
+
+            prompt = """Analyze this Macro Compass image showing asset class positioning.
+
+The compass has 4 quadrants based on:
+- Y-axis: Implied Volatility (high=top, low=bottom)
+- X-axis: Directional bias (bullish=left, bearish=right)
+
+Quadrants:
+- Top-left: SELL PUT (bullish, high IV)
+- Top-right: SELL CALL (bearish, high IV)
+- Bottom-left: BUY CALL (bullish, low IV)
+- Bottom-right: BUY PUT (bearish, low IV)
+
+Identify the position of these asset classes:
+- Equities / Stocks
+- Crypto / Bitcoin
+- Semiconductors / Semis / Chips
+- Technology / Tech
+
+For each asset class found, return:
+{
+  "macro_data": [
+    {
+      "asset_class": "equities",
+      "quadrant": "buy_call",
+      "iv_regime": "cheap",
+      "position_description": "bottom-left, bullish with low IV"
+    },
+    {
+      "asset_class": "crypto",
+      "quadrant": "sell_put",
+      "iv_regime": "expensive",
+      "position_description": "top-left, bullish with high IV"
+    }
+  ],
+  "extraction_confidence": 0.85
+}
+
+Return ONLY valid JSON, no markdown formatting."""
+
+            system_prompt = """You are an expert at reading Macro Compass diagrams showing asset class positioning.
+
+The Macro Compass is a 2x2 quadrant chart:
+- Y-axis: Implied Volatility (high=top, low=bottom)
+- X-axis: Directional bias (bullish=left, bearish=right)
+
+Your job is to identify which asset classes appear and their quadrant positions.
+Focus on: Equities, Crypto, Semiconductors, Technology.
+
+You must respond with valid JSON only."""
+
+            result = self.call_claude_vision(
+                prompt=prompt,
+                image_path=image_path,
+                system_prompt=system_prompt,
+                max_tokens=2048,
+                temperature=0.0,
+                expect_json=True
+            )
+
+            # Add metadata
+            result["content_id"] = content_id
+            result["extraction_method"] = "macro_compass"
+            result["extracted_at"] = datetime.utcnow().isoformat()
+
+            # Map asset classes to tracked symbols
+            result["compass_data"] = self._map_macro_to_symbols(result.get("macro_data", []))
+
+            logger.info(f"Extracted {len(result.get('compass_data', []))} symbols from macro compass")
+            return result
+
+        except FileNotFoundError as e:
+            logger.error(f"Macro compass image not found: {e}")
+            return {"compass_data": [], "macro_data": [], "extraction_confidence": 0.0, "error": str(e)}
+        except Exception as e:
+            logger.error(f"Macro compass extraction failed: {e}")
+            raise
+
+    def extract_from_sector_compass(
+        self,
+        image_path: str,
+        content_id: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """
+        Extract sector ETF positioning from Sector Compass (PRD-043).
+
+        Maps relevant sectors to tracked symbols:
+        - SMH (Semiconductors) - directly tracked
+        - XLK (Technology) - informs AAPL, MSFT, GOOGL, NVDA
+        - XLY (Consumer Discretionary) - informs TSLA, AMZN
+        - XLC (Communications) - informs GOOGL
+
+        Args:
+            image_path: Path to sector compass image
+            content_id: ID of raw_content this came from
+
+        Returns:
+            Compass data with symbol positions mapped from sectors
+        """
+        try:
+            logger.info(f"Extracting from Sector Compass: {image_path}")
+
+            prompt = """Analyze this Sector Compass image showing sector ETF positioning.
+
+The compass has 4 quadrants:
+- Top-left: SELL PUT (bullish, high IV)
+- Top-right: SELL CALL (bearish, high IV)
+- Bottom-left: BUY CALL (bullish, low IV)
+- Bottom-right: BUY PUT (bearish, low IV)
+
+Look for these sector ETFs and their positions:
+- SMH (Semiconductors) - IMPORTANT: directly tracked
+- XLK (Technology)
+- XLY (Consumer Discretionary)
+- XLC (Communications)
+- XLF (Financials)
+- XLE (Energy)
+- XLI (Industrials)
+- XLV (Healthcare)
+- XLP (Consumer Staples)
+- XLU (Utilities)
+- XLRE (Real Estate)
+- XLB (Materials)
+
+Return:
+{
+  "sector_data": [
+    {
+      "sector_etf": "SMH",
+      "quadrant": "buy_call",
+      "iv_regime": "cheap",
+      "position_description": "bottom-left area, bullish with low IV"
+    },
+    {
+      "sector_etf": "XLK",
+      "quadrant": "buy_call",
+      "iv_regime": "cheap",
+      "position_description": "bottom-left area"
+    }
+  ],
+  "extraction_confidence": 0.85
+}
+
+Return ONLY valid JSON, no markdown formatting."""
+
+            system_prompt = """You are an expert at reading Sector Compass diagrams showing sector ETF positioning.
+
+The Sector Compass is a 2x2 quadrant chart:
+- Y-axis: Implied Volatility (high=top, low=bottom)
+- X-axis: Directional bias (bullish=left, bearish=right)
+
+Your job is to identify which sector ETFs appear and their quadrant positions.
+Pay special attention to: SMH, XLK, XLY, XLC as these map to tracked stocks.
+
+You must respond with valid JSON only."""
+
+            result = self.call_claude_vision(
+                prompt=prompt,
+                image_path=image_path,
+                system_prompt=system_prompt,
+                max_tokens=2048,
+                temperature=0.0,
+                expect_json=True
+            )
+
+            # Add metadata
+            result["content_id"] = content_id
+            result["extraction_method"] = "sector_compass"
+            result["extracted_at"] = datetime.utcnow().isoformat()
+
+            # Map sectors to tracked symbols
+            result["compass_data"] = self._map_sector_to_symbols(result.get("sector_data", []))
+
+            logger.info(f"Extracted {len(result.get('compass_data', []))} symbols from sector compass")
+            return result
+
+        except FileNotFoundError as e:
+            logger.error(f"Sector compass image not found: {e}")
+            return {"compass_data": [], "sector_data": [], "extraction_confidence": 0.0, "error": str(e)}
+        except Exception as e:
+            logger.error(f"Sector compass extraction failed: {e}")
+            raise
+
+    def _map_macro_to_symbols(self, macro_data: List[Dict]) -> List[Dict]:
+        """
+        Map macro asset class data to tracked symbols (PRD-043).
+
+        Args:
+            macro_data: List of asset class positions from macro compass
+
+        Returns:
+            List of symbol positions derived from asset classes
+        """
+        symbol_data = []
+
+        for item in macro_data:
+            asset_class = item.get("asset_class", "").lower()
+            quadrant = item.get("quadrant")
+            iv_regime = item.get("iv_regime")
+            position_desc = item.get("position_description", "")
+
+            # Map asset classes to symbols
+            if asset_class in ["equities", "stocks", "equity"]:
+                # Apply to both SPX and QQQ
+                for symbol in ["SPX", "QQQ"]:
+                    symbol_data.append({
+                        "symbol": symbol,
+                        "quadrant": quadrant,
+                        "iv_regime": iv_regime,
+                        "position_description": f"From macro ({asset_class}): {position_desc}"
+                    })
+            elif asset_class in ["crypto", "bitcoin", "btc", "cryptocurrency"]:
+                symbol_data.append({
+                    "symbol": "BTC",
+                    "quadrant": quadrant,
+                    "iv_regime": iv_regime,
+                    "position_description": f"From macro ({asset_class}): {position_desc}"
+                })
+            elif asset_class in ["semiconductors", "semis", "chips", "semiconductor"]:
+                for symbol in ["SMH", "NVDA"]:
+                    symbol_data.append({
+                        "symbol": symbol,
+                        "quadrant": quadrant,
+                        "iv_regime": iv_regime,
+                        "position_description": f"From macro ({asset_class}): {position_desc}"
+                    })
+            elif asset_class in ["technology", "tech"]:
+                for symbol in ["QQQ", "AAPL", "MSFT", "NVDA"]:
+                    symbol_data.append({
+                        "symbol": symbol,
+                        "quadrant": quadrant,
+                        "iv_regime": iv_regime,
+                        "position_description": f"From macro ({asset_class}): {position_desc}"
+                    })
+
+        return symbol_data
+
+    def _map_sector_to_symbols(self, sector_data: List[Dict]) -> List[Dict]:
+        """
+        Map sector ETF data to tracked symbols (PRD-043).
+
+        Args:
+            sector_data: List of sector ETF positions from sector compass
+
+        Returns:
+            List of symbol positions derived from sector ETFs
+        """
+        symbol_data = []
+
+        # Sector to symbol mapping
+        sector_symbol_map = {
+            "SMH": ["SMH"],  # Direct match - semiconductors
+            "XLK": ["AAPL", "MSFT", "NVDA"],  # Technology sector
+            "XLY": ["TSLA", "AMZN"],  # Consumer discretionary
+            "XLC": ["GOOGL"],  # Communications
+        }
+
+        for item in sector_data:
+            sector_etf = item.get("sector_etf", "").upper()
+            quadrant = item.get("quadrant")
+            iv_regime = item.get("iv_regime")
+            position_desc = item.get("position_description", "")
+
+            if sector_etf in sector_symbol_map:
+                for symbol in sector_symbol_map[sector_etf]:
+                    symbol_data.append({
+                        "symbol": symbol,
+                        "quadrant": quadrant,
+                        "iv_regime": iv_regime,
+                        "position_description": f"From {sector_etf}: {position_desc}"
+                    })
+
+        return symbol_data
 
     def _get_transcript_extraction_system_prompt(self) -> str:
         """System prompt for transcript extraction."""
