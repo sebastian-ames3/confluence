@@ -178,41 +178,7 @@
                     <div class="content-grid">
                         <!-- Main Column -->
                         <div class="content-main">
-                            <!-- 1. FIRST: Market Visualization Charts (above the fold) -->
-                            <div class="sidebar-card charts-section">
-                                <div class="section-title">Market Visualization</div>
-                                <div class="charts-grid">
-                                    <div class="chart-container chart-container-md" data-chart="sentiment-gauge" data-chart-type="sentiment-gauge">
-                                        <div class="chart-header"><span class="chart-title">Sentiment</span></div>
-                                        <div class="chart-canvas-wrapper">
-                                            <div class="chart-skeleton" id="skeleton-sentiment-gauge"></div>
-                                            <canvas id="sentiment-gauge-canvas" style="display: none;"></canvas>
-                                        </div>
-                                    </div>
-                                    <div class="chart-container chart-container-md" data-chart="source-donut" data-chart-type="source-donut">
-                                        <div class="chart-header"><span class="chart-title">Sources</span></div>
-                                        <div class="chart-canvas-wrapper">
-                                            <div class="chart-skeleton" id="skeleton-source-donut"></div>
-                                            <canvas id="source-donut-canvas" style="display: none;"></canvas>
-                                        </div>
-                                    </div>
-                                    <div class="chart-container chart-container-md" data-chart="conviction-bar" data-chart-type="conviction-bar">
-                                        <div class="chart-header"><span class="chart-title">Conviction</span></div>
-                                        <div class="chart-canvas-wrapper">
-                                            <div class="chart-skeleton" id="skeleton-conviction-bar"></div>
-                                            <canvas id="conviction-bar-canvas" style="display: none;"></canvas>
-                                        </div>
-                                    </div>
-                                    <div class="chart-container chart-container-heatmap" data-chart="confluence-heatmap" data-chart-type="confluence-heatmap" id="confluence-heatmap">
-                                        <div class="chart-header"><span class="chart-title">Confluence</span></div>
-                                        <div class="chart-canvas-wrapper">
-                                            <div class="chart-skeleton" id="skeleton-confluence-heatmap"></div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- 2. SECOND: Key Takeaways (compact, extracted from synthesis) -->
+                            <!-- Key Takeaways (compact, extracted from synthesis) -->
                             <div class="sidebar-card" id="takeaways-section">
                                 <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-md);">
                                     <div class="section-title" style="margin-bottom: 0;">Key Takeaways</div>
@@ -1714,11 +1680,7 @@
     <!-- Chart Component Scripts -->
     <script src="js/charts/chartConfig.js"></script>
     <script src="js/charts/confluenceRadar.js"></script>
-    <script src="js/charts/sourceDonut.js"></script>
     <script src="js/charts/themeTimeline.js"></script>
-    <script src="js/charts/sentimentGauge.js"></script>
-    <script src="js/charts/convictionBar.js"></script>
-    <script src="js/charts/confluenceHeatmap.js"></script>
     <script src="js/charts/index.js"></script>
 </body>
 </html>
