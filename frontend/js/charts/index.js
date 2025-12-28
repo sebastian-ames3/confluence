@@ -72,20 +72,8 @@ const ChartsManager = {
       case 'confluence-radar':
         this.initConfluenceRadar(canvasId);
         break;
-      case 'source-donut':
-        this.initSourceDonut(canvasId);
-        break;
       case 'theme-timeline':
         this.initThemeTimeline(canvasId);
-        break;
-      case 'sentiment-gauge':
-        this.initSentimentGauge(canvasId);
-        break;
-      case 'conviction-bar':
-        this.initConvictionBar(canvasId);
-        break;
-      case 'confluence-heatmap':
-        this.initConfluenceHeatmap(chartId);
         break;
       default:
         console.warn(`[Charts] Unknown chart type: ${chartType}`);
@@ -117,30 +105,6 @@ const ChartsManager = {
   },
 
   /**
-   * Initialize Source Donut
-   */
-  initSourceDonut(canvasId) {
-    if (typeof SourceDonutChart === 'undefined') {
-      console.warn('[Charts] SourceDonutChart not loaded');
-      return;
-    }
-
-    const chart = new SourceDonutChart(canvasId);
-
-    // Sample data - replace with API data
-    chart.render([
-      { source: 'Discord', count: 45 },
-      { source: '42 Macro', count: 12 },
-      { source: 'KT Technical', count: 8 },
-      { source: 'YouTube', count: 15 },
-      { source: 'Substack', count: 20 }
-    ]);
-
-    this.revealChart('source-donut');
-    this.instances.set(canvasId, chart);
-  },
-
-  /**
    * Initialize Theme Timeline
    */
   initThemeTimeline(canvasId) {
@@ -162,100 +126,6 @@ const ChartsManager = {
     });
 
     this.instances.set(canvasId, chart);
-  },
-
-  /**
-   * Initialize Sentiment Gauge
-   */
-  initSentimentGauge(canvasId) {
-    if (typeof SentimentGaugeChart === 'undefined') {
-      console.warn('[Charts] SentimentGaugeChart not loaded');
-      return;
-    }
-
-    const chart = new SentimentGaugeChart(canvasId);
-    chart.render(35, 'Moderately Bullish');
-    this.revealChart('sentiment-gauge');
-    this.instances.set(canvasId, chart);
-  },
-
-  /**
-   * Initialize Conviction Bar
-   */
-  initConvictionBar(canvasId) {
-    if (typeof ConvictionBarChart === 'undefined') {
-      console.warn('[Charts] ConvictionBarChart not loaded');
-      return;
-    }
-
-    const chart = new ConvictionBarChart(canvasId);
-
-    // Sample data - replace with API data
-    chart.render([
-      { label: 'Rate Cuts Q1', value: 85, sentiment: 'bullish' },
-      { label: 'USD Decline', value: 72, sentiment: 'bullish' },
-      { label: 'Tech Outperform', value: 65, sentiment: 'neutral' },
-      { label: 'Vol Expansion', value: 58, sentiment: 'bearish' },
-      { label: 'Gold Rally', value: 45, sentiment: 'bullish' }
-    ]);
-
-    this.revealChart('conviction-bar');
-    this.instances.set(canvasId, chart);
-  },
-
-  /**
-   * Initialize Confluence Heatmap
-   */
-  initConfluenceHeatmap(containerId) {
-    if (typeof ConfluenceHeatmap === 'undefined') {
-      console.warn('[Charts] ConfluenceHeatmap not loaded');
-      return;
-    }
-
-    // Remove skeleton for heatmap
-    this.revealChart('confluence-heatmap');
-
-    const heatmap = new ConfluenceHeatmap(containerId, {
-      onCellClick: (data) => {
-        console.log('[Charts] Heatmap cell clicked:', data);
-        // Could open a detail modal here
-      }
-    });
-
-    // Sample data - replace with API data
-    heatmap.render({
-      sources: ['Discord', '42 Macro', 'KT Technical', 'YouTube', 'Substack'],
-      themes: ['Rate Cuts', 'USD Weakness', 'Tech Rotation', 'Gold Rally', 'Vol Expansion'],
-      matrix: [
-        [1, 1, 1, 0, 1],    // Rate Cuts
-        [1, 1, 0, -1, 1],   // USD Weakness
-        [0, -1, 1, 1, 0],   // Tech Rotation
-        [1, 1, 0, 0, 1],    // Gold Rally
-        [-1, 1, -1, 0, 0]   // Vol Expansion
-      ]
-    });
-
-    this.instances.set(containerId, heatmap);
-  },
-
-  /**
-   * Handle synthesis data update
-   */
-  handleDataUpdate(data) {
-    // Update relevant charts with new data
-    console.log('[Charts] Handling data update');
-
-    // Update sentiment gauge if exists
-    const sentimentGauge = this.instances.get('sentiment-gauge-canvas');
-    if (sentimentGauge && data.sentiment_score !== undefined) {
-      sentimentGauge.update(data.sentiment_score, data.sentiment_label);
-    }
-
-    // Update source donut if exists
-    const sourceDonut = this.instances.get('source-donut-canvas');
-    if (sourceDonut && data.source_counts) {
-      sourceDonut.update(data.source_counts);
-    }
   },
 
   /**
