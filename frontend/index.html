@@ -291,13 +291,18 @@
                                 </div>
                             </div>
 
-                            <!-- Source Stances (scrollable) -->
-                            <div class="sidebar-card" id="stances-section" style="display: none;">
-                                <div class="sidebar-title">Source Perspectives</div>
-                                <div id="v3-stances-list" style="max-height: 400px; overflow-y: auto;"></div>
-                            </div>
                         </aside>
                     </div>
+
+                    <!-- Major Source Perspectives (Full-Width Section) -->
+                    <section class="source-perspectives-section" id="stances-section" style="display: none;">
+                        <div class="section-header">
+                            <h2 class="section-title">Major Source Perspectives</h2>
+                        </div>
+                        <div class="source-perspectives-grid" id="v3-stances-list">
+                            <!-- Cards populated by JavaScript -->
+                        </div>
+                    </section>
                 </div>
 
                 <!-- Symbols Tab -->
@@ -746,7 +751,7 @@
             }
         }
 
-        // PRD-041: Display V4 source breakdowns with expandable content
+        // PRD-041: Display V4 source breakdowns with interactive cards
         function displayV4SourceBreakdowns(breakdowns, contentSummaries) {
             const container = document.getElementById('v3-stances-list');
             const section = document.getElementById('stances-section');
@@ -767,69 +772,145 @@
 
             container.innerHTML = Object.entries(breakdowns).map(([sourceName, data], index) => {
                 const bias = data.overall_bias || 'neutral';
-                const biasColor = bias === 'bullish' ? 'success' : bias === 'bearish' ? 'danger' : 'warning';
+                const biasLabel = bias === 'bullish' ? 'Bullish Trend' : bias === 'bearish' ? 'Bearish' : 'Mixed Signal';
                 const contentCount = data.content_count || 0;
                 const sourceContent = contentBySource[sourceName] || [];
                 const hasContent = sourceContent.length > 0;
 
-                // Format display name (youtube:Moonshots -> Moonshots)
+                // Format display name and determine source key for styling
                 const displayName = sourceName.startsWith('youtube:') ? sourceName.split(':')[1] : sourceName.replace('_', ' ');
+                const sourceKey = getSourceKey(sourceName);
+                const sourceIcon = getSourceIcon(sourceKey);
+
+                // Generate sparkline path
+                const sparklinePath = generateSparklinePath(bias, index);
 
                 return `
-                    <div class="source-breakdown-card" style="padding: var(--spacing-md); background: var(--glass-bg-light); border-radius: var(--radius-lg); margin-bottom: var(--spacing-sm);">
-                        <div class="source-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-sm); cursor: pointer;" onclick="toggleSourceDetails('source-details-${index}')">
-                            <div style="display: flex; align-items: center; gap: var(--spacing-sm);">
-                                <span style="font-weight: var(--font-semibold);">${displayName}</span>
-                                <span style="font-size: var(--text-xs); color: var(--text-muted);">(${contentCount} items)</span>
+                    <div class="source-perspective-card" data-source="${sourceKey}" onclick="toggleSourcePerspective(this)">
+                        <div class="source-perspective-header">
+                            <div class="source-perspective-identity">
+                                <div class="source-perspective-icon">${sourceIcon}</div>
+                                <span class="source-perspective-name">${displayName}</span>
                             </div>
-                            <div style="display: flex; align-items: center; gap: var(--spacing-sm);">
-                                <span class="badge" style="background: var(--${biasColor}); color: white; padding: 2px 8px; border-radius: var(--radius-full); font-size: 10px;">${bias}</span>
-                                <span class="expand-icon" id="icon-source-details-${index}" style="font-size: 12px; transition: transform 0.2s;">▼</span>
-                            </div>
+                            <span class="source-perspective-bias ${bias}">${biasLabel}</span>
                         </div>
 
-                        <!-- Summary always visible -->
-                        <div style="font-size: var(--text-sm); color: var(--text-secondary); margin-bottom: var(--spacing-sm);">${data.summary || ''}</div>
+                        <div class="source-perspective-sparkline">
+                            <svg viewBox="0 0 200 48" preserveAspectRatio="none">
+                                <defs>
+                                    <linearGradient id="sparkline-gradient-${index}" x1="0%" y1="0%" x2="0%" y2="100%">
+                                        <stop offset="0%" style="stop-color: var(--card-accent, var(--primary)); stop-opacity: 0.3"/>
+                                        <stop offset="100%" style="stop-color: var(--card-accent, var(--primary)); stop-opacity: 0"/>
+                                    </linearGradient>
+                                </defs>
+                                <path class="sparkline-area" d="${sparklinePath} L 200 48 L 0 48 Z" fill="url(#sparkline-gradient-${index})"/>
+                                <path class="sparkline-path" d="${sparklinePath}"/>
+                            </svg>
+                        </div>
 
-                        <!-- Key insights (expandable) -->
-                        <div id="source-details-${index}" style="display: none; margin-top: var(--spacing-md); padding-top: var(--spacing-md); border-top: 1px solid var(--border-subtle);">
-                            ${data.key_insights && data.key_insights.length > 0 ? `
-                                <div style="margin-bottom: var(--spacing-md);">
-                                    <div style="font-size: var(--text-xs); color: var(--text-muted); margin-bottom: var(--spacing-xs);">KEY INSIGHTS</div>
-                                    <ul style="margin: 0; padding-left: var(--spacing-md); font-size: var(--text-sm); color: var(--text-secondary);">
-                                        ${data.key_insights.map(i => `<li style="margin-bottom: var(--spacing-xs);">${i}</li>`).join('')}
-                                    </ul>
-                                </div>
-                            ` : ''}
+                        <div class="source-perspective-summary">${data.summary || ''}</div>
 
-                            ${hasContent ? `
-                                <div>
-                                    <div style="font-size: var(--text-xs); color: var(--text-muted); margin-bottom: var(--spacing-xs);">CONTENT</div>
-                                    ${sourceContent.slice(0, 5).map(c => `
-                                        <div style="padding: var(--spacing-xs); margin-bottom: var(--spacing-xs); background: var(--glass-bg); border-radius: var(--radius-md); font-size: var(--text-xs);">
-                                            <div style="font-weight: var(--font-medium);">${c.title || 'Untitled'}</div>
-                                            ${c.summary ? `<div style="color: var(--text-muted); margin-top: 2px;">${c.summary.substring(0, 150)}${c.summary.length > 150 ? '...' : ''}</div>` : ''}
-                                        </div>
-                                    `).join('')}
-                                    ${sourceContent.length > 5 ? `<div style="font-size: var(--text-xs); color: var(--text-muted); margin-top: var(--spacing-xs);">+ ${sourceContent.length - 5} more items</div>` : ''}
-                                </div>
-                            ` : ''}
+                        <div class="source-perspective-expand">
+                            <span class="source-perspective-expand-icon">↓</span>
+                            <span>Click to Expand</span>
+                        </div>
+
+                        <div class="source-perspective-details">
+                            <div class="source-perspective-details-inner">
+                                <div class="source-perspective-full-summary">${data.summary || ''}</div>
+
+                                ${data.key_insights && data.key_insights.length > 0 ? `
+                                    <div class="source-perspective-insights">
+                                        <div class="source-perspective-insights-title">Key Insights</div>
+                                        <ul class="source-perspective-insights-list">
+                                            ${data.key_insights.map(i => `<li>${i}</li>`).join('')}
+                                        </ul>
+                                    </div>
+                                ` : ''}
+
+                                ${hasContent ? `
+                                    <div class="source-perspective-content-list">
+                                        <div class="source-perspective-insights-title">Content (${sourceContent.length} items)</div>
+                                        ${sourceContent.slice(0, 3).map(c => `
+                                            <div class="source-perspective-content-item">
+                                                <div class="source-perspective-content-title">${c.title || 'Untitled'}</div>
+                                                ${c.summary ? `<div class="source-perspective-content-excerpt">${c.summary.substring(0, 120)}${c.summary.length > 120 ? '...' : ''}</div>` : ''}
+                                            </div>
+                                        `).join('')}
+                                        ${sourceContent.length > 3 ? `<div style="font-size: var(--text-xs); color: var(--text-muted); margin-top: var(--spacing-xs);">+ ${sourceContent.length - 3} more items</div>` : ''}
+                                    </div>
+                                ` : ''}
+                            </div>
                         </div>
                     </div>
                 `;
             }).join('');
         }
 
-        // Toggle source details visibility (PRD-041)
-        function toggleSourceDetails(id) {
-            const details = document.getElementById(id);
-            const icon = document.getElementById('icon-' + id);
-            if (details) {
-                const isHidden = details.style.display === 'none';
-                details.style.display = isHidden ? 'block' : 'none';
-                if (icon) {
-                    icon.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+        // Get source key for CSS styling
+        function getSourceKey(sourceName) {
+            const name = sourceName.toLowerCase();
+            if (name.includes('substack')) return 'substack';
+            if (name.includes('discord')) return 'discord';
+            if (name.includes('42macro') || name.includes('42 macro')) return '42macro';
+            if (name.includes('youtube')) return 'youtube';
+            if (name.includes('kt') || name.includes('technical')) return 'kt_technical';
+            return 'substack'; // default
+        }
+
+        // Get source icon letter
+        function getSourceIcon(sourceKey) {
+            const icons = {
+                'substack': 'S',
+                'discord': 'd',
+                '42macro': '4',
+                'youtube': 'Y',
+                'kt_technical': 'K'
+            };
+            return icons[sourceKey] || sourceKey.charAt(0).toUpperCase();
+        }
+
+        // Generate sparkline SVG path based on bias
+        function generateSparklinePath(bias, seed) {
+            const points = [];
+            const numPoints = 12;
+
+            // Create semi-random but consistent path based on seed
+            for (let i = 0; i < numPoints; i++) {
+                const x = (i / (numPoints - 1)) * 200;
+                let baseY = 24; // middle
+
+                // Trend based on bias
+                if (bias === 'bullish') {
+                    baseY = 36 - (i / numPoints) * 24; // trending up (lower Y = higher on screen)
+                } else if (bias === 'bearish') {
+                    baseY = 12 + (i / numPoints) * 24; // trending down
                 }
+
+                // Add some variation using seed
+                const variation = Math.sin(i * 1.5 + seed) * 8;
+                const y = Math.max(4, Math.min(44, baseY + variation));
+
+                points.push(`${i === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`);
+            }
+
+            return points.join(' ');
+        }
+
+        // Toggle source perspective card expansion
+        function toggleSourcePerspective(card) {
+            // Close other expanded cards
+            document.querySelectorAll('.source-perspective-card.expanded').forEach(c => {
+                if (c !== card) c.classList.remove('expanded');
+            });
+
+            // Toggle this card
+            card.classList.toggle('expanded');
+
+            // Update expand text
+            const expandText = card.querySelector('.source-perspective-expand span:last-child');
+            if (expandText) {
+                expandText.textContent = card.classList.contains('expanded') ? 'Click to Collapse' : 'Click to Expand';
             }
         }
 
@@ -948,7 +1029,7 @@
             `).join('');
         }
 
-        // V3: Display source stances
+        // V3: Display source stances with interactive cards
         function displayV3SourceStances(stances) {
             const container = document.getElementById('v3-stances-list');
             const section = document.getElementById('stances-section');
@@ -959,16 +1040,49 @@
             }
             section.style.display = 'block';
 
-            container.innerHTML = Object.entries(stances).map(([name, data]) => {
+            container.innerHTML = Object.entries(stances).map(([name, data], index) => {
                 const bias = data.overall_bias || 'neutral';
-                const biasColor = bias === 'bullish' ? 'success' : bias === 'bearish' ? 'danger' : 'warning';
+                const biasLabel = bias === 'bullish' ? 'Bullish Trend' : bias === 'bearish' ? 'Bearish' : 'Mixed Signal';
+                const sourceKey = getSourceKey(name);
+                const sourceIcon = getSourceIcon(sourceKey);
+                const sparklinePath = generateSparklinePath(bias, index);
+                const summary = data.current_stance_narrative || data.summary || '';
+
                 return `
-                    <div style="padding: var(--spacing-md); background: var(--glass-bg-light); border-radius: var(--radius-lg); margin-bottom: var(--spacing-sm);">
-                        <div style="display: flex; justify-content: space-between; margin-bottom: var(--spacing-xs);">
-                            <span style="font-weight: var(--font-semibold);">${name}</span>
-                            <span class="badge" style="background: var(--${biasColor}); color: white; padding: 2px 8px; border-radius: var(--radius-full); font-size: 10px;">${bias}</span>
+                    <div class="source-perspective-card" data-source="${sourceKey}" onclick="toggleSourcePerspective(this)">
+                        <div class="source-perspective-header">
+                            <div class="source-perspective-identity">
+                                <div class="source-perspective-icon">${sourceIcon}</div>
+                                <span class="source-perspective-name">${name}</span>
+                            </div>
+                            <span class="source-perspective-bias ${bias}">${biasLabel}</span>
                         </div>
-                        <div style="font-size: var(--text-sm); color: var(--text-secondary);">${data.current_stance_narrative || ''}</div>
+
+                        <div class="source-perspective-sparkline">
+                            <svg viewBox="0 0 200 48" preserveAspectRatio="none">
+                                <defs>
+                                    <linearGradient id="sparkline-gradient-v3-${index}" x1="0%" y1="0%" x2="0%" y2="100%">
+                                        <stop offset="0%" style="stop-color: var(--card-accent, var(--primary)); stop-opacity: 0.3"/>
+                                        <stop offset="100%" style="stop-color: var(--card-accent, var(--primary)); stop-opacity: 0"/>
+                                    </linearGradient>
+                                </defs>
+                                <path class="sparkline-area" d="${sparklinePath} L 200 48 L 0 48 Z" fill="url(#sparkline-gradient-v3-${index})"/>
+                                <path class="sparkline-path" d="${sparklinePath}"/>
+                            </svg>
+                        </div>
+
+                        <div class="source-perspective-summary">${summary}</div>
+
+                        <div class="source-perspective-expand">
+                            <span class="source-perspective-expand-icon">↓</span>
+                            <span>Click to Expand</span>
+                        </div>
+
+                        <div class="source-perspective-details">
+                            <div class="source-perspective-details-inner">
+                                <div class="source-perspective-full-summary">${summary}</div>
+                            </div>
+                        </div>
                     </div>
                 `;
             }).join('');

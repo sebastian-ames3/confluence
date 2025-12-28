@@ -450,7 +450,319 @@
   height: 100% !important;
 }
 
+/* ============================================
+   Source Perspectives Section (Full-Width)
+   Glassmorphism cards with glowing borders
+   ============================================ */
+
+.source-perspectives-section {
+  margin-top: var(--spacing-xl);
+  padding-top: var(--spacing-lg);
+}
+
+.source-perspectives-section .section-header {
+  margin-bottom: var(--spacing-lg);
+}
+
+.source-perspectives-section .section-title {
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+/* Grid layout for source cards */
+.source-perspectives-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-lg);
+}
+
+/* Individual source perspective card */
+.source-perspective-card {
+  position: relative;
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-lg);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  overflow: hidden;
+}
+
+/* Glowing border effect */
+.source-perspective-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-xl);
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    var(--card-glow-color, var(--glass-border)) 0%,
+    transparent 50%,
+    var(--card-glow-color, var(--glass-border)) 100%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0.5;
+  transition: opacity var(--transition-normal);
+}
+
+.source-perspective-card:hover::before {
+  opacity: 1;
+}
+
+.source-perspective-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3),
+              0 0 24px var(--card-glow-color, rgba(99, 102, 241, 0.2));
+}
+
+/* Source color variants */
+.source-perspective-card[data-source="substack"] {
+  --card-glow-color: rgba(255, 127, 80, 0.6);
+  --card-accent: #FF7F50;
+}
+
+.source-perspective-card[data-source="discord"] {
+  --card-glow-color: rgba(114, 137, 218, 0.6);
+  --card-accent: #7289DA;
+}
+
+.source-perspective-card[data-source="42macro"] {
+  --card-glow-color: rgba(245, 158, 11, 0.6);
+  --card-accent: #F59E0B;
+}
+
+.source-perspective-card[data-source="youtube"] {
+  --card-glow-color: rgba(248, 113, 113, 0.6);
+  --card-accent: #F87171;
+}
+
+.source-perspective-card[data-source="kt_technical"] {
+  --card-glow-color: rgba(16, 185, 129, 0.6);
+  --card-accent: #10B981;
+}
+
+/* Card header with source icon and bias badge */
+.source-perspective-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-md);
+}
+
+.source-perspective-identity {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.source-perspective-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-sm);
+  font-weight: var(--font-bold);
+  background: var(--card-accent, var(--primary));
+  color: white;
+}
+
+.source-perspective-name {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+/* Bias badge */
+.source-perspective-bias {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  text-transform: capitalize;
+}
+
+.source-perspective-bias.bullish {
+  background: rgba(16, 185, 129, 0.2);
+  color: var(--success-light);
+}
+
+.source-perspective-bias.bearish {
+  background: rgba(239, 68, 68, 0.2);
+  color: var(--danger-light);
+}
+
+.source-perspective-bias.neutral,
+.source-perspective-bias.mixed {
+  background: rgba(245, 158, 11, 0.2);
+  color: var(--warning);
+}
+
+/* Sparkline container */
+.source-perspective-sparkline {
+  height: 48px;
+  margin-bottom: var(--spacing-md);
+  position: relative;
+}
+
+.source-perspective-sparkline svg {
+  width: 100%;
+  height: 100%;
+}
+
+.sparkline-path {
+  fill: none;
+  stroke: var(--card-accent, var(--primary));
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 4px var(--card-glow-color, rgba(99, 102, 241, 0.4)));
+}
+
+.sparkline-area {
+  fill: url(#sparkline-gradient);
+  opacity: 0.3;
+}
+
+/* Summary text */
+.source-perspective-summary {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: var(--leading-relaxed);
+  margin-bottom: var(--spacing-md);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Expand hint */
+.source-perspective-expand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  padding-top: var(--spacing-sm);
+  border-top: 1px solid var(--border-subtle);
+  transition: color var(--transition-fast);
+}
+
+.source-perspective-card:hover .source-perspective-expand {
+  color: var(--card-accent, var(--primary));
+}
+
+.source-perspective-expand-icon {
+  transition: transform var(--transition-normal);
+}
+
+.source-perspective-card.expanded .source-perspective-expand-icon {
+  transform: rotate(180deg);
+}
+
+/* Expanded content */
+.source-perspective-details {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height var(--transition-slow) ease-out;
+}
+
+.source-perspective-card.expanded .source-perspective-details {
+  max-height: 500px;
+}
+
+.source-perspective-details-inner {
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--border-subtle);
+  margin-top: var(--spacing-md);
+}
+
+.source-perspective-full-summary {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: var(--leading-relaxed);
+  margin-bottom: var(--spacing-md);
+}
+
+/* Key insights list */
+.source-perspective-insights {
+  margin-top: var(--spacing-md);
+}
+
+.source-perspective-insights-title {
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--spacing-sm);
+}
+
+.source-perspective-insights-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.source-perspective-insights-list li {
+  position: relative;
+  padding-left: var(--spacing-md);
+  margin-bottom: var(--spacing-xs);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.source-perspective-insights-list li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--card-accent, var(--primary));
+}
+
+/* Content items in expanded view */
+.source-perspective-content-list {
+  margin-top: var(--spacing-md);
+}
+
+.source-perspective-content-item {
+  padding: var(--spacing-sm);
+  background: var(--glass-bg-light);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-xs);
+}
+
+.source-perspective-content-title {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.source-perspective-content-excerpt {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
 /* ----- Responsive ----- */
+@media (max-width: 1200px) {
+  .source-perspectives-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 @media (max-width: 768px) {
   .card,
   .card-glass,
@@ -465,5 +777,13 @@
 
   .card-grid {
     grid-template-columns: 1fr;
+  }
+
+  .source-perspectives-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .source-perspective-card {
+    padding: var(--spacing-md);
   }
 }
