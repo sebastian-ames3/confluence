@@ -1,15 +1,32 @@
 /**
- * Symbols Tab Styling (PRD-039)
+ * Symbols Tab Styling (PRD-039, PRD-043)
  *
  * Styles for symbol-level confluence tracking interface
+ * PRD-043: 4×4×3 fixed grid layout for 11 tracked symbols
  */
 
-/* Symbols Grid Layout */
+/* ============================================
+   SYMBOLS GRID - 4×4×3 LAYOUT (PRD-043)
+   ============================================ */
+
 .symbols-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: var(--spacing-lg);
-    padding: var(--spacing-md);
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    padding: 1rem;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+/* Ensure consistent card heights for grid alignment */
+.symbols-grid .symbol-card {
+    min-height: 160px;
+    max-height: 200px;
+}
+
+/* Last row (3 items) starts at column 1 for visual balance */
+.symbols-grid .symbol-card:nth-child(9) {
+    grid-column-start: 1;
 }
 
 /* Symbol Card */
@@ -436,10 +453,47 @@
     color: var(--status-error);
 }
 
-/* Responsive */
-@media (max-width: 768px) {
+/* ============================================
+   RESPONSIVE BREAKPOINTS (PRD-043)
+   ============================================ */
+
+/* Large Desktop: 4 columns (default) */
+@media (min-width: 1200px) {
+    .symbols-grid {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1.25rem;
+    }
+}
+
+/* Tablet/Small Desktop: 2 columns */
+@media (max-width: 1024px) {
+    .symbols-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+    }
+
+    /* Reset column start for 2-column layout */
+    .symbols-grid .symbol-card:nth-child(9) {
+        grid-column-start: auto;
+    }
+
+    .symbols-grid .symbol-card {
+        min-height: 140px;
+        max-height: none;
+    }
+}
+
+/* Mobile: 1 column */
+@media (max-width: 600px) {
     .symbols-grid {
         grid-template-columns: 1fr;
+        gap: 0.5rem;
+        padding: 0.5rem;
+    }
+
+    .symbols-grid .symbol-card {
+        min-height: auto;
+        max-height: none;
     }
 
     .detail-grid {
