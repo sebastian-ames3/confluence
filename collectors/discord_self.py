@@ -368,9 +368,11 @@ class DiscordSelfCollector(BaseCollector):
                 if first_attachment["type"] == "pdf":
                     content_type = "pdf"
                     file_path = first_attachment["path"]
+                    url = first_attachment.get("url")
                 elif first_attachment["type"] == "image":
                     content_type = "image"
                     file_path = first_attachment["path"]
+                    url = first_attachment.get("url")
 
         # Extract video links (Zoom, Webex, YouTube)
         video_links = []
@@ -517,7 +519,8 @@ class DiscordSelfCollector(BaseCollector):
                         "filename": attachment.filename,
                         "path": str(file_path),
                         "size_mb": round(size_mb, 2),
-                        "content_type": attachment.content_type
+                        "content_type": attachment.content_type,
+                        "url": attachment.url
                     })
 
         return processed
