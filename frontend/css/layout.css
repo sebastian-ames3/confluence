@@ -1055,3 +1055,155 @@ body {
 .mb-4 {
   margin-bottom: var(--spacing-md);
 }
+
+/* ============================================
+   OVERVIEW FULL-WIDTH LAYOUT
+   ============================================ */
+.overview-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.full-width-section {
+  width: 100%;
+}
+
+/* ============================================
+   FLOATING STATUS PANEL
+   ============================================ */
+.floating-status-panel {
+  position: fixed;
+  right: var(--spacing-lg);
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: var(--z-sticky);
+  display: flex;
+  align-items: flex-start;
+}
+
+/* Toggle button (always visible) */
+.floating-panel-toggle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  width: 48px;
+  padding: var(--spacing-md) var(--spacing-sm);
+  background: var(--glass-bg-heavy);
+  backdrop-filter: var(--glass-blur-heavy);
+  -webkit-backdrop-filter: var(--glass-blur-heavy);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  color: var(--text-secondary);
+}
+
+.floating-panel-toggle:hover {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+  transform: scale(1.05);
+}
+
+.floating-panel-toggle .toggle-icon {
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+}
+
+.floating-panel-toggle .toggle-label {
+  font-size: 10px;
+  font-weight: var(--font-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
+
+/* Panel content (expandable) */
+.floating-panel-content {
+  position: absolute;
+  right: 56px;
+  top: 0;
+  width: 280px;
+  max-height: 70vh;
+  overflow-y: auto;
+  background: var(--glass-bg-heavy);
+  backdrop-filter: var(--glass-blur-heavy);
+  -webkit-backdrop-filter: var(--glass-blur-heavy);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(20px);
+  transition: all var(--transition-normal);
+}
+
+.floating-status-panel.expanded .floating-panel-content {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(0);
+}
+
+.floating-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--border-subtle);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.floating-panel-close {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--glass-bg);
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: var(--text-lg);
+  transition: all var(--transition-fast);
+}
+
+.floating-panel-close:hover {
+  background: var(--danger);
+  color: white;
+}
+
+.floating-panel-section {
+  padding: var(--spacing-md);
+}
+
+.floating-panel-section + .floating-panel-section {
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* Mobile: Move toggle to bottom */
+@media (max-width: 768px) {
+  .floating-status-panel {
+    right: var(--spacing-md);
+    top: auto;
+    bottom: calc(80px + var(--spacing-md));
+    transform: none;
+  }
+
+  .floating-panel-content {
+    right: 0;
+    bottom: 56px;
+    top: auto;
+    max-height: 50vh;
+  }
+
+  .floating-panel-toggle .toggle-label {
+    writing-mode: horizontal-tb;
+    text-orientation: mixed;
+  }
+}

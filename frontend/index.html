@@ -175,134 +175,140 @@
             <section class="tab-content-area">
                 <!-- Overview Tab -->
                 <div class="tab-panel active" id="panel-overview" role="tabpanel">
-                    <div class="content-grid">
-                        <!-- Main Column -->
-                        <div class="content-main">
-                            <!-- Key Takeaways (compact, extracted from synthesis) -->
-                            <div class="sidebar-card" id="takeaways-section">
-                                <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-md);">
-                                    <div class="section-title" style="margin-bottom: 0;">Key Takeaways</div>
-                                    <div style="display: flex; align-items: center; gap: var(--spacing-sm);">
-                                        <span class="synthesis-meta" style="font-size: var(--text-xs); color: var(--text-muted);">
-                                            <span id="synthesis-window">-</span> |
-                                            <span id="synthesis-count">0</span> items
-                                        </span>
-                                        <div id="market-regime-badge"></div>
-                                    </div>
-                                </div>
-
-                                <!-- Empty State -->
-                                <div id="synthesis-empty" style="text-align: center; padding: var(--spacing-lg); color: var(--text-muted);">
-                                    <div style="font-size: 32px; margin-bottom: var(--spacing-sm);">📊</div>
-                                    <p style="margin: 0;">Click "Generate Synthesis" to see key takeaways.</p>
-                                </div>
-
-                                <!-- Takeaways Content -->
-                                <div id="takeaways-content" style="display: none;">
-                                    <ol id="takeaways-list" style="margin: 0; padding-left: var(--spacing-lg); color: var(--text-secondary);"></ol>
-
-                                    <!-- Feedback Section (PRD-038) -->
-                                    <div id="synthesis-feedback-section" style="margin-top: var(--spacing-md); padding-top: var(--spacing-md); border-top: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center;">
-                                        <span style="font-size: var(--text-sm); color: var(--text-muted);">Was this synthesis helpful?</span>
-                                        <div id="synthesis-feedback-buttons"></div>
-                                    </div>
-
-                                    <button id="view-full-synthesis-btn" class="fab-btn fab-btn-ghost" style="width: 100%; margin-top: var(--spacing-md); justify-content: center;" onclick="toggleFullSynthesis()">
-                                        <span class="icon">📄</span>
-                                        <span>View Full Synthesis</span>
-                                    </button>
+                    <!-- Full-Width Layout -->
+                    <div class="overview-content">
+                        <!-- Key Takeaways (full width) -->
+                        <div class="sidebar-card" id="takeaways-section">
+                            <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-md);">
+                                <div class="section-title" style="margin-bottom: 0;">Key Takeaways</div>
+                                <div style="display: flex; align-items: center; gap: var(--spacing-sm);">
+                                    <span class="synthesis-meta" style="font-size: var(--text-xs); color: var(--text-muted);">
+                                        <span id="synthesis-window">-</span> |
+                                        <span id="synthesis-count">0</span> items
+                                    </span>
+                                    <div id="market-regime-badge"></div>
                                 </div>
                             </div>
 
-                            <!-- 3. THIRD: This Week's Focus (priorities) -->
-                            <div class="sidebar-card" id="priorities-section" style="display: none;">
-                                <div class="section-title">This Week's Focus</div>
-                                <div id="v3-priorities-list"></div>
+                            <!-- Empty State -->
+                            <div id="synthesis-empty" style="text-align: center; padding: var(--spacing-lg); color: var(--text-muted);">
+                                <div style="font-size: 32px; margin-bottom: var(--spacing-sm);">📊</div>
+                                <p style="margin: 0;">Click "Generate Synthesis" to see key takeaways.</p>
                             </div>
 
-                            <!-- 4. FOURTH: Confluence Zones -->
-                            <div class="sidebar-card" id="confluence-section" style="display: none;">
-                                <div class="section-title">Confluence Zones</div>
-                                <div id="v3-confluence-list"></div>
-                            </div>
+                            <!-- Takeaways Content -->
+                            <div id="takeaways-content" style="display: none;">
+                                <ol id="takeaways-list" style="margin: 0; padding-left: var(--spacing-lg); color: var(--text-secondary);"></ol>
 
-                            <!-- 5. LAST: Conflicts to Monitor -->
-                            <div class="sidebar-card" id="conflict-section" style="display: none;">
-                                <div class="section-title">Conflicts to Monitor</div>
-                                <div id="v3-conflict-list"></div>
-                            </div>
-
-                            <!-- Full Synthesis Panel (collapsible, hidden by default) -->
-                            <div class="sidebar-card" id="synthesis-panel" style="display: none;">
-                                <div class="synthesis-header" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--spacing-md); padding-bottom: var(--spacing-md); border-bottom: 1px solid var(--border-subtle);">
-                                    <div>
-                                        <div class="section-title" style="margin-bottom: var(--spacing-xs);">Full Research Synthesis</div>
-                                        <div class="synthesis-meta" style="font-size: var(--text-sm); color: var(--text-muted);">
-                                            <span id="synthesis-time">-</span>
-                                        </div>
-                                    </div>
-                                    <button class="fab-btn fab-btn-ghost" style="padding: var(--spacing-xs) var(--spacing-sm);" onclick="toggleFullSynthesis()">
-                                        <span>Collapse</span>
-                                    </button>
+                                <!-- Feedback Section (PRD-038) -->
+                                <div id="synthesis-feedback-section" style="margin-top: var(--spacing-md); padding-top: var(--spacing-md); border-top: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center;">
+                                    <span style="font-size: var(--text-sm); color: var(--text-muted);">Was this synthesis helpful?</span>
+                                    <div id="synthesis-feedback-buttons"></div>
                                 </div>
 
-                                <!-- Synthesis Content -->
-                                <div id="synthesis-content">
-                                    <div class="synthesis-text" id="synthesis-text"></div>
-                                    <div class="theme-tags" id="theme-tags" style="display: flex; flex-wrap: wrap; gap: var(--spacing-sm); margin-top: var(--spacing-md);"></div>
-
-                                    <!-- V3 Content -->
-                                    <div id="v3-content" style="display: none;">
-                                        <div id="v3-executive-section" class="v3-executive-summary"></div>
-                                    </div>
-                                </div>
+                                <button id="view-full-synthesis-btn" class="fab-btn fab-btn-ghost" style="width: 100%; margin-top: var(--spacing-md); justify-content: center;" onclick="toggleFullSynthesis()">
+                                    <span class="icon">📄</span>
+                                    <span>View Full Synthesis</span>
+                                </button>
                             </div>
                         </div>
 
-                        <!-- Sidebar -->
-                        <aside class="content-sidebar">
-                            <!-- Source Status -->
-                            <div class="sidebar-card">
-                                <div class="sidebar-title">Source Status</div>
-                                <div id="source-status-list" class="source-list">
-                                    <div style="color: var(--text-muted);">Loading...</div>
-                                </div>
+                        <!-- Major Source Perspectives (Full-Width, directly after Key Takeaways) -->
+                        <section class="source-perspectives-section" id="stances-section" style="display: none;">
+                            <div class="section-header">
+                                <h2 class="section-title">Major Source Perspectives</h2>
                             </div>
+                            <div class="source-perspectives-grid" id="v3-stances-list">
+                                <!-- Cards populated by JavaScript -->
+                            </div>
+                        </section>
 
-                            <!-- Quick Actions -->
-                            <div class="sidebar-card">
-                                <div class="sidebar-title">Quick Actions</div>
-                                <div class="quick-actions" style="display: flex; flex-direction: column; gap: var(--spacing-sm);">
-                                    <button class="fab-btn fab-btn-secondary w-full" onclick="triggerCollection('youtube')">
-                                        <span class="icon">▶️</span>
-                                        <span>Collect YouTube</span>
-                                    </button>
-                                    <button class="fab-btn fab-btn-secondary w-full" onclick="triggerCollection('substack')">
-                                        <span class="icon">📰</span>
-                                        <span>Collect Substack</span>
-                                    </button>
-                                    <button class="fab-btn fab-btn-secondary w-full" onclick="triggerCollection('kt_technical')">
-                                        <span class="icon">📈</span>
-                                        <span>Collect KT Technical</span>
-                                    </button>
-                                    <div style="font-size: var(--text-xs); color: var(--text-muted); text-align: center; margin-top: var(--spacing-sm);">
-                                        Discord & 42 Macro run locally
+                        <!-- This Week's Focus (priorities) - full width -->
+                        <div class="sidebar-card full-width-section" id="priorities-section" style="display: none;">
+                            <div class="section-title">This Week's Focus</div>
+                            <div id="v3-priorities-list"></div>
+                        </div>
+
+                        <!-- Confluence Zones - full width -->
+                        <div class="sidebar-card full-width-section" id="confluence-section" style="display: none;">
+                            <div class="section-title">Confluence Zones</div>
+                            <div id="v3-confluence-list"></div>
+                        </div>
+
+                        <!-- Conflicts to Monitor - full width -->
+                        <div class="sidebar-card full-width-section" id="conflict-section" style="display: none;">
+                            <div class="section-title">Conflicts to Monitor</div>
+                            <div id="v3-conflict-list"></div>
+                        </div>
+
+                        <!-- Full Synthesis Panel (collapsible, hidden by default) -->
+                        <div class="sidebar-card full-width-section" id="synthesis-panel" style="display: none;">
+                            <div class="synthesis-header" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--spacing-md); padding-bottom: var(--spacing-md); border-bottom: 1px solid var(--border-subtle);">
+                                <div>
+                                    <div class="section-title" style="margin-bottom: var(--spacing-xs);">Full Research Synthesis</div>
+                                    <div class="synthesis-meta" style="font-size: var(--text-sm); color: var(--text-muted);">
+                                        <span id="synthesis-time">-</span>
                                     </div>
                                 </div>
+                                <button class="fab-btn fab-btn-ghost" style="padding: var(--spacing-xs) var(--spacing-sm);" onclick="toggleFullSynthesis()">
+                                    <span>Collapse</span>
+                                </button>
                             </div>
 
-                        </aside>
+                            <!-- Synthesis Content -->
+                            <div id="synthesis-content">
+                                <div class="synthesis-text" id="synthesis-text"></div>
+                                <div class="theme-tags" id="theme-tags" style="display: flex; flex-wrap: wrap; gap: var(--spacing-sm); margin-top: var(--spacing-md);"></div>
+
+                                <!-- V3 Content -->
+                                <div id="v3-content" style="display: none;">
+                                    <div id="v3-executive-section" class="v3-executive-summary"></div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
+                </div>
 
-                    <!-- Major Source Perspectives (Full-Width Section) -->
-                    <section class="source-perspectives-section" id="stances-section" style="display: none;">
-                        <div class="section-header">
-                            <h2 class="section-title">Major Source Perspectives</h2>
+                <!-- Floating Status Panel -->
+                <div class="floating-status-panel" id="floating-status-panel">
+                    <button class="floating-panel-toggle" id="floating-panel-toggle" onclick="toggleFloatingPanel()">
+                        <span class="toggle-icon">≡</span>
+                        <span class="toggle-label">Status</span>
+                    </button>
+                    <div class="floating-panel-content" id="floating-panel-content">
+                        <div class="floating-panel-header">
+                            <span>Source Status & Actions</span>
+                            <button class="floating-panel-close" onclick="toggleFloatingPanel()">×</button>
                         </div>
-                        <div class="source-perspectives-grid" id="v3-stances-list">
-                            <!-- Cards populated by JavaScript -->
+                        <!-- Source Status -->
+                        <div class="floating-panel-section">
+                            <div class="sidebar-title">Source Status</div>
+                            <div id="source-status-list" class="source-list">
+                                <div style="color: var(--text-muted);">Loading...</div>
+                            </div>
                         </div>
-                    </section>
+                        <!-- Quick Actions -->
+                        <div class="floating-panel-section">
+                            <div class="sidebar-title">Quick Actions</div>
+                            <div class="quick-actions" style="display: flex; flex-direction: column; gap: var(--spacing-sm);">
+                                <button class="fab-btn fab-btn-secondary w-full" onclick="triggerCollection('youtube')">
+                                    <span class="icon">▶️</span>
+                                    <span>Collect YouTube</span>
+                                </button>
+                                <button class="fab-btn fab-btn-secondary w-full" onclick="triggerCollection('substack')">
+                                    <span class="icon">📰</span>
+                                    <span>Collect Substack</span>
+                                </button>
+                                <button class="fab-btn fab-btn-secondary w-full" onclick="triggerCollection('kt_technical')">
+                                    <span class="icon">📈</span>
+                                    <span>Collect KT Technical</span>
+                                </button>
+                                <div style="font-size: var(--text-xs); color: var(--text-muted); text-align: center; margin-top: var(--spacing-sm);">
+                                    Discord & 42 Macro run locally
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Symbols Tab -->
@@ -568,6 +574,7 @@
             loadStatus();
             loadLatestSynthesis();
             loadThemesSummary();  // Load theme count for KPI card
+            initFloatingPanel();  // Initialize floating status panel
         });
 
         // Load just the themes summary for the KPI card (lightweight)
@@ -782,11 +789,12 @@
                 const sourceKey = getSourceKey(sourceName);
                 const sourceIcon = getSourceIcon(sourceKey);
 
-                // Generate sparkline path
+                // Generate sparkline path and get bias color
                 const sparklinePath = generateSparklinePath(bias, index);
+                const biasColor = getBiasColor(bias);
 
                 return `
-                    <div class="source-perspective-card" data-source="${sourceKey}" onclick="toggleSourcePerspective(this)">
+                    <div class="source-perspective-card" data-source="${sourceKey}" data-bias="${bias}" onclick="toggleSourcePerspective(this)">
                         <div class="source-perspective-header">
                             <div class="source-perspective-identity">
                                 <div class="source-perspective-icon">${sourceIcon}</div>
@@ -799,8 +807,8 @@
                             <svg viewBox="0 0 200 48" preserveAspectRatio="none">
                                 <defs>
                                     <linearGradient id="sparkline-gradient-${index}" x1="0%" y1="0%" x2="0%" y2="100%">
-                                        <stop offset="0%" style="stop-color: var(--card-accent, var(--primary)); stop-opacity: 0.3"/>
-                                        <stop offset="100%" style="stop-color: var(--card-accent, var(--primary)); stop-opacity: 0"/>
+                                        <stop offset="0%" stop-color="${biasColor}" stop-opacity="0.3"/>
+                                        <stop offset="100%" stop-color="${biasColor}" stop-opacity="0"/>
                                     </linearGradient>
                                 </defs>
                                 <path class="sparkline-area" d="${sparklinePath} L 200 48 L 0 48 Z" fill="url(#sparkline-gradient-${index})"/>
@@ -870,31 +878,64 @@
             return icons[sourceKey] || sourceKey.charAt(0).toUpperCase();
         }
 
+        // Get bias color for sparkline
+        function getBiasColor(bias) {
+            switch (bias) {
+                case 'bullish': return '#10B981'; // Green
+                case 'bearish': return '#EF4444'; // Red
+                default: return '#F59E0B'; // Yellow for mixed/neutral
+            }
+        }
+
         // Generate sparkline SVG path based on bias
         function generateSparklinePath(bias, seed) {
             const points = [];
-            const numPoints = 12;
+            const numPoints = 16;
 
-            // Create semi-random but consistent path based on seed
             for (let i = 0; i < numPoints; i++) {
                 const x = (i / (numPoints - 1)) * 200;
-                let baseY = 24; // middle
+                let y;
 
-                // Trend based on bias
                 if (bias === 'bullish') {
-                    baseY = 36 - (i / numPoints) * 24; // trending up (lower Y = higher on screen)
+                    // Clear upward trend with small variations
+                    const trend = 40 - (i / (numPoints - 1)) * 32; // From 40 to 8 (going UP on screen)
+                    const noise = Math.sin(i * 2 + seed) * 4;
+                    y = Math.max(4, Math.min(44, trend + noise));
                 } else if (bias === 'bearish') {
-                    baseY = 12 + (i / numPoints) * 24; // trending down
+                    // Clear downward trend with small variations
+                    const trend = 8 + (i / (numPoints - 1)) * 32; // From 8 to 40 (going DOWN on screen)
+                    const noise = Math.sin(i * 2 + seed) * 4;
+                    y = Math.max(4, Math.min(44, trend + noise));
+                } else {
+                    // Mixed/neutral: oscillating range-bound pattern
+                    const oscillation = Math.sin(i * 0.8 + seed) * 14;
+                    const secondaryWave = Math.sin(i * 1.5 + seed * 2) * 6;
+                    y = 24 + oscillation + secondaryWave;
+                    y = Math.max(6, Math.min(42, y));
                 }
-
-                // Add some variation using seed
-                const variation = Math.sin(i * 1.5 + seed) * 8;
-                const y = Math.max(4, Math.min(44, baseY + variation));
 
                 points.push(`${i === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`);
             }
 
             return points.join(' ');
+        }
+
+        // Toggle floating status panel
+        function toggleFloatingPanel() {
+            const panel = document.getElementById('floating-status-panel');
+            panel.classList.toggle('expanded');
+
+            // Save preference
+            localStorage.setItem('floatingPanelExpanded', panel.classList.contains('expanded'));
+        }
+
+        // Initialize floating panel state from localStorage
+        function initFloatingPanel() {
+            const panel = document.getElementById('floating-status-panel');
+            const wasExpanded = localStorage.getItem('floatingPanelExpanded') === 'true';
+            if (wasExpanded) {
+                panel.classList.add('expanded');
+            }
         }
 
         // Toggle source perspective card expansion
@@ -1046,10 +1087,11 @@
                 const sourceKey = getSourceKey(name);
                 const sourceIcon = getSourceIcon(sourceKey);
                 const sparklinePath = generateSparklinePath(bias, index);
+                const biasColor = getBiasColor(bias);
                 const summary = data.current_stance_narrative || data.summary || '';
 
                 return `
-                    <div class="source-perspective-card" data-source="${sourceKey}" onclick="toggleSourcePerspective(this)">
+                    <div class="source-perspective-card" data-source="${sourceKey}" data-bias="${bias}" onclick="toggleSourcePerspective(this)">
                         <div class="source-perspective-header">
                             <div class="source-perspective-identity">
                                 <div class="source-perspective-icon">${sourceIcon}</div>
@@ -1062,8 +1104,8 @@
                             <svg viewBox="0 0 200 48" preserveAspectRatio="none">
                                 <defs>
                                     <linearGradient id="sparkline-gradient-v3-${index}" x1="0%" y1="0%" x2="0%" y2="100%">
-                                        <stop offset="0%" style="stop-color: var(--card-accent, var(--primary)); stop-opacity: 0.3"/>
-                                        <stop offset="100%" style="stop-color: var(--card-accent, var(--primary)); stop-opacity: 0"/>
+                                        <stop offset="0%" stop-color="${biasColor}" stop-opacity="0.3"/>
+                                        <stop offset="100%" stop-color="${biasColor}" stop-opacity="0"/>
                                     </linearGradient>
                                 </defs>
                                 <path class="sparkline-area" d="${sparklinePath} L 200 48 L 0 48 Z" fill="url(#sparkline-gradient-v3-${index})"/>
