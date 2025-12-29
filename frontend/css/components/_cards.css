@@ -621,6 +621,7 @@
 /* Sparkline colors based on BIAS (not source) */
 .sparkline-path {
   fill: none;
+  stroke: #F59E0B; /* Default to yellow/mixed */
   stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -638,9 +639,10 @@
   filter: drop-shadow(0 0 6px rgba(239, 68, 68, 0.6));
 }
 
-/* Mixed/Neutral = Yellow */
+/* Mixed/Neutral/Cautious = Yellow */
 .source-perspective-card[data-bias="neutral"] .sparkline-path,
 .source-perspective-card[data-bias="mixed"] .sparkline-path,
+.source-perspective-card[data-bias="cautious"] .sparkline-path,
 .source-perspective-card:not([data-bias]) .sparkline-path {
   stroke: #F59E0B;
   filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.6));
