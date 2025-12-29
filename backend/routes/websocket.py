@@ -183,3 +183,24 @@ async def broadcast_high_conviction_alert(alert_data: dict):
         }
     }
     await manager.broadcast(message)
+
+
+async def broadcast_synthesis_complete(synthesis_data: dict):
+    """
+    Broadcast when synthesis generation completes.
+
+    Args:
+        synthesis_data: Synthesis result dictionary
+    """
+    message = {
+        "type": "synthesis_complete",
+        "timestamp": synthesis_data.get("generated_at"),
+        "data": {
+            "status": synthesis_data.get("status"),
+            "synthesis_id": synthesis_data.get("synthesis_id"),
+            "time_window": synthesis_data.get("time_window"),
+            "content_count": synthesis_data.get("content_count"),
+            "error": synthesis_data.get("error")
+        }
+    }
+    await manager.broadcast(message)

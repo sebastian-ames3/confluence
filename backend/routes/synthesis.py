@@ -20,6 +20,7 @@ import logging
 
 from backend.models import (
     get_db,
+    SessionLocal,
     Synthesis,
     CollectionRun,
     AnalyzedContent,
@@ -29,6 +30,7 @@ from backend.models import (
 from backend.utils.auth import verify_jwt_or_basic
 from backend.utils.rate_limiter import limiter, RATE_LIMITS
 from agents.theme_extractor import extract_and_track_themes
+import asyncio
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -249,6 +251,172 @@ async def debug_synthesis(
     return debug_info
 
 
+def _run_synthesis_in_background(
+    time_window: str,
+    version: str,
+    focus_topic: Optional[str],
+    content_count: int
+):
+    """
+    Background task to run synthesis generation.
+
+    Creates its own database session since the request session is closed.
+    Broadcasts result via WebSocket when complete.
+    """
+    import traceback
+    from backend.routes.websocket import broadcast_synthesis_complete
+
+    db = SessionLocal()
+    try:
+        # Parse time window
+        time_deltas = {
+            "24h": timedelta(hours=24),
+            "7d": timedelta(days=7),
+            "30d": timedelta(days=30)
+        }
+        cutoff = datetime.utcnow() - time_deltas[time_window]
+
+        # Get content items
+        content_items = _get_content_for_synthesis(db, cutoff, focus_topic)
+        logger.info(f"[Background] Found {len(content_items)} content items for synthesis")
+
+        if not content_items:
+            # Broadcast no content status
+            asyncio.run(broadcast_synthesis_complete({
+                "status": "no_content",
+                "time_window": time_window,
+                "content_count": 0,
+                "generated_at": datetime.utcnow().isoformat()
+            }))
+            return
+
+        # Generate synthesis
+        from agents.synthesis_agent import SynthesisAgent
+
+        logger.info(f"[Background] Creating SynthesisAgent for {len(content_items)} items...")
+        agent = SynthesisAgent()
+
+        if version == "4":
+            older_cutoff_start = datetime.utcnow() - timedelta(days=30)
+            older_cutoff_end = cutoff
+            older_content = _get_content_for_synthesis(
+                db, older_cutoff_start, focus_topic,
+                end_date=older_cutoff_end
+            )
+            logger.info(f"[Background] Found {len(older_content)} older items for Tier 3 scanning")
+
+            result = agent.analyze_v4(
+                content_items=content_items,
+                older_content=older_content,
+                time_window=time_window,
+                focus_topic=focus_topic
+            )
+            logger.info(f"[Background] V4 Analysis complete")
+
+        elif version == "3":
+            older_cutoff_start = datetime.utcnow() - timedelta(days=30)
+            older_cutoff_end = cutoff
+            older_content = _get_content_for_synthesis(
+                db, older_cutoff_start, focus_topic,
+                end_date=older_cutoff_end
+            )
+
+            result = agent.analyze_v3(
+                content_items=content_items,
+                older_content=older_content,
+                time_window=time_window,
+                focus_topic=focus_topic
+            )
+            logger.info(f"[Background] V3 Analysis complete")
+
+        elif version == "2":
+            result = agent.analyze_v2(
+                content_items=content_items,
+                time_window=time_window,
+                focus_topic=focus_topic
+            )
+            logger.info(f"[Background] V2 Analysis complete")
+        else:
+            result = agent.analyze(
+                content_items=content_items,
+                time_window=time_window,
+                focus_topic=focus_topic
+            )
+            logger.info(f"[Background] V1 Analysis complete")
+
+        # Extract synthesis text based on version
+        if version in ["3", "4"]:
+            exec_summary = result.get("executive_summary", {})
+            if isinstance(exec_summary, dict):
+                synthesis_text = exec_summary.get("synthesis_narrative", exec_summary.get("narrative", ""))
+                market_regime_str = exec_summary.get("overall_tone", "unclear")
+            else:
+                synthesis_text = ""
+                market_regime_str = "unclear"
+        else:
+            synthesis_text = result.get("synthesis_summary") or result.get("synthesis", "")
+            market_regime = result.get("market_regime")
+            if isinstance(market_regime, dict):
+                market_regime_str = market_regime.get("current", "unclear")
+            else:
+                market_regime_str = market_regime
+
+        # Determine schema version
+        schema_ver = {"4": "4.0", "3": "3.0", "2": "2.0"}.get(version, "1.0")
+
+        # Save to database
+        synthesis = Synthesis(
+            schema_version=schema_ver,
+            synthesis=synthesis_text,
+            key_themes=json.dumps(result.get("key_themes", []) or [t.get("theme", "") for t in result.get("confluence_zones", [])]),
+            high_conviction_ideas=json.dumps(result.get("high_conviction_ideas", []) or result.get("tactical_ideas", []) or result.get("attention_priorities", [])),
+            contradictions=json.dumps(result.get("contradictions", []) or result.get("watch_list", []) or result.get("conflict_watch", [])),
+            market_regime=market_regime_str,
+            catalysts=json.dumps(result.get("catalysts", []) or result.get("catalyst_calendar", [])),
+            synthesis_json=json.dumps(result) if version in ["2", "3", "4"] else None,
+            time_window=time_window,
+            content_count=result.get("content_count", len(content_items)),
+            sources_included=json.dumps(result.get("sources_included", [])),
+            focus_topic=focus_topic,
+            generated_at=datetime.utcnow()
+        )
+        db.add(synthesis)
+        db.commit()
+        db.refresh(synthesis)
+
+        # PRD-024: Extract and track themes
+        if version in ["3", "4"]:
+            try:
+                theme_result = extract_and_track_themes(result, db)
+                logger.info(f"[Background] Theme extraction complete: {theme_result.get('created', 0)} created")
+            except Exception as theme_error:
+                logger.warning(f"[Background] Theme extraction failed (non-fatal): {str(theme_error)}")
+
+        # Broadcast success via WebSocket
+        logger.info(f"[Background] Synthesis complete, broadcasting via WebSocket")
+        asyncio.run(broadcast_synthesis_complete({
+            "status": "success",
+            "synthesis_id": synthesis.id,
+            "time_window": time_window,
+            "content_count": synthesis.content_count,
+            "generated_at": synthesis.generated_at.isoformat()
+        }))
+
+    except Exception as e:
+        error_msg = f"Background synthesis failed: {str(e)}"
+        logger.error(f"[Background] {error_msg}\n{traceback.format_exc()}")
+
+        # Broadcast error via WebSocket
+        asyncio.run(broadcast_synthesis_complete({
+            "status": "error",
+            "time_window": time_window,
+            "error": error_msg,
+            "generated_at": datetime.utcnow().isoformat()
+        }))
+    finally:
+        db.close()
+
+
 @router.post("/generate")
 @limiter.limit(RATE_LIMITS["synthesis"])
 async def generate_synthesis(
@@ -262,7 +430,8 @@ async def generate_synthesis(
     Generate a new research synthesis.
 
     Triggers synthesis generation based on collected content.
-    Returns immediately with job status, synthesis generated in background.
+    Returns immediately with processing status, synthesis generated in background.
+    WebSocket notification sent when complete.
     """
     # Parse time window to timedelta
     time_deltas = {
@@ -276,190 +445,36 @@ async def generate_synthesis(
 
     cutoff = datetime.utcnow() - time_deltas[synthesis_request.time_window]
 
-    # Wrap everything in try/except to capture any errors
-    import traceback
-    try:
-        # Get analyzed content within time window
-        content_items = _get_content_for_synthesis(db, cutoff, synthesis_request.focus_topic)
-        logger.info(f"Found {len(content_items)} content items for synthesis")
+    # Quick check for content (don't do full synthesis here)
+    content_items = _get_content_for_synthesis(db, cutoff, synthesis_request.focus_topic)
+    content_count = len(content_items)
+    logger.info(f"Found {content_count} content items for synthesis")
 
-        if not content_items:
-            return {
-                "status": "no_content",
-                "message": f"No analyzed content found in the past {synthesis_request.time_window}",
-                "content_count": 0
-            }
+    if not content_items:
+        return {
+            "status": "no_content",
+            "message": f"No analyzed content found in the past {synthesis_request.time_window}",
+            "content_count": 0
+        }
 
-        # Generate synthesis
-        from agents.synthesis_agent import SynthesisAgent
+    # Start background task for actual synthesis
+    background_tasks.add_task(
+        _run_synthesis_in_background,
+        time_window=synthesis_request.time_window,
+        version=synthesis_request.version,
+        focus_topic=synthesis_request.focus_topic,
+        content_count=content_count
+    )
 
-        logger.info(f"Creating SynthesisAgent for {len(content_items)} items...")
-        agent = SynthesisAgent()
+    logger.info(f"Started background synthesis task for {synthesis_request.time_window} window with {content_count} items")
 
-        # Determine version
-        version = synthesis_request.version
-
-        if version == "4":
-            # V4: Tiered Synthesis (PRD-041)
-            # Get older content for re-review recommendations (7-30 days ago)
-            older_cutoff_start = datetime.utcnow() - timedelta(days=30)
-            older_cutoff_end = cutoff
-            older_content = _get_content_for_synthesis(
-                db, older_cutoff_start, synthesis_request.focus_topic,
-                end_date=older_cutoff_end
-            )
-            logger.info(f"Found {len(older_content)} older items for Tier 3 scanning")
-
-            logger.info("Calling agent.analyze_v4() for tiered synthesis...")
-            result = agent.analyze_v4(
-                content_items=content_items,
-                older_content=older_content,
-                time_window=synthesis_request.time_window,
-                focus_topic=synthesis_request.focus_topic
-            )
-            logger.info(f"V4 Analysis complete: {len(result.get('source_breakdowns', {}))} source breakdowns, "
-                       f"{len(result.get('content_summaries', []))} content summaries")
-
-        elif version == "3":
-            # V3: Research Consumption Hub (PRD-021)
-            # Get older content for re-review recommendations (7-30 days ago)
-            older_cutoff_start = datetime.utcnow() - timedelta(days=30)
-            older_cutoff_end = cutoff  # End at the main cutoff (start of recent window)
-            older_content = _get_content_for_synthesis(
-                db, older_cutoff_start, synthesis_request.focus_topic,
-                end_date=older_cutoff_end
-            )
-            logger.info(f"Found {len(older_content)} older items for re-review scanning")
-
-            logger.info("Calling agent.analyze_v3() for research consumption synthesis...")
-            result = agent.analyze_v3(
-                content_items=content_items,
-                older_content=older_content,
-                time_window=synthesis_request.time_window,
-                focus_topic=synthesis_request.focus_topic
-            )
-            logger.info(f"V3 Analysis complete: {len(result.get('confluence_zones', []))} confluence zones, "
-                       f"{len(result.get('attention_priorities', []))} priorities")
-
-        elif version == "2":
-            logger.info("Calling agent.analyze_v2() for actionable synthesis...")
-            result = agent.analyze_v2(
-                content_items=content_items,
-                time_window=synthesis_request.time_window,
-                focus_topic=synthesis_request.focus_topic
-            )
-            logger.info(f"V2 Analysis complete: {len(result.get('tactical_ideas', []))} tactical, "
-                       f"{len(result.get('strategic_ideas', []))} strategic ideas")
-        else:
-            logger.info("Calling agent.analyze() for legacy synthesis...")
-            result = agent.analyze(
-                content_items=content_items,
-                time_window=synthesis_request.time_window,
-                focus_topic=synthesis_request.focus_topic
-            )
-            logger.info(f"V1 Analysis complete, got result with keys: {list(result.keys())}")
-
-        # Extract synthesis text based on version
-        if version in ["3", "4"]:
-            # V3/V4: executive_summary.synthesis_narrative or narrative
-            exec_summary = result.get("executive_summary", {})
-            if isinstance(exec_summary, dict):
-                synthesis_text = exec_summary.get("synthesis_narrative", exec_summary.get("narrative", ""))
-                market_regime_str = exec_summary.get("overall_tone", "unclear")
-            else:
-                synthesis_text = ""
-                market_regime_str = "unclear"
-        else:
-            # V2/V1: synthesis_summary or synthesis
-            synthesis_text = result.get("synthesis_summary") or result.get("synthesis", "")
-            # Extract market regime (v2 is object, v1 is string)
-            market_regime = result.get("market_regime")
-            if isinstance(market_regime, dict):
-                market_regime_str = market_regime.get("current", "unclear")
-            else:
-                market_regime_str = market_regime
-
-        # Determine schema version
-        if version == "4":
-            schema_ver = "4.0"
-        elif version == "3":
-            schema_ver = "3.0"
-        elif version == "2":
-            schema_ver = "2.0"
-        else:
-            schema_ver = "1.0"
-
-        # Save to database
-        synthesis = Synthesis(
-            schema_version=schema_ver,
-            synthesis=synthesis_text,
-            key_themes=json.dumps(result.get("key_themes", []) or [t.get("theme", "") for t in result.get("confluence_zones", [])]),
-            high_conviction_ideas=json.dumps(result.get("high_conviction_ideas", []) or result.get("tactical_ideas", []) or result.get("attention_priorities", [])),
-            contradictions=json.dumps(result.get("contradictions", []) or result.get("watch_list", []) or result.get("conflict_watch", [])),
-            market_regime=market_regime_str,
-            catalysts=json.dumps(result.get("catalysts", []) or result.get("catalyst_calendar", [])),
-            synthesis_json=json.dumps(result) if version in ["2", "3", "4"] else None,
-            time_window=synthesis_request.time_window,
-            content_count=result.get("content_count", len(content_items)),
-            sources_included=json.dumps(result.get("sources_included", [])),
-            focus_topic=synthesis_request.focus_topic,
-            generated_at=datetime.utcnow()
-        )
-        db.add(synthesis)
-        db.commit()
-        db.refresh(synthesis)
-
-        # PRD-024: Extract and track themes from V3/V4 synthesis
-        if version in ["3", "4"]:
-            try:
-                theme_result = extract_and_track_themes(result, db)
-                logger.info(f"Theme extraction complete: {theme_result.get('created', 0)} created, "
-                           f"{theme_result.get('updated', 0)} updated")
-            except Exception as theme_error:
-                # Don't fail synthesis if theme extraction fails
-                logger.warning(f"Theme extraction failed (non-fatal): {str(theme_error)}")
-
-        # Return appropriate response format
-        if version == "4":
-            return {
-                "status": "success",
-                "version": "4.0",
-                "synthesis_id": synthesis.id,
-                **result,
-                "generated_at": synthesis.generated_at.isoformat()
-            }
-        elif version == "3":
-            return {
-                "status": "success",
-                "version": "3.0",
-                "synthesis_id": synthesis.id,
-                **result,
-                "generated_at": synthesis.generated_at.isoformat()
-            }
-        elif version == "2":
-            return {
-                "status": "success",
-                "version": "2.0",
-                "synthesis_id": synthesis.id,
-                **result,
-                "generated_at": synthesis.generated_at.isoformat()
-            }
-        else:
-            return {
-                "status": "success",
-                "version": "1.0",
-                "synthesis_id": synthesis.id,
-                "synthesis": result.get("synthesis"),
-                "key_themes": result.get("key_themes", []),
-                "high_conviction_ideas": result.get("high_conviction_ideas", []),
-                "content_count": result.get("content_count", len(content_items)),
-                "generated_at": synthesis.generated_at.isoformat()
-            }
-
-    except Exception as e:
-        error_msg = f"Synthesis generation failed: {str(e)}\n{traceback.format_exc()}"
-        logger.error(error_msg)
-        raise HTTPException(status_code=500, detail=error_msg)
+    # Return immediately - frontend will get WebSocket notification when done
+    return {
+        "status": "processing",
+        "message": f"Synthesis started for {content_count} items. You'll be notified when complete.",
+        "time_window": synthesis_request.time_window,
+        "content_count": content_count
+    }
 
 
 @router.get("/latest")

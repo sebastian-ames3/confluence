@@ -172,6 +172,26 @@ class WebSocketClient {
                     'success'
                 );
                 break;
+
+            case 'synthesis_complete':
+                // Call global handler if it exists
+                if (typeof handleSynthesisComplete === 'function') {
+                    handleSynthesisComplete(data);
+                }
+                if (data.status === 'success') {
+                    this.showToast(
+                        '✓ Synthesis Complete',
+                        `${data.time_window} synthesis ready (${data.content_count} items)`,
+                        'success'
+                    );
+                } else if (data.status === 'error') {
+                    this.showToast(
+                        '✕ Synthesis Failed',
+                        data.error || 'An error occurred',
+                        'error'
+                    );
+                }
+                break;
         }
     }
 

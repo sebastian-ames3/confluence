@@ -1171,7 +1171,14 @@
             }
         }
 
-        // Generate synthesis
+        // Track pending synthesis generation
+        let pendingSynthesis = {
+            timeWindow: null,
+            startTime: null,
+            timerInterval: null
+        };
+
+        // Generate synthesis (now runs in background)
         async function generateSynthesis(timeWindow) {
             const btn = timeWindow === '24h' ? document.getElementById('btn-generate-24h') : document.getElementById('btn-generate-7d');
             const originalHTML = btn.innerHTML;
@@ -1181,38 +1188,92 @@
             let seconds = 0;
             const timerInterval = setInterval(() => {
                 seconds++;
-                btn.innerHTML = `<span class="icon">⏳</span><span class="btn-text">Generating... ${seconds}s</span>`;
+                btn.innerHTML = `<span class="icon">⏳</span><span class="btn-text">Processing... ${seconds}s</span>`;
             }, 1000);
 
             try {
-                btn.innerHTML = `<span class="icon">⏳</span><span class="btn-text">Generating... 0s</span>`;
+                btn.innerHTML = `<span class="icon">⏳</span><span class="btn-text">Starting...</span>`;
 
                 const data = await apiFetch('/synthesis/generate', {
                     method: 'POST',
                     body: JSON.stringify({ time_window: timeWindow })
                 });
 
-                clearInterval(timerInterval);
-
-                if (data.status === 'success') {
+                if (data.status === 'processing') {
+                    // Store pending state - WebSocket will notify when done
+                    pendingSynthesis = {
+                        timeWindow: timeWindow,
+                        startTime: Date.now(),
+                        timerInterval: timerInterval,
+                        btn: btn,
+                        originalHTML: originalHTML
+                    };
+                    btn.innerHTML = `<span class="icon">⏳</span><span class="btn-text">Processing... ${seconds}s</span>`;
+                    // Don't clear timer or re-enable button - wait for WebSocket
+                    return;
+                } else if (data.status === 'success') {
+                    // Synchronous success (shouldn't happen with new code, but handle it)
+                    clearInterval(timerInterval);
                     await loadLatestSynthesis();
                     await loadStatus();
                     btn.innerHTML = `<span class="icon">✓</span><span class="btn-text">Done (${seconds}s)</span>`;
+                    setTimeout(() => { btn.innerHTML = originalHTML; btn.disabled = false; }, 3000);
                 } else if (data.status === 'no_content') {
+                    clearInterval(timerInterval);
                     alert(data.message || 'No content available');
                     btn.innerHTML = originalHTML;
+                    btn.disabled = false;
                 } else {
                     throw new Error(data.detail || 'Failed');
                 }
-                setTimeout(() => { btn.innerHTML = originalHTML; }, 3000);
             } catch (error) {
                 clearInterval(timerInterval);
                 console.error('Generation error:', error);
                 btn.innerHTML = `<span class="icon">✕</span><span class="btn-text">Error</span>`;
-                setTimeout(() => { btn.innerHTML = originalHTML; }, 3000);
-            } finally {
-                btn.disabled = false;
+                setTimeout(() => { btn.innerHTML = originalHTML; btn.disabled = false; }, 3000);
             }
+        }
+
+        // Handle synthesis completion from WebSocket
+        function handleSynthesisComplete(data) {
+            console.log('Synthesis complete notification:', data);
+
+            if (!pendingSynthesis.timerInterval) {
+                // No pending synthesis, just refresh
+                loadLatestSynthesis();
+                loadStatus();
+                return;
+            }
+
+            // Calculate elapsed time
+            const elapsed = Math.round((Date.now() - pendingSynthesis.startTime) / 1000);
+
+            // Clear the timer
+            clearInterval(pendingSynthesis.timerInterval);
+
+            const btn = pendingSynthesis.btn;
+            const originalHTML = pendingSynthesis.originalHTML;
+
+            if (data.status === 'success') {
+                btn.innerHTML = `<span class="icon">✓</span><span class="btn-text">Done (${elapsed}s)</span>`;
+                loadLatestSynthesis();
+                loadStatus();
+            } else if (data.status === 'error') {
+                btn.innerHTML = `<span class="icon">✕</span><span class="btn-text">Error</span>`;
+                console.error('Synthesis error:', data.error);
+            } else if (data.status === 'no_content') {
+                btn.innerHTML = originalHTML;
+                alert('No content available for synthesis');
+            }
+
+            // Reset button after delay
+            setTimeout(() => {
+                btn.innerHTML = originalHTML;
+                btn.disabled = false;
+            }, 3000);
+
+            // Clear pending state
+            pendingSynthesis = { timeWindow: null, startTime: null, timerInterval: null };
         }
 
         // =====================================================
