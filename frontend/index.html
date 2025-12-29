@@ -778,7 +778,9 @@
             });
 
             container.innerHTML = Object.entries(breakdowns).map(([sourceName, data], index) => {
-                const bias = data.overall_bias || 'neutral';
+                // Normalize bias to lowercase for consistent matching
+                const rawBias = data.overall_bias || 'neutral';
+                const bias = typeof rawBias === 'string' ? rawBias.toLowerCase().trim() : 'neutral';
                 const biasLabel = bias === 'bullish' ? 'Bullish Trend' : bias === 'bearish' ? 'Bearish' : 'Mixed Signal';
                 const contentCount = data.content_count || 0;
                 const sourceContent = contentBySource[sourceName] || [];
@@ -812,7 +814,7 @@
                                     </linearGradient>
                                 </defs>
                                 <path class="sparkline-area" d="${sparklinePath} L 200 48 L 0 48 Z" fill="url(#sparkline-gradient-${index})"/>
-                                <path class="sparkline-path" d="${sparklinePath}" stroke="${biasColor}" style="filter: drop-shadow(0 0 6px ${biasColor}80);"/>
+                                <path class="sparkline-path" d="${sparklinePath}" style="stroke: ${biasColor}; filter: drop-shadow(0 0 6px ${biasColor}80);"/>
                             </svg>
                         </div>
 
@@ -1082,7 +1084,9 @@
             section.style.display = 'block';
 
             container.innerHTML = Object.entries(stances).map(([name, data], index) => {
-                const bias = data.overall_bias || 'neutral';
+                // Normalize bias to lowercase for consistent matching
+                const rawBias = data.overall_bias || 'neutral';
+                const bias = typeof rawBias === 'string' ? rawBias.toLowerCase().trim() : 'neutral';
                 const biasLabel = bias === 'bullish' ? 'Bullish Trend' : bias === 'bearish' ? 'Bearish' : 'Mixed Signal';
                 const sourceKey = getSourceKey(name);
                 const sourceIcon = getSourceIcon(sourceKey);
@@ -1109,7 +1113,7 @@
                                     </linearGradient>
                                 </defs>
                                 <path class="sparkline-area" d="${sparklinePath} L 200 48 L 0 48 Z" fill="url(#sparkline-gradient-v3-${index})"/>
-                                <path class="sparkline-path" d="${sparklinePath}" stroke="${biasColor}" style="filter: drop-shadow(0 0 6px ${biasColor}80);"/>
+                                <path class="sparkline-path" d="${sparklinePath}" style="stroke: ${biasColor}; filter: drop-shadow(0 0 6px ${biasColor}80);"/>
                             </svg>
                         </div>
 
