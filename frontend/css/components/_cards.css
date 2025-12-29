@@ -618,37 +618,17 @@
   height: 100%;
 }
 
-/* Sparkline colors based on BIAS (not source) */
 .sparkline-path {
   fill: none;
-  stroke: #F59E0B; /* Default to yellow/mixed */
+  stroke: var(--card-accent, var(--primary));
   stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
-}
-
-/* Bullish = Green */
-.source-perspective-card[data-bias="bullish"] .sparkline-path {
-  stroke: #10B981;
-  filter: drop-shadow(0 0 6px rgba(16, 185, 129, 0.6));
-}
-
-/* Bearish = Red */
-.source-perspective-card[data-bias="bearish"] .sparkline-path {
-  stroke: #EF4444;
-  filter: drop-shadow(0 0 6px rgba(239, 68, 68, 0.6));
-}
-
-/* Mixed/Neutral/Cautious = Yellow */
-.source-perspective-card[data-bias="neutral"] .sparkline-path,
-.source-perspective-card[data-bias="mixed"] .sparkline-path,
-.source-perspective-card[data-bias="cautious"] .sparkline-path,
-.source-perspective-card:not([data-bias]) .sparkline-path {
-  stroke: #F59E0B;
-  filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.6));
+  filter: drop-shadow(0 0 4px var(--card-glow-color, rgba(99, 102, 241, 0.4)));
 }
 
 .sparkline-area {
+  fill: url(#sparkline-gradient);
   opacity: 0.3;
 }
 
