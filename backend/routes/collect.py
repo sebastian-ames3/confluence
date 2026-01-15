@@ -1144,11 +1144,15 @@ async def retranscribe_videos(
                 "processed": 0
             }
 
-        # Process batch synchronously
+        # Process batch - use async harvester directly
         batch = videos_to_transcribe[:batch_size]
         results = []
 
         logger.info(f"Processing {len(batch)} of {len(videos_to_transcribe)} videos needing transcription from {source_name}")
+
+        # Import harvester for async use
+        from agents.transcript_harvester import TranscriptHarvesterAgent
+        harvester = TranscriptHarvesterAgent()
 
         for video in batch:
             video_result = {
@@ -1160,28 +1164,70 @@ async def retranscribe_videos(
             try:
                 logger.info(f"Transcribing video {video['raw_content_id']}: {video['title'][:50]}...")
 
-                # Run transcription synchronously
-                result = _transcribe_video_sync(
-                    raw_content_id=video["raw_content_id"],
+                # Determine priority
+                priority = "high" if source_name in ("discord", "42macro") else "standard"
+
+                # Build metadata
+                metadata = {
+                    "title": video["title"] or f"Video from {source_name}",
+                    "source": source_name,
+                }
+                if video.get("metadata"):
+                    metadata.update(video["metadata"])
+
+                # Call harvester directly with await (already in async context)
+                harvest_result = await harvester.harvest(
                     video_url=video["url"],
                     source=source_name,
-                    title=video["title"],
-                    source_metadata=video.get("metadata")
+                    metadata=metadata,
+                    priority=priority
                 )
 
-                if result.get("success"):
-                    video_result["status"] = "success"
-                    video_result["transcript_length"] = result.get("transcript_length")
-                    logger.info(f"Successfully transcribed video {video['raw_content_id']}")
-                else:
+                if not harvest_result or not harvest_result.get("transcript"):
                     video_result["status"] = "failed"
-                    video_result["error"] = result.get("error", "Unknown error")
-                    logger.warning(f"Transcription failed for video {video['raw_content_id']}: {result.get('error')}")
+                    video_result["error"] = "Harvester returned no transcript"
+                    logger.warning(f"Transcription failed for video {video['raw_content_id']}: no transcript returned")
+                else:
+                    # Update database with transcript
+                    raw_content = db.query(RawContent).filter(RawContent.id == video["raw_content_id"]).first()
+                    if raw_content:
+                        existing_metadata = json.loads(raw_content.json_metadata or "{}")
+                        existing_metadata["transcript"] = harvest_result["transcript"]
+                        existing_metadata["transcribed_at"] = datetime.utcnow().isoformat()
+                        existing_metadata["transcription_sentiment"] = harvest_result.get("sentiment")
+                        existing_metadata["transcription_conviction"] = harvest_result.get("conviction")
+                        existing_metadata["transcription_themes"] = harvest_result.get("key_themes", [])
+
+                        raw_content.json_metadata = json.dumps(existing_metadata)
+                        raw_content.content_text = harvest_result["transcript"]
+
+                        # Create AnalyzedContent record
+                        analyzed_content = AnalyzedContent(
+                            raw_content_id=video["raw_content_id"],
+                            agent_type="transcript_harvester",
+                            analysis_result=json.dumps(harvest_result),
+                            key_themes=",".join(harvest_result.get("key_themes", [])) if harvest_result.get("key_themes") else None,
+                            tickers_mentioned=",".join(harvest_result.get("tickers_mentioned", [])) if harvest_result.get("tickers_mentioned") else None,
+                            sentiment=harvest_result.get("sentiment"),
+                            conviction=harvest_result.get("conviction"),
+                            time_horizon=harvest_result.get("time_horizon")
+                        )
+                        db.add(analyzed_content)
+                        db.commit()
+
+                        video_result["status"] = "success"
+                        video_result["transcript_length"] = len(harvest_result["transcript"])
+                        logger.info(f"Successfully transcribed video {video['raw_content_id']}: {len(harvest_result['transcript'])} chars")
+                    else:
+                        video_result["status"] = "failed"
+                        video_result["error"] = "RawContent record not found"
 
             except Exception as e:
                 video_result["status"] = "error"
-                video_result["error"] = str(e)[:200]
+                video_result["error"] = str(e)[:300]
                 logger.error(f"Error transcribing video {video['raw_content_id']}: {e}")
+                import traceback
+                logger.error(traceback.format_exc())
 
             results.append(video_result)
 
