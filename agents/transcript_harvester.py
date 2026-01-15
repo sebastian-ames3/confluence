@@ -247,14 +247,19 @@ Extract high-level themes and key insights."""
                     caption_result = await self._fetch_youtube_captions(youtube_video_id)
 
                     if caption_result:
-                        transcript, language = caption_result
+                        caption_text, language = caption_result
+                        # Build transcript dict in the expected format for analyze_transcript
+                        transcript = {
+                            "text": caption_text,
+                            "segments": [],  # No timestamps from captions API
+                            "transcription_provider": f"youtube_captions ({language})"
+                        }
                         transcription_provider = f"youtube_captions ({language})"
-                        logger.info(f"Using YouTube captions: {len(transcript)} chars")
+                        logger.info(f"Using YouTube captions: {len(caption_text)} chars")
                     else:
                         logger.info("YouTube captions not available (returned None), falling back to Whisper")
                 except Exception as caption_error:
                     logger.error(f"YouTube caption fetch failed with error: {caption_error}")
-                    caption_result = None
             else:
                 logger.info(f"Not a YouTube video URL, using standard transcription")
 
@@ -267,7 +272,7 @@ Extract high-level themes and key insights."""
                 transcript = await self.transcribe(audio_file)
                 transcription_provider = "whisper" if not self.assemblyai_client else "assemblyai"
 
-            # Step 3: Analyze with Claude
+            # Step 3: Analyze with Claude (expects dict with "text" key)
             analysis = await self.analyze_transcript(
                 transcript,
                 metadata=metadata,
