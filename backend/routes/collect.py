@@ -1074,6 +1074,39 @@ async def get_transcription_status(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/transcription-diagnostics")
+async def transcription_diagnostics():
+    """
+    Diagnostic endpoint to check transcription dependencies on Railway.
+    """
+    result = {
+        "youtube_transcript_api": {"installed": False, "version": None, "test": None},
+        "whisper_api_key": bool(os.getenv("WHISPER_API_KEY") or os.getenv("OPENAI_API_KEY")),
+        "assemblyai_api_key": bool(os.getenv("ASSEMBLYAI_API_KEY")),
+        "claude_api_key": bool(os.getenv("CLAUDE_API_KEY")),
+    }
+
+    # Test youtube-transcript-api
+    try:
+        from youtube_transcript_api import YouTubeTranscriptApi
+        import youtube_transcript_api
+        result["youtube_transcript_api"]["installed"] = True
+        result["youtube_transcript_api"]["version"] = getattr(youtube_transcript_api, "__version__", "unknown")
+
+        # Try a test fetch
+        try:
+            api = YouTubeTranscriptApi()
+            test_result = api.fetch("0JvmPjMPq6k")  # Test video
+            result["youtube_transcript_api"]["test"] = f"success: {len(list(test_result))} segments"
+        except Exception as e:
+            result["youtube_transcript_api"]["test"] = f"fetch failed: {str(e)[:200]}"
+
+    except ImportError as e:
+        result["youtube_transcript_api"]["error"] = f"import failed: {str(e)}"
+
+    return result
+
+
 @router.post("/retranscribe/{source_name}")
 async def retranscribe_videos(
     source_name: str,
