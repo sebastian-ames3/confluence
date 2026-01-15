@@ -993,3 +993,219 @@ async def retranscribe_42macro_videos(
         import traceback
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/transcription-status")
+async def get_transcription_status(
+    db: Session = Depends(get_db)
+):
+    """
+    Get status of video transcriptions across all sources.
+
+    Returns count of videos that need transcription vs already transcribed.
+    """
+    try:
+        # Get all sources
+        sources = db.query(Source).all()
+
+        status_by_source = {}
+        total_need_transcription = 0
+        total_transcribed = 0
+
+        for source in sources:
+            # Find all videos for this source
+            videos = db.query(RawContent).filter(
+                RawContent.source_id == source.id,
+                RawContent.content_type == "video"
+            ).all()
+
+            need_transcription = 0
+            transcribed = 0
+            videos_needing_work = []
+
+            for video in videos:
+                content_text = video.content_text or ""
+                has_transcript = len(content_text) > 200
+
+                # Also check metadata
+                metadata = {}
+                if video.json_metadata:
+                    try:
+                        metadata = json.loads(video.json_metadata)
+                    except:
+                        pass
+
+                has_transcript = has_transcript or bool(metadata.get("transcript"))
+
+                if has_transcript:
+                    transcribed += 1
+                else:
+                    need_transcription += 1
+                    videos_needing_work.append({
+                        "id": video.id,
+                        "title": metadata.get("title") or (content_text[:100] if content_text else "Unknown"),
+                        "url": video.url,
+                        "collected_at": video.collected_at.isoformat() if video.collected_at else None
+                    })
+
+            if len(videos) > 0:
+                status_by_source[source.name] = {
+                    "total_videos": len(videos),
+                    "transcribed": transcribed,
+                    "need_transcription": need_transcription,
+                    "videos_needing_work": videos_needing_work[:10]  # Show first 10
+                }
+                total_need_transcription += need_transcription
+                total_transcribed += transcribed
+
+        return {
+            "status": "success",
+            "summary": {
+                "total_videos": total_need_transcription + total_transcribed,
+                "total_transcribed": total_transcribed,
+                "total_need_transcription": total_need_transcription
+            },
+            "by_source": status_by_source,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to get transcription status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/retranscribe/{source_name}")
+async def retranscribe_videos(
+    source_name: str,
+    batch_size: int = 5,
+    db: Session = Depends(get_db)
+):
+    """
+    Retranscribe videos from a specific source that don't have transcripts.
+
+    Processes videos SYNCHRONOUSLY in batches to ensure reliable completion.
+    Call this endpoint multiple times to process all videos.
+
+    Args:
+        source_name: Source to retranscribe (youtube, discord, 42macro, etc.)
+        batch_size: Number of videos to process per call (default 5, max 10)
+
+    Returns:
+        Results of transcription attempts
+    """
+    try:
+        # Validate batch size
+        batch_size = min(max(1, batch_size), 10)
+
+        # Get source
+        source = db.query(Source).filter(Source.name == source_name).first()
+
+        if not source:
+            return {
+                "status": "error",
+                "message": f"Source '{source_name}' not found",
+                "valid_sources": ["youtube", "discord", "42macro", "substack"]
+            }
+
+        # Find all videos without transcripts
+        videos = db.query(RawContent).filter(
+            RawContent.source_id == source.id,
+            RawContent.content_type == "video"
+        ).all()
+
+        videos_to_transcribe = []
+        for video in videos:
+            content_text = video.content_text or ""
+            has_transcript = len(content_text) > 200
+
+            metadata = {}
+            if video.json_metadata:
+                try:
+                    metadata = json.loads(video.json_metadata)
+                except:
+                    pass
+
+            has_transcript = has_transcript or bool(metadata.get("transcript"))
+
+            if not has_transcript and video.url:
+                videos_to_transcribe.append({
+                    "raw_content_id": video.id,
+                    "url": video.url,
+                    "title": metadata.get("title") or content_text[:100] or "Unknown",
+                    "metadata": metadata
+                })
+
+        if not videos_to_transcribe:
+            return {
+                "status": "success",
+                "message": f"All {len(videos)} videos from {source_name} already have transcripts!",
+                "total_videos": len(videos),
+                "remaining": 0,
+                "processed": 0
+            }
+
+        # Process batch synchronously
+        batch = videos_to_transcribe[:batch_size]
+        results = []
+
+        logger.info(f"Processing {len(batch)} of {len(videos_to_transcribe)} videos needing transcription from {source_name}")
+
+        for video in batch:
+            video_result = {
+                "id": video["raw_content_id"],
+                "title": video["title"][:80],
+                "status": "pending"
+            }
+
+            try:
+                logger.info(f"Transcribing video {video['raw_content_id']}: {video['title'][:50]}...")
+
+                # Run transcription synchronously
+                success = _transcribe_video_sync(
+                    raw_content_id=video["raw_content_id"],
+                    video_url=video["url"],
+                    source=source_name,
+                    title=video["title"],
+                    source_metadata=video.get("metadata")
+                )
+
+                if success:
+                    video_result["status"] = "success"
+                    logger.info(f"Successfully transcribed video {video['raw_content_id']}")
+                else:
+                    video_result["status"] = "failed"
+                    video_result["error"] = "Transcription returned no result"
+                    logger.warning(f"Transcription failed for video {video['raw_content_id']}")
+
+            except Exception as e:
+                video_result["status"] = "error"
+                video_result["error"] = str(e)[:200]
+                logger.error(f"Error transcribing video {video['raw_content_id']}: {e}")
+
+            results.append(video_result)
+
+        # Count results
+        succeeded = sum(1 for r in results if r["status"] == "success")
+        failed = sum(1 for r in results if r["status"] in ("failed", "error"))
+        remaining = len(videos_to_transcribe) - len(batch)
+
+        return {
+            "status": "success",
+            "message": f"Processed {len(batch)} videos from {source_name}",
+            "source": source_name,
+            "batch_size": batch_size,
+            "processed": len(batch),
+            "succeeded": succeeded,
+            "failed": failed,
+            "remaining": remaining,
+            "total_needing_transcription": len(videos_to_transcribe),
+            "results": results,
+            "next_action": f"Call this endpoint again to process {min(batch_size, remaining)} more videos" if remaining > 0 else "All videos processed!",
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to retranscribe {source_name} videos: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
