@@ -4,6 +4,10 @@ Transcript Harvester Agent
 Converts video/audio content to transcripts and extracts structured insights.
 Uses Whisper API for transcription and Claude for analysis.
 
+For YouTube videos, first attempts to fetch auto-generated captions using
+youtube-transcript-api (free, fast, avoids bot detection). Falls back to
+yt-dlp + Whisper if captions aren't available.
+
 Priority Tiers:
 - Tier 1 (HIGH): Imran's Discord videos, Darius Dale's 42 Macro videos
 - Tier 2 (MEDIUM): Mel's Twitter videos
@@ -11,10 +15,11 @@ Priority Tiers:
 """
 
 import os
+import re
 import subprocess
 import logging
 from pathlib import Path
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Tuple
 from datetime import datetime
 import openai
 from pydub import AudioSegment
@@ -106,6 +111,104 @@ Extract high-level themes and key insights."""
         logger.info(f"Initialized TranscriptHarvesterAgent")
         logger.info(f"Downloads directory: {self.downloads_dir}")
 
+    def _extract_youtube_video_id(self, url: str) -> Optional[str]:
+        """
+        Extract YouTube video ID from various URL formats.
+
+        Supports:
+        - https://www.youtube.com/watch?v=VIDEO_ID
+        - https://youtu.be/VIDEO_ID
+        - https://www.youtube.com/embed/VIDEO_ID
+
+        Returns:
+            Video ID string or None if not a YouTube URL
+        """
+        patterns = [
+            r'(?:youtube\.com/watch\?v=|youtu\.be/|youtube\.com/embed/)([a-zA-Z0-9_-]{11})',
+            r'youtube\.com/watch\?.*v=([a-zA-Z0-9_-]{11})',
+        ]
+
+        for pattern in patterns:
+            match = re.search(pattern, url)
+            if match:
+                return match.group(1)
+
+        return None
+
+    async def _fetch_youtube_captions(self, video_id: str) -> Optional[Tuple[str, str]]:
+        """
+        Fetch YouTube captions using youtube-transcript-api.
+
+        This is free, fast, and avoids bot detection issues.
+
+        Args:
+            video_id: YouTube video ID
+
+        Returns:
+            Tuple of (transcript_text, language) or None if captions unavailable
+        """
+        try:
+            from youtube_transcript_api import YouTubeTranscriptApi
+            from youtube_transcript_api._errors import (
+                TranscriptsDisabled,
+                NoTranscriptFound,
+                VideoUnavailable
+            )
+
+            logger.info(f"Fetching YouTube captions for video: {video_id}")
+
+            # Try to get transcript - prefer English, but accept any language
+            try:
+                # First try to get English transcript
+                transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+
+                # Try manually created English first, then auto-generated
+                transcript = None
+                language = None
+
+                try:
+                    transcript = transcript_list.find_manually_created_transcript(['en', 'en-US', 'en-GB'])
+                    language = "en (manual)"
+                except:
+                    try:
+                        transcript = transcript_list.find_generated_transcript(['en', 'en-US', 'en-GB'])
+                        language = "en (auto)"
+                    except:
+                        # Fall back to any available transcript
+                        for t in transcript_list:
+                            transcript = t
+                            language = f"{t.language_code} ({'manual' if not t.is_generated else 'auto'})"
+                            break
+
+                if transcript:
+                    # Fetch the actual transcript data
+                    transcript_data = transcript.fetch()
+
+                    # Combine all transcript segments into one text
+                    full_text = " ".join([entry['text'] for entry in transcript_data])
+
+                    # Clean up the text (remove multiple spaces, etc.)
+                    full_text = re.sub(r'\s+', ' ', full_text).strip()
+
+                    logger.info(f"Successfully fetched YouTube captions: {len(full_text)} chars, language: {language}")
+                    return (full_text, language)
+
+            except (TranscriptsDisabled, NoTranscriptFound) as e:
+                logger.info(f"No captions available for video {video_id}: {e}")
+                return None
+            except VideoUnavailable:
+                logger.warning(f"Video {video_id} is unavailable")
+                return None
+
+        except ImportError:
+            logger.warning("youtube-transcript-api not installed, falling back to Whisper")
+            return None
+        except Exception as e:
+            logger.warning(f"Failed to fetch YouTube captions: {e}")
+            return None
+
+        return None
+
     async def harvest(
         self,
         video_url: str,
@@ -132,11 +235,30 @@ Extract high-level themes and key insights."""
             logger.info(f"Starting harvest for video: {video_url}")
             logger.info(f"Source: {source}, Priority: {priority}")
 
-            # Step 1: Download video and extract audio
-            audio_file = await self.download_and_extract_audio(video_url, source, metadata)
+            transcript = None
+            transcription_provider = None
 
-            # Step 2: Transcribe with Whisper
-            transcript = await self.transcribe(audio_file)
+            # For YouTube videos, try to get captions first (free and fast)
+            youtube_video_id = self._extract_youtube_video_id(video_url)
+            if youtube_video_id:
+                logger.info(f"Detected YouTube video, attempting to fetch captions...")
+                caption_result = await self._fetch_youtube_captions(youtube_video_id)
+
+                if caption_result:
+                    transcript, language = caption_result
+                    transcription_provider = f"youtube_captions ({language})"
+                    logger.info(f"Using YouTube captions: {len(transcript)} chars")
+                else:
+                    logger.info("YouTube captions not available, falling back to Whisper")
+
+            # If no transcript yet, use traditional download + Whisper approach
+            if not transcript:
+                # Step 1: Download video and extract audio
+                audio_file = await self.download_and_extract_audio(video_url, source, metadata)
+
+                # Step 2: Transcribe with Whisper/AssemblyAI
+                transcript = await self.transcribe(audio_file)
+                transcription_provider = "whisper" if not self.assemblyai_client else "assemblyai"
 
             # Step 3: Analyze with Claude
             analysis = await self.analyze_transcript(
@@ -148,6 +270,7 @@ Extract high-level themes and key insights."""
             # Add original metadata
             analysis["video_url"] = video_url
             analysis["source"] = source
+            analysis["transcription_provider"] = transcription_provider
             analysis["priority"] = priority
             analysis["processed_at"] = datetime.utcnow().isoformat()
 
