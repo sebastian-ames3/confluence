@@ -33,6 +33,7 @@ httpx>=0.25.0  # Explicit httpx for OpenAI client configuration
 
 # YouTube
 google-api-python-client==2.116.0
+youtube-transcript-api==0.6.2  # Fetch YouTube captions directly (avoids bot detection)
 
 # RSS
 feedparser==6.0.11
