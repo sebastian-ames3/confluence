@@ -38,7 +38,7 @@ def _transcribe_video_sync(
     source: str,
     title: Optional[str] = None,
     source_metadata: Optional[Dict[str, Any]] = None
-) -> bool:
+) -> Dict[str, Any]:
     """
     Transcribe a video and update the database record.
 
@@ -53,7 +53,7 @@ def _transcribe_video_sync(
         source_metadata: Optional source-specific metadata (embed_url for Vimeo, etc.)
 
     Returns:
-        True if transcription succeeded, False otherwise
+        Dict with 'success' bool and 'error' message if failed
     """
     db = None
     try:
@@ -100,7 +100,7 @@ def _transcribe_video_sync(
 
         if not result or not result.get("transcript"):
             logger.warning(f"Transcription returned no transcript for {raw_content_id}")
-            return False
+            return {"success": False, "error": "Harvester returned no transcript"}
 
         # Update database with transcript
         db = SessionLocal()
@@ -108,7 +108,7 @@ def _transcribe_video_sync(
 
         if not raw_content:
             logger.error(f"RawContent {raw_content_id} not found for transcript update")
-            return False
+            return {"success": False, "error": "RawContent record not found"}
 
         # Parse existing metadata
         existing_metadata = json.loads(raw_content.json_metadata or "{}")
@@ -143,16 +143,16 @@ def _transcribe_video_sync(
         transcript_len = len(result["transcript"])
         logger.info(f"Transcription complete for {raw_content_id}: {transcript_len} chars, sentiment={result.get('sentiment')}, AnalyzedContent created")
 
-        return True
+        return {"success": True, "transcript_length": transcript_len}
 
     except ImportError as e:
         logger.error(f"TranscriptHarvesterAgent not available: {e}")
-        return False
+        return {"success": False, "error": f"Import error: {str(e)}"}
     except Exception as e:
         logger.error(f"Transcription failed for {raw_content_id}: {e}")
         import traceback
-        logger.debug(traceback.format_exc())
-        return False
+        logger.error(traceback.format_exc())
+        return {"success": False, "error": str(e)[:500]}
     finally:
         if db:
             db.close()
@@ -1161,7 +1161,7 @@ async def retranscribe_videos(
                 logger.info(f"Transcribing video {video['raw_content_id']}: {video['title'][:50]}...")
 
                 # Run transcription synchronously
-                success = _transcribe_video_sync(
+                result = _transcribe_video_sync(
                     raw_content_id=video["raw_content_id"],
                     video_url=video["url"],
                     source=source_name,
@@ -1169,13 +1169,14 @@ async def retranscribe_videos(
                     source_metadata=video.get("metadata")
                 )
 
-                if success:
+                if result.get("success"):
                     video_result["status"] = "success"
+                    video_result["transcript_length"] = result.get("transcript_length")
                     logger.info(f"Successfully transcribed video {video['raw_content_id']}")
                 else:
                     video_result["status"] = "failed"
-                    video_result["error"] = "Transcription returned no result"
-                    logger.warning(f"Transcription failed for video {video['raw_content_id']}")
+                    video_result["error"] = result.get("error", "Unknown error")
+                    logger.warning(f"Transcription failed for video {video['raw_content_id']}: {result.get('error')}")
 
             except Exception as e:
                 video_result["status"] = "error"
