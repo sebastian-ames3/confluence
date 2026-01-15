@@ -199,7 +199,8 @@ Extract high-level themes and key insights."""
         video_url: str,
         source: str,
         metadata: Optional[Dict[str, Any]] = None,
-        priority: str = "medium"
+        priority: str = "medium",
+        force_download: bool = False
     ) -> Dict[str, Any]:
         """
         Full pipeline: video → transcript → analysis.
@@ -209,6 +210,7 @@ Extract high-level themes and key insights."""
             source: Source of video (discord, youtube, twitter, 42macro)
             metadata: Optional metadata (speaker, title, date)
             priority: Priority tier (high, medium, standard)
+            force_download: Skip YouTube captions check, go straight to download+Whisper
 
         Returns:
             Complete analysis with transcript and insights
@@ -218,14 +220,15 @@ Extract high-level themes and key insights."""
 
         try:
             logger.info(f"Starting harvest for video: {video_url}")
-            logger.info(f"Source: {source}, Priority: {priority}")
+            logger.info(f"Source: {source}, Priority: {priority}, Force download: {force_download}")
 
             transcript = None
             transcription_provider = None
 
             # For YouTube videos, try to get captions first (free and fast)
+            # Skip this if force_download is True (e.g., for videos we know don't have captions)
             youtube_video_id = self._extract_youtube_video_id(video_url)
-            if youtube_video_id:
+            if youtube_video_id and not force_download:
                 logger.info(f"Detected YouTube video ID: {youtube_video_id}, attempting to fetch captions...")
                 try:
                     caption_result = await self._fetch_youtube_captions(youtube_video_id)

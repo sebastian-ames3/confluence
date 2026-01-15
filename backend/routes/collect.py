@@ -1053,10 +1053,16 @@ async def get_transcription_status(
                     "total_videos": len(videos),
                     "transcribed": transcribed,
                     "need_transcription": need_transcription,
-                    "videos_needing_work": videos_needing_work[:10]  # Show first 10
+                    "videos_needing_work": videos_needing_work  # Return all for local script
                 }
                 total_need_transcription += need_transcription
                 total_transcribed += transcribed
+
+        # Build a flat list of all videos needing transcription by source
+        videos_needing_transcription = {}
+        for source_name, source_data in status_by_source.items():
+            if source_data.get("videos_needing_work"):
+                videos_needing_transcription[source_name] = source_data["videos_needing_work"]
 
         return {
             "status": "success",
@@ -1066,6 +1072,7 @@ async def get_transcription_status(
                 "total_need_transcription": total_need_transcription
             },
             "by_source": status_by_source,
+            "videos_needing_transcription": videos_needing_transcription,
             "timestamp": datetime.utcnow().isoformat()
         }
 
@@ -1105,6 +1112,118 @@ async def transcription_diagnostics():
         result["youtube_transcript_api"]["error"] = f"import failed: {str(e)}"
 
     return result
+
+
+@router.post("/update-transcript/{content_id}")
+async def update_transcript(
+    content_id: int,
+    payload: Dict[str, Any],
+    db: Session = Depends(get_db)
+):
+    """
+    Update a content record with a locally-generated transcript.
+
+    This endpoint is called by dev/scripts/youtube_local.py after
+    transcribing a video locally using yt-dlp + Whisper.
+
+    Args:
+        content_id: ID of the RawContent record to update
+        payload: Dict with transcript and analysis data:
+            - transcript: Full transcript text
+            - themes: List of key themes
+            - sentiment: bullish/bearish/neutral
+            - conviction: 0-10 score
+            - tickers: List of mentioned tickers
+            - duration_seconds: Video duration
+            - transcription_provider: e.g., "whisper_local"
+
+    Returns:
+        Success status and updated content info
+    """
+    try:
+        # Find the content record
+        raw_content = db.query(RawContent).filter(RawContent.id == content_id).first()
+
+        if not raw_content:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Content record {content_id} not found"
+            )
+
+        # Validate required fields
+        transcript = payload.get("transcript")
+        if not transcript:
+            raise HTTPException(
+                status_code=400,
+                detail="transcript field is required"
+            )
+
+        # Parse existing metadata
+        existing_metadata = {}
+        if raw_content.json_metadata:
+            try:
+                existing_metadata = json.loads(raw_content.json_metadata)
+            except:
+                pass
+
+        # Update metadata with transcript data
+        existing_metadata["transcript"] = transcript
+        existing_metadata["transcribed_at"] = datetime.utcnow().isoformat()
+        existing_metadata["transcription_provider"] = payload.get("transcription_provider", "local")
+        existing_metadata["transcription_duration"] = payload.get("duration_seconds")
+        existing_metadata["transcription_sentiment"] = payload.get("sentiment")
+        existing_metadata["transcription_conviction"] = payload.get("conviction")
+        existing_metadata["transcription_themes"] = payload.get("themes", [])
+        existing_metadata["transcription_tickers"] = payload.get("tickers", [])
+
+        # Update the record
+        raw_content.json_metadata = json.dumps(existing_metadata)
+        raw_content.content_text = transcript  # Store transcript as main content
+
+        # Create AnalyzedContent record
+        analysis_result = {
+            "transcript": transcript,
+            "key_themes": payload.get("themes", []),
+            "tickers_mentioned": payload.get("tickers", []),
+            "sentiment": payload.get("sentiment"),
+            "conviction": payload.get("conviction"),
+            "video_duration_seconds": payload.get("duration_seconds"),
+            "transcription_provider": payload.get("transcription_provider", "local")
+        }
+
+        analyzed_content = AnalyzedContent(
+            raw_content_id=content_id,
+            agent_type="transcript_harvester",
+            analysis_result=json.dumps(analysis_result),
+            key_themes=",".join(payload.get("themes", [])) if payload.get("themes") else None,
+            tickers_mentioned=",".join(payload.get("tickers", [])) if payload.get("tickers") else None,
+            sentiment=payload.get("sentiment"),
+            conviction=payload.get("conviction")
+        )
+        db.add(analyzed_content)
+
+        db.commit()
+
+        logger.info(f"Updated transcript for content {content_id}: {len(transcript)} chars")
+
+        return {
+            "status": "success",
+            "message": f"Transcript updated for content {content_id}",
+            "content_id": content_id,
+            "transcript_length": len(transcript),
+            "themes": payload.get("themes", []),
+            "sentiment": payload.get("sentiment"),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to update transcript for {content_id}: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/retranscribe/{source_name}")
