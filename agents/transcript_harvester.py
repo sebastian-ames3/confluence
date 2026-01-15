@@ -149,65 +149,66 @@ Extract high-level themes and key insights."""
         """
         try:
             from youtube_transcript_api import YouTubeTranscriptApi
-            from youtube_transcript_api._errors import (
-                TranscriptsDisabled,
-                NoTranscriptFound,
-                VideoUnavailable
-            )
 
             logger.info(f"Fetching YouTube captions for video: {video_id}")
 
-            # Try to get transcript - prefer English, but accept any language
+            # Create API instance (new API style in v1.0+)
+            api = YouTubeTranscriptApi()
+
             try:
-                # First try to get English transcript
-                transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+                # List available transcripts
+                transcript_list = list(api.list(video_id))
+                logger.info(f"Found {len(transcript_list)} transcript(s) for video {video_id}")
 
-                # Try manually created English first, then auto-generated
-                transcript = None
-                language = None
+                if not transcript_list:
+                    logger.info(f"No transcripts available for video {video_id}")
+                    return None
 
-                try:
-                    transcript = transcript_list.find_manually_created_transcript(['en', 'en-US', 'en-GB'])
-                    language = "en (manual)"
-                except:
-                    try:
-                        transcript = transcript_list.find_generated_transcript(['en', 'en-US', 'en-GB'])
-                        language = "en (auto)"
-                    except:
-                        # Fall back to any available transcript
-                        for t in transcript_list:
-                            transcript = t
-                            language = f"{t.language_code} ({'manual' if not t.is_generated else 'auto'})"
-                            break
+                # Log available transcripts
+                for t in transcript_list:
+                    logger.debug(f"  Available: {t.language_code} ({t.language}), generated={t.is_generated}")
 
-                if transcript:
-                    # Fetch the actual transcript data
-                    transcript_data = transcript.fetch()
+                # Prefer English, then any language
+                # Try to find English first
+                english_transcript = None
+                for t in transcript_list:
+                    if t.language_code.startswith('en'):
+                        english_transcript = t
+                        break
 
-                    # Combine all transcript segments into one text
-                    full_text = " ".join([entry['text'] for entry in transcript_data])
+                # Use English if found, otherwise first available
+                selected = english_transcript or transcript_list[0]
+                language = f"{selected.language_code} ({'auto' if selected.is_generated else 'manual'})"
 
-                    # Clean up the text (remove multiple spaces, etc.)
-                    full_text = re.sub(r'\s+', ' ', full_text).strip()
+                # Fetch the transcript
+                result = api.fetch(video_id, languages=[selected.language_code])
 
-                    logger.info(f"Successfully fetched YouTube captions: {len(full_text)} chars, language: {language}")
-                    return (full_text, language)
+                # Combine all segments into one text
+                full_text = " ".join([snippet.text for snippet in result])
 
-            except (TranscriptsDisabled, NoTranscriptFound) as e:
-                logger.info(f"No captions available for video {video_id}: {e}")
+                # Clean up the text (remove multiple spaces, etc.)
+                full_text = re.sub(r'\s+', ' ', full_text).strip()
+
+                logger.info(f"Successfully fetched YouTube captions: {len(full_text)} chars, language: {language}")
+                return (full_text, language)
+
+            except Exception as e:
+                # Check for specific error types
+                error_str = str(e).lower()
+                if 'disabled' in error_str or 'no transcript' in error_str:
+                    logger.info(f"No captions available for video {video_id}: {e}")
+                elif 'unavailable' in error_str:
+                    logger.warning(f"Video {video_id} is unavailable: {e}")
+                else:
+                    logger.warning(f"Failed to fetch captions for {video_id}: {e}")
                 return None
-            except VideoUnavailable:
-                logger.warning(f"Video {video_id} is unavailable")
-                return None
 
-        except ImportError:
-            logger.warning("youtube-transcript-api not installed, falling back to Whisper")
+        except ImportError as e:
+            logger.warning(f"youtube-transcript-api not installed: {e}, falling back to Whisper")
             return None
         except Exception as e:
-            logger.warning(f"Failed to fetch YouTube captions: {e}")
+            logger.error(f"Unexpected error fetching YouTube captions: {e}")
             return None
-
-        return None
 
     async def harvest(
         self,
