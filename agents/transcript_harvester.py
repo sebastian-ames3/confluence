@@ -241,15 +241,21 @@ Extract high-level themes and key insights."""
             # For YouTube videos, try to get captions first (free and fast)
             youtube_video_id = self._extract_youtube_video_id(video_url)
             if youtube_video_id:
-                logger.info(f"Detected YouTube video, attempting to fetch captions...")
-                caption_result = await self._fetch_youtube_captions(youtube_video_id)
+                logger.info(f"Detected YouTube video ID: {youtube_video_id}, attempting to fetch captions...")
+                try:
+                    caption_result = await self._fetch_youtube_captions(youtube_video_id)
 
-                if caption_result:
-                    transcript, language = caption_result
-                    transcription_provider = f"youtube_captions ({language})"
-                    logger.info(f"Using YouTube captions: {len(transcript)} chars")
-                else:
-                    logger.info("YouTube captions not available, falling back to Whisper")
+                    if caption_result:
+                        transcript, language = caption_result
+                        transcription_provider = f"youtube_captions ({language})"
+                        logger.info(f"Using YouTube captions: {len(transcript)} chars")
+                    else:
+                        logger.info("YouTube captions not available (returned None), falling back to Whisper")
+                except Exception as caption_error:
+                    logger.error(f"YouTube caption fetch failed with error: {caption_error}")
+                    caption_result = None
+            else:
+                logger.info(f"Not a YouTube video URL, using standard transcription")
 
             # If no transcript yet, use traditional download + Whisper approach
             if not transcript:
