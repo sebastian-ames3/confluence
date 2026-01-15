@@ -1197,6 +1197,21 @@ async def retranscribe_videos(
             try:
                 logger.info(f"Transcribing video {video['raw_content_id']}: {video['title'][:50]}...")
 
+                # Debug: Test YouTube caption fetch directly
+                video_url = video["url"]
+                youtube_video_id = harvester._extract_youtube_video_id(video_url)
+                video_result["debug_youtube_id"] = youtube_video_id
+
+                if youtube_video_id:
+                    try:
+                        caption_test = await harvester._fetch_youtube_captions(youtube_video_id)
+                        if caption_test:
+                            video_result["debug_caption_test"] = f"success: {len(caption_test[0])} chars"
+                        else:
+                            video_result["debug_caption_test"] = "returned None"
+                    except Exception as e:
+                        video_result["debug_caption_test"] = f"error: {str(e)[:100]}"
+
                 # Determine priority
                 priority = "high" if source_name in ("discord", "42macro") else "standard"
 
@@ -1210,7 +1225,7 @@ async def retranscribe_videos(
 
                 # Call harvester directly with await (already in async context)
                 harvest_result = await harvester.harvest(
-                    video_url=video["url"],
+                    video_url=video_url,
                     source=source_name,
                     metadata=metadata,
                     priority=priority
