@@ -221,17 +221,19 @@ async def cleanup_downloads(downloads_dir: Path, source_prefix: str = "youtube")
             return
 
         # Clean up all video/audio file types
-        extensions = ["*.mp3", "*.mp4", "*.webm", "*.m4a", "*.wav", "*.part*", "*.ytdl"]
+        extensions = [".mp3", ".mp4", ".webm", ".m4a", ".wav", ".part", ".ytdl"]
         cleaned = 0
 
-        for ext in extensions:
-            for file in downloads_dir.glob(f"{source_prefix}_*{ext}"):
-                try:
-                    file.unlink()
-                    cleaned += 1
-                    logger.debug(f"Cleaned up: {file.name}")
-                except Exception as e:
-                    logger.warning(f"Failed to delete {file}: {e}")
+        for file in downloads_dir.iterdir():
+            if file.is_file() and file.name.startswith(f"{source_prefix}_"):
+                # Check if file has one of our target extensions
+                if any(file.name.endswith(ext) or ext in file.name for ext in extensions):
+                    try:
+                        file.unlink()
+                        cleaned += 1
+                        logger.debug(f"Cleaned up: {file.name}")
+                    except Exception as e:
+                        logger.warning(f"Failed to delete {file}: {e}")
 
         if cleaned > 0:
             logger.info(f"Cleaned up {cleaned} temporary files")
