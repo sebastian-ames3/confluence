@@ -156,38 +156,22 @@ Extract high-level themes and key insights."""
             api = YouTubeTranscriptApi()
 
             try:
-                # List available transcripts
-                transcript_list = list(api.list(video_id))
-                logger.info(f"Found {len(transcript_list)} transcript(s) for video {video_id}")
+                # Fetch transcript directly - this is simpler and matches what works in diagnostics
+                # The API will automatically select the best available transcript
+                result = api.fetch(video_id)
 
-                if not transcript_list:
-                    logger.info(f"No transcripts available for video {video_id}")
-                    return None
-
-                # Log available transcripts
-                for t in transcript_list:
-                    logger.debug(f"  Available: {t.language_code} ({t.language}), generated={t.is_generated}")
-
-                # Prefer English, then any language
-                # Try to find English first
-                english_transcript = None
-                for t in transcript_list:
-                    if t.language_code.startswith('en'):
-                        english_transcript = t
-                        break
-
-                # Use English if found, otherwise first available
-                selected = english_transcript or transcript_list[0]
-                language = f"{selected.language_code} ({'auto' if selected.is_generated else 'manual'})"
-
-                # Fetch the transcript
-                result = api.fetch(video_id, languages=[selected.language_code])
+                # Get language info from the result
+                language = f"{result.language_code} ({'auto' if result.is_generated else 'manual'})"
 
                 # Combine all segments into one text
                 full_text = " ".join([snippet.text for snippet in result])
 
                 # Clean up the text (remove multiple spaces, etc.)
                 full_text = re.sub(r'\s+', ' ', full_text).strip()
+
+                if not full_text:
+                    logger.warning(f"YouTube captions for {video_id} were empty")
+                    return None
 
                 logger.info(f"Successfully fetched YouTube captions: {len(full_text)} chars, language: {language}")
                 return (full_text, language)
