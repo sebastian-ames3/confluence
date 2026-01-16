@@ -11,7 +11,7 @@ import logging
 import json
 import os
 
-from backend.models import get_db, RawContent, AnalyzedContent
+from backend.models import get_db, RawContent, AnalyzedContent, Source
 from agents.content_classifier import ContentClassifierAgent
 from agents.image_intelligence import ImageIntelligenceAgent
 from agents.pdf_analyzer import PDFAnalyzerAgent
