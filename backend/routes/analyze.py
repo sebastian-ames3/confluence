@@ -520,6 +520,114 @@ async def classify_batch(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/reclassify-source/{source_name}")
+async def reclassify_source(
+    source_name: str,
+    limit: int = 50,
+    db: Session = Depends(get_db)
+):
+    """
+    Re-classify all content from a specific source.
+
+    This resets the 'processed' flag and deletes old classifier records,
+    allowing content to be re-analyzed (e.g., after transcripts were added).
+
+    Args:
+        source_name: Source to reclassify (youtube, discord, etc.)
+        limit: Maximum number of items to process
+
+    Returns:
+        Count of items reset and reclassified
+    """
+    try:
+        # Get the source
+        source = db.query(Source).filter(Source.name == source_name).first()
+        if not source:
+            raise HTTPException(status_code=404, detail=f"Source '{source_name}' not found")
+
+        # Find all content from this source
+        items = db.query(RawContent).filter(
+            RawContent.source_id == source.id
+        ).limit(limit).all()
+
+        if not items:
+            return {"message": f"No content found for source '{source_name}'", "count": 0}
+
+        # Delete old classifier AnalyzedContent records for these items
+        item_ids = [item.id for item in items]
+        deleted = db.query(AnalyzedContent).filter(
+            AnalyzedContent.raw_content_id.in_(item_ids),
+            AnalyzedContent.agent_type == "classifier"
+        ).delete(synchronize_session=False)
+
+        logger.info(f"Deleted {deleted} old classifier records for {source_name}")
+
+        # Reset processed flag
+        for item in items:
+            item.processed = False
+
+        db.commit()
+
+        logger.info(f"Reset {len(items)} items from {source_name} for reclassification")
+
+        # Now run classification on these items
+        classifier = get_classifier()
+        results = []
+
+        for raw_content in items:
+            try:
+                content_dict = {
+                    "raw_content_id": raw_content.id,
+                    "source": source_name,
+                    "content_type": raw_content.content_type,
+                    "content_text": raw_content.content_text,
+                    "file_path": raw_content.file_path,
+                    "url": raw_content.url,
+                    "metadata": json.loads(raw_content.json_metadata) if raw_content.json_metadata else {}
+                }
+
+                result = classifier.classify(content_dict)
+
+                analyzed_content = AnalyzedContent(
+                    raw_content_id=raw_content.id,
+                    agent_type="classifier",
+                    analysis_result=json.dumps(result),
+                    key_themes=",".join(result.get("detected_topics", [])),
+                    sentiment=None,
+                    conviction=None,
+                    time_horizon=None
+                )
+                db.add(analyzed_content)
+                raw_content.processed = True
+
+                results.append({
+                    "raw_content_id": raw_content.id,
+                    "classification": result["classification"],
+                    "priority": result["priority"]
+                })
+
+            except Exception as e:
+                logger.error(f"Failed to reclassify item {raw_content.id}: {e}")
+                continue
+
+        db.commit()
+
+        return {
+            "status": "success",
+            "source": source_name,
+            "old_records_deleted": deleted,
+            "items_reclassified": len(results),
+            "results": results[:10]  # Show first 10
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Reclassify failed for {source_name}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/pending")
 async def get_pending_analysis(db: Session = Depends(get_db)):
     """
