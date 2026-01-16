@@ -41,12 +41,12 @@ class TestClaudeModelUpdate:
                 f"{agent_file.name} references invalid model claude-sonnet-4-5-20250514"
 
     def test_all_agents_updated_to_sonnet_4(self):
-        """All agent files with model parameters should use Sonnet 4."""
+        """All agent files with model parameters should use Sonnet 4 (except synthesis which uses Opus)."""
         agents_dir = Path(__file__).parent.parent / "agents"
-        agents_with_model = [
+        # Agents that should use Sonnet 4 for cost efficiency
+        agents_with_sonnet = [
             "base_agent.py",
             "transcript_harvester.py",
-            "synthesis_agent.py",
             "confluence_scorer.py",
             "cross_reference.py",
             "pdf_analyzer.py",
@@ -55,13 +55,21 @@ class TestClaudeModelUpdate:
             "visual_content_classifier.py",
         ]
 
-        for agent_name in agents_with_model:
+        for agent_name in agents_with_sonnet:
             agent_path = agents_dir / agent_name
             if agent_path.exists():
                 content = agent_path.read_text()
                 if "model: str =" in content:
                     assert "claude-sonnet-4-20250514" in content, \
                         f"{agent_name} should use claude-sonnet-4-20250514"
+
+    def test_synthesis_agent_uses_opus(self):
+        """Synthesis agent should use Opus 4.5 for better reasoning on high-stakes output."""
+        agents_dir = Path(__file__).parent.parent / "agents"
+        synthesis_path = agents_dir / "synthesis_agent.py"
+        content = synthesis_path.read_text()
+        assert "claude-opus-4-5-20251101" in content, \
+            "synthesis_agent.py should use claude-opus-4-5-20251101 for better quality"
 
 
 class TestAssemblyAIDependency:
