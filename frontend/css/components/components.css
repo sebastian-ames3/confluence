@@ -16,3 +16,4 @@
 @import '_modals.css';
 @import '_symbols.css';
 @import '_health.css';  /* PRD-045: Health monitoring widget */
+@import '_quality.css';  /* PRD-044: Synthesis quality widget */

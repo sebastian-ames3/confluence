@@ -422,6 +422,38 @@ Use this to brainstorm specific trade ideas.""",
                 },
                 "required": ["symbol"]
             }
+        ),
+        # PRD-044: Synthesis Quality Tool
+        Tool(
+            name="get_synthesis_quality",
+            description="""Get quality evaluation for the latest synthesis (PRD-044).
+
+Returns AI-evaluated quality metrics:
+- Overall score (0-100) and letter grade (A+ to F)
+- Seven domain criteria scores (0-3 each):
+  * Confluence detection (20% weight) - Are cross-source alignments identified?
+  * Evidence preservation (15%) - Do themes have supporting data points?
+  * Source attribution (15%) - Can insights be traced to specific sources?
+  * YouTube channel granularity (15%) - Are channels named individually?
+  * Nuance retention (15%) - Are conflicting views within sources captured?
+  * Actionability (10%) - Are there specific levels, triggers, timeframes?
+  * Theme continuity (10%) - References theme evolution over time?
+
+Also returns:
+- Flags: Issues where criteria scored 1 or below
+- Prompt suggestions: Specific improvements for future synthesis
+
+Use this to understand synthesis quality and identify improvement areas.""",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "synthesis_id": {
+                        "type": "integer",
+                        "description": "Optional: specific synthesis ID. Defaults to latest."
+                    }
+                },
+                "required": []
+            }
         )
     ]
 
@@ -603,6 +635,15 @@ async def call_tool(name: str, arguments: dict):
             return [TextContent(
                 type="text",
                 text=json.dumps(trade_setup, indent=2)
+            )]
+
+        # PRD-044: Synthesis Quality Tool
+        elif name == "get_synthesis_quality":
+            synthesis_id = arguments.get("synthesis_id")
+            quality = client.get_synthesis_quality(synthesis_id)
+            return [TextContent(
+                type="text",
+                text=json.dumps(quality, indent=2)
             )]
 
         else:

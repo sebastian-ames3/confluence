@@ -481,6 +481,74 @@ class ThemeFeedback(Base):
         return f"<ThemeFeedback(id={self.id}, theme_id={self.theme_id}, user='{self.user}')>"
 
 
+# ============================================================================
+# PRD-044: Synthesis Quality Evaluator Model
+# ============================================================================
+
+class SynthesisQualityScore(Base):
+    """
+    AI-evaluated quality scores for synthesis outputs (PRD-044).
+
+    Tracks quality across 7 domain-relevant criteria and provides
+    actionable feedback for improving synthesis prompts.
+    """
+    __tablename__ = "synthesis_quality_scores"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    synthesis_id = Column(Integer, ForeignKey("syntheses.id", ondelete="CASCADE"), nullable=False, unique=True)
+
+    # Overall score (0-100) and letter grade
+    quality_score = Column(Integer, nullable=False)
+    grade = Column(String(2), nullable=False)  # A+, A, A-, B+, B, B-, C+, C, C-, D, F
+
+    # Individual criterion scores (0-3 scale: 0=fail, 1=poor, 2=acceptable, 3=good)
+    # Confluence: Are cross-source alignments identified?
+    confluence_detection = Column(Integer, nullable=False)
+    # Evidence: Do themes have supporting data points?
+    evidence_preservation = Column(Integer, nullable=False)
+    # Attribution: Can insights be traced to specific sources?
+    source_attribution = Column(Integer, nullable=False)
+    # YouTube: Are channels named individually (not generic "YouTube")?
+    youtube_channel_granularity = Column(Integer, nullable=False)
+    # Nuance: Are conflicting views within sources captured?
+    nuance_retention = Column(Integer, nullable=False)
+    # Actionability: Are there specific levels, triggers, timeframes?
+    actionability = Column(Integer, nullable=False)
+    # Continuity: Does it reference theme evolution over time?
+    theme_continuity = Column(Integer, nullable=False)
+
+    # Detailed feedback (stored as JSON)
+    flags = Column(Text)  # JSON: Array of {criterion, score, detail}
+    prompt_suggestions = Column(Text)  # JSON: Array of improvement suggestions
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationship to Synthesis
+    synthesis = relationship("Synthesis", backref="quality_score")
+
+    # Constraints and indexes
+    __table_args__ = (
+        CheckConstraint('quality_score >= 0 AND quality_score <= 100', name='check_quality_score_range'),
+        CheckConstraint('confluence_detection >= 0 AND confluence_detection <= 3', name='check_confluence_score'),
+        CheckConstraint('evidence_preservation >= 0 AND evidence_preservation <= 3', name='check_evidence_score'),
+        CheckConstraint('source_attribution >= 0 AND source_attribution <= 3', name='check_attribution_score'),
+        CheckConstraint('youtube_channel_granularity >= 0 AND youtube_channel_granularity <= 3', name='check_youtube_score'),
+        CheckConstraint('nuance_retention >= 0 AND nuance_retention <= 3', name='check_nuance_score'),
+        CheckConstraint('actionability >= 0 AND actionability <= 3', name='check_actionability_score'),
+        CheckConstraint('theme_continuity >= 0 AND theme_continuity <= 3', name='check_continuity_score'),
+        CheckConstraint(
+            "grade IN ('A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D', 'F')",
+            name='check_grade_values'
+        ),
+        Index('idx_quality_synthesis', 'synthesis_id'),
+        Index('idx_quality_score', 'quality_score'),
+        Index('idx_quality_grade', 'grade'),
+    )
+
+    def __repr__(self):
+        return f"<SynthesisQualityScore(id={self.id}, synthesis_id={self.synthesis_id}, grade='{self.grade}', score={self.quality_score})>"
+
+
 class SymbolLevel(Base):
     """
     Price levels per symbol from various sources (PRD-039).
