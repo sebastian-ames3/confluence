@@ -604,6 +604,143 @@ class SymbolState(Base):
 
 
 # ============================================================================
+# PRD-045: Collection Monitoring & Alerting Models
+# ============================================================================
+
+class TranscriptionStatus(Base):
+    """
+    Track individual video transcription status (PRD-045).
+
+    Solves the silent failure problem where async transcription tasks
+    could fail without any database record of the failure.
+    """
+    __tablename__ = "transcription_status"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    content_id = Column(Integer, ForeignKey("raw_content.id", ondelete="CASCADE"), nullable=False, unique=True)
+
+    # Status tracking
+    # Values: pending, processing, completed, failed, skipped
+    status = Column(String(20), nullable=False, default="pending")
+
+    error_message = Column(Text)  # If failed, why
+    retry_count = Column(Integer, default=0)
+    last_attempt_at = Column(DateTime)
+    completed_at = Column(DateTime)
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationship
+    content = relationship("RawContent", backref="transcription_status")
+
+    # Indexes for efficient querying
+    __table_args__ = (
+        Index('idx_transcription_status', 'status'),
+        Index('idx_transcription_content', 'content_id'),
+        CheckConstraint(
+            "status IN ('pending', 'processing', 'completed', 'failed', 'skipped')",
+            name='check_transcription_status_values'
+        ),
+    )
+
+    def __repr__(self):
+        return f"<TranscriptionStatus(id={self.id}, content_id={self.content_id}, status='{self.status}')>"
+
+
+class SourceHealth(Base):
+    """
+    Cached health metrics per source (PRD-045).
+
+    Provides at-a-glance health status for each data source,
+    updated periodically or on collection events.
+    """
+    __tablename__ = "source_health"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    source_name = Column(String(50), nullable=False, unique=True)
+
+    # Last collection info
+    last_collection_at = Column(DateTime)
+    last_collection_status = Column(String(20))  # success, partial, failed
+
+    # For video sources (YouTube, Discord videos, 42macro videos)
+    last_transcription_at = Column(DateTime)
+
+    # 24-hour metrics
+    items_collected_24h = Column(Integer, default=0)
+    items_transcribed_24h = Column(Integer, default=0)
+    errors_24h = Column(Integer, default=0)
+
+    # Failure tracking
+    consecutive_failures = Column(Integer, default=0)
+
+    # Staleness (no new content in 48+ hours)
+    is_stale = Column(Boolean, default=False)
+
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Indexes
+    __table_args__ = (
+        Index('idx_source_health_name', 'source_name'),
+        CheckConstraint(
+            "last_collection_status IN ('success', 'partial', 'failed') OR last_collection_status IS NULL",
+            name='check_collection_status_values'
+        ),
+    )
+
+    def __repr__(self):
+        return f"<SourceHealth(source='{self.source_name}', stale={self.is_stale}, failures={self.consecutive_failures})>"
+
+
+class Alert(Base):
+    """
+    System alerts for collection/transcription issues (PRD-045).
+
+    Stores alerts that are displayed on the dashboard and can be
+    acknowledged by users.
+    """
+    __tablename__ = "alerts"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    # Alert classification
+    alert_type = Column(String(50), nullable=False)
+    # Types: collection_failed, transcription_backlog, source_stale, error_spike
+    source = Column(String(50))  # Which source this alert is about (optional)
+    severity = Column(String(20), nullable=False)  # critical, high, medium, low
+    message = Column(Text, nullable=False)
+
+    # Acknowledgment
+    is_acknowledged = Column(Boolean, default=False)
+    acknowledged_at = Column(DateTime)
+    acknowledged_by = Column(String(100))
+
+    # Timestamps
+    created_at = Column(DateTime, default=datetime.utcnow)
+    expires_at = Column(DateTime)  # Auto-dismiss after this time
+
+    # Indexes and constraints
+    __table_args__ = (
+        Index('idx_alert_type', 'alert_type'),
+        Index('idx_alert_source', 'source'),
+        Index('idx_alert_acknowledged', 'is_acknowledged'),
+        Index('idx_alert_severity', 'severity'),
+        CheckConstraint(
+            "severity IN ('critical', 'high', 'medium', 'low')",
+            name='check_alert_severity_values'
+        ),
+        CheckConstraint(
+            "alert_type IN ('collection_failed', 'transcription_backlog', 'source_stale', 'error_spike')",
+            name='check_alert_type_values'
+        ),
+    )
+
+    def __repr__(self):
+        return f"<Alert(id={self.id}, type='{self.alert_type}', severity='{self.severity}', ack={self.is_acknowledged})>"
+
+
+# ============================================================================
 # Utility Functions
 # ============================================================================
 

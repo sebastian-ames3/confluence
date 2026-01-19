@@ -8,10 +8,15 @@ Includes endpoints for receiving data from local laptop scripts:
 
 PRD-018: Added video transcription integration with TranscriptHarvesterAgent.
 Videos from Discord and 42macro are automatically transcribed after collection.
+
+PRD-045: Added transcription status tracking and sync mode option.
+All video transcriptions are now tracked in the database with status updates.
 """
 
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Dict, Any, Optional
 import logging
 import json
@@ -20,12 +25,19 @@ import asyncio
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 
-from backend.models import get_db, RawContent, Source, SessionLocal, AnalyzedContent
+from backend.models import (
+    get_db, get_async_db, RawContent, Source, SessionLocal,
+    AnalyzedContent, TranscriptionStatus, AsyncSessionLocal
+)
 from backend.utils.deduplication import check_duplicate
 from backend.utils.sanitization import sanitize_content_text, sanitize_url
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/collect", tags=["collect"])
+
+# PRD-045: Sync transcription mode - when True, transcription runs inline
+# and failures propagate to collection response
+SYNC_TRANSCRIPTION = os.getenv("SYNC_TRANSCRIPTION", "false").lower() == "true"
 
 # Thread pool for async video transcription (PRD-018)
 # Limited to 2 workers to avoid overwhelming the system
@@ -158,6 +170,103 @@ def _transcribe_video_sync(
             db.close()
 
 
+async def _transcribe_video_with_tracking(
+    content_id: int,
+    status_id: int,
+    video_url: str,
+    source: str,
+    title: Optional[str] = None,
+    source_metadata: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
+    """
+    Transcribe a video with full status tracking (PRD-045).
+
+    Updates TranscriptionStatus record through the entire lifecycle:
+    pending -> processing -> completed/failed
+
+    Args:
+        content_id: ID of the RawContent record
+        status_id: ID of the TranscriptionStatus record
+        video_url: URL of the video to transcribe
+        source: Source name (discord, 42macro, youtube)
+        title: Optional title for metadata
+        source_metadata: Optional source-specific metadata
+
+    Returns:
+        Dict with 'success' bool and details
+    """
+    if AsyncSessionLocal is None:
+        logger.error("Async database not available for transcription tracking")
+        return {"success": False, "error": "Async database not available"}
+
+    async with AsyncSessionLocal() as db:
+        try:
+            # Update status to processing
+            result = await db.execute(
+                select(TranscriptionStatus).where(TranscriptionStatus.id == status_id)
+            )
+            status = result.scalar_one_or_none()
+
+            if not status:
+                logger.error(f"TranscriptionStatus {status_id} not found")
+                return {"success": False, "error": "Status record not found"}
+
+            status.status = "processing"
+            status.last_attempt_at = datetime.utcnow()
+            await db.commit()
+
+            logger.info(f"Starting tracked transcription for content_id={content_id}, status_id={status_id}")
+
+        except Exception as e:
+            logger.error(f"Failed to update status to processing: {e}")
+            return {"success": False, "error": f"Status update failed: {str(e)}"}
+
+    # Run the actual transcription (in thread pool)
+    loop = asyncio.get_event_loop()
+    try:
+        import functools
+        transcribe_result = await loop.run_in_executor(
+            transcription_executor,
+            functools.partial(
+                _transcribe_video_sync,
+                content_id,
+                video_url,
+                source,
+                title,
+                source_metadata
+            )
+        )
+    except Exception as e:
+        transcribe_result = {"success": False, "error": str(e)}
+
+    # Update final status
+    async with AsyncSessionLocal() as db:
+        try:
+            result = await db.execute(
+                select(TranscriptionStatus).where(TranscriptionStatus.id == status_id)
+            )
+            status = result.scalar_one_or_none()
+
+            if status:
+                if transcribe_result.get("success"):
+                    status.status = "completed"
+                    status.completed_at = datetime.utcnow()
+                    status.error_message = None
+                    logger.info(f"Transcription completed for content_id={content_id}")
+                else:
+                    status.status = "failed"
+                    status.error_message = transcribe_result.get("error", "Unknown error")[:1000]
+                    status.retry_count += 1
+                    logger.error(f"Transcription failed for content_id={content_id}: {status.error_message}")
+
+                await db.commit()
+
+        except Exception as e:
+            logger.error(f"Failed to update final transcription status: {e}")
+
+    return transcribe_result
+
+
 async def _transcribe_video_async(
     raw_content_id: int,
     video_url: str,
@@ -166,9 +275,10 @@ async def _transcribe_video_async(
     metadata: Optional[Dict[str, Any]] = None
 ):
     """
-    Run video transcription in background thread pool.
+    Run video transcription in background thread pool (legacy, no tracking).
 
     PRD-018: Async wrapper to avoid blocking the event loop.
+    NOTE: Prefer _transcribe_video_with_tracking for new code (PRD-045).
 
     Args:
         raw_content_id: ID of the RawContent record
@@ -195,6 +305,83 @@ async def _transcribe_video_async(
         )
     except Exception as e:
         logger.error(f"Async transcription wrapper failed: {e}")
+
+
+async def _queue_transcription_with_tracking(
+    db: Session,
+    content_id: int,
+    video_url: str,
+    source: str,
+    title: Optional[str] = None,
+    metadata: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
+    """
+    Create TranscriptionStatus record and queue transcription (PRD-045).
+
+    Supports both sync and async modes based on SYNC_TRANSCRIPTION env var.
+
+    Args:
+        db: Database session (sync)
+        content_id: ID of the RawContent record
+        video_url: URL of the video
+        source: Source name
+        title: Optional title
+        metadata: Optional metadata
+
+    Returns:
+        Dict with status_id and mode info
+    """
+    # Create transcription status record
+    status = TranscriptionStatus(
+        content_id=content_id,
+        status="pending"
+    )
+    db.add(status)
+    db.flush()  # Get the ID
+    status_id = status.id
+
+    logger.info(f"Created TranscriptionStatus {status_id} for content {content_id}")
+
+    if SYNC_TRANSCRIPTION:
+        # Sync mode: Run inline and propagate errors
+        db.commit()  # Commit status before running
+        try:
+            result = await _transcribe_video_with_tracking(
+                content_id=content_id,
+                status_id=status_id,
+                video_url=video_url,
+                source=source,
+                title=title,
+                source_metadata=metadata
+            )
+            return {
+                "status_id": status_id,
+                "mode": "sync",
+                "result": result
+            }
+        except Exception as e:
+            logger.error(f"Sync transcription failed: {e}")
+            return {
+                "status_id": status_id,
+                "mode": "sync",
+                "result": {"success": False, "error": str(e)}
+            }
+    else:
+        # Async mode: Queue for background processing
+        db.commit()  # Commit status before queueing
+        asyncio.create_task(_transcribe_video_with_tracking(
+            content_id=content_id,
+            status_id=status_id,
+            video_url=video_url,
+            source=source,
+            title=title,
+            source_metadata=metadata
+        ))
+        return {
+            "status_id": status_id,
+            "mode": "async",
+            "result": None  # Will complete in background
+        }
 
 
 @router.post("/discord")
@@ -319,30 +506,43 @@ async def ingest_discord_data(
         count_after = db.query(RawContent).filter(RawContent.source_id == source.id).count()
         logger.info(f"Total RawContent for source {source.id} after commit: {count_after}")
 
-        # PRD-018: Trigger async transcription for videos without local transcripts
+        # PRD-045: Queue transcription with status tracking
         transcription_queued = 0
+        transcription_failed = 0
+        transcription_mode = "sync" if SYNC_TRANSCRIPTION else "async"
+
         for video in videos_to_transcribe:
             try:
-                asyncio.create_task(_transcribe_video_async(
-                    raw_content_id=video["raw_content_id"],
+                result = await _queue_transcription_with_tracking(
+                    db=db,
+                    content_id=video["raw_content_id"],
                     video_url=video["url"],
                     source="discord",
-                    title=video["title"]
-                ))
+                    title=video["title"],
+                    metadata=video.get("metadata")
+                )
                 transcription_queued += 1
+
+                # In sync mode, track failures
+                if result.get("mode") == "sync" and result.get("result"):
+                    if not result["result"].get("success"):
+                        transcription_failed += 1
             except Exception as e:
                 logger.error(f"Failed to queue transcription for {video['raw_content_id']}: {e}")
+                transcription_failed += 1
 
         if transcription_queued > 0:
-            logger.info(f"Queued {transcription_queued} videos for async transcription")
+            logger.info(f"Queued {transcription_queued} videos for {transcription_mode} transcription")
 
         response = {
-            "status": "success",
+            "status": "success" if transcription_failed == 0 else "partial",
             "message": f"Ingested {saved_count} Discord messages",
             "saved": saved_count,
             "received": len(messages),
             "skipped_duplicates": skipped_duplicates,
-            "transcription_queued": transcription_queued,  # PRD-018
+            "transcription_queued": transcription_queued,
+            "transcription_mode": transcription_mode,  # PRD-045
+            "transcription_failed": transcription_failed,  # PRD-045
             "total_in_db": count_after,
             "timestamp": datetime.utcnow().isoformat()
         }
@@ -483,31 +683,43 @@ async def ingest_42macro_data(
         count_after = db.query(RawContent).filter(RawContent.source_id == source.id).count()
         logger.info(f"Total RawContent for 42macro after commit: {count_after}")
 
-        # PRD-018: Trigger async transcription for videos
+        # PRD-045: Queue transcription with status tracking
         transcription_queued = 0
+        transcription_failed = 0
+        transcription_mode = "sync" if SYNC_TRANSCRIPTION else "async"
+
         for video in videos_to_transcribe:
             try:
-                asyncio.create_task(_transcribe_video_async(
-                    raw_content_id=video["raw_content_id"],
+                result = await _queue_transcription_with_tracking(
+                    db=db,
+                    content_id=video["raw_content_id"],
                     video_url=video["url"],
                     source="42macro",
                     title=video["title"],
                     metadata=video.get("metadata")  # Pass metadata for Vimeo auth
-                ))
+                )
                 transcription_queued += 1
+
+                # In sync mode, track failures
+                if result.get("mode") == "sync" and result.get("result"):
+                    if not result["result"].get("success"):
+                        transcription_failed += 1
             except Exception as e:
                 logger.error(f"Failed to queue transcription for {video['raw_content_id']}: {e}")
+                transcription_failed += 1
 
         if transcription_queued > 0:
-            logger.info(f"Queued {transcription_queued} 42macro videos for async transcription")
+            logger.info(f"Queued {transcription_queued} 42macro videos for {transcription_mode} transcription")
 
         response = {
-            "status": "success",
+            "status": "success" if transcription_failed == 0 else "partial",
             "message": f"Ingested {saved_count} 42macro items",
             "saved": saved_count,
             "received": len(items),
             "skipped_duplicates": skipped_duplicates,
-            "transcription_queued": transcription_queued,  # PRD-018
+            "transcription_queued": transcription_queued,
+            "transcription_mode": transcription_mode,  # PRD-045
+            "transcription_failed": transcription_failed,  # PRD-045
             "total_in_db": count_after,
             "timestamp": datetime.utcnow().isoformat()
         }
@@ -722,22 +934,26 @@ async def _save_collected_items(
     else:
         logger.info(f"Saved {saved_count}/{len(items)} items from {source_name}")
 
-    # PRD-018: Trigger async transcription for video content
+    # PRD-045: Trigger transcription with status tracking
     transcription_queued = 0
+    transcription_mode = "sync" if SYNC_TRANSCRIPTION else "async"
+
     for video in videos_to_transcribe:
         try:
-            asyncio.create_task(_transcribe_video_async(
-                raw_content_id=video["raw_content_id"],
+            await _queue_transcription_with_tracking(
+                db=db,
+                content_id=video["raw_content_id"],
                 video_url=video["url"],
                 source=source_name,
-                title=video["title"]
-            ))
+                title=video["title"],
+                metadata=video.get("metadata")
+            )
             transcription_queued += 1
         except Exception as e:
             logger.error(f"Failed to queue transcription for {video['raw_content_id']}: {e}")
 
     if transcription_queued > 0:
-        logger.info(f"Queued {transcription_queued} videos from {source_name} for async transcription")
+        logger.info(f"Queued {transcription_queued} videos from {source_name} for {transcription_mode} transcription")
 
     return saved_count
 

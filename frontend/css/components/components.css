@@ -15,3 +15,4 @@
 @import '_toasts.css';
 @import '_modals.css';
 @import '_symbols.css';
+@import '_health.css';  /* PRD-045: Health monitoring widget */
