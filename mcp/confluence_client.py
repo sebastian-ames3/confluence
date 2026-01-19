@@ -179,6 +179,29 @@ class ConfluenceClient:
         """Get symbols where KT and Discord are aligned (high confluence)."""
         return self._request("GET", "/api/symbols/confluence/opportunities")
 
+    # PRD-044: Synthesis Quality Methods
+    def get_synthesis_quality(self, synthesis_id: Optional[int] = None) -> Dict[str, Any]:
+        """
+        Get quality evaluation for a synthesis.
+
+        Args:
+            synthesis_id: Optional specific synthesis ID. If not provided, gets latest.
+
+        Returns quality score including:
+        - Overall score (0-100) and letter grade
+        - Individual criterion scores (0-3 each)
+        - Flags for low-scoring criteria
+        - Prompt suggestions for improvement
+        """
+        if synthesis_id:
+            return self._request("GET", f"/api/quality/{synthesis_id}")
+        else:
+            return self._request("GET", "/api/quality/latest")
+
+    def get_quality_trends(self, days: int = 30) -> Dict[str, Any]:
+        """Get quality score trends over time."""
+        return self._request("GET", f"/api/quality/trends?days={days}")
+
 
 # Convenience functions for extracting synthesis components
 

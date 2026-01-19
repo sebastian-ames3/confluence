@@ -184,7 +184,7 @@ async def health_check():
 
 
 # Import and include route modules
-from backend.routes import dashboard, websocket, heartbeat, confluence, synthesis, trigger, search, collect, analyze, themes, auth, engagement, symbols, health
+from backend.routes import dashboard, websocket, heartbeat, confluence, synthesis, trigger, search, collect, analyze, themes, auth, engagement, symbols, health, quality
 
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])  # PRD-036: JWT Auth
 app.include_router(engagement.router, prefix="/api", tags=["engagement"])  # PRD-038: User Engagement
@@ -200,6 +200,7 @@ app.include_router(themes.router, prefix="/api", tags=["themes"])  # PRD-024 the
 app.include_router(websocket.router, tags=["websocket"])
 app.include_router(heartbeat.router, prefix="/api", tags=["heartbeat"])
 app.include_router(health.router, prefix="/api", tags=["health"])  # PRD-045: Collection Monitoring
+app.include_router(quality.router, prefix="/api/quality", tags=["quality"])  # PRD-044: Synthesis Quality
 
 # Mount static files for frontend assets
 frontend_path = Path(__file__).parent.parent / "frontend"

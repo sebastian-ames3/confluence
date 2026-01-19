@@ -24,11 +24,13 @@ from backend.models import (
     CollectionRun,
     AnalyzedContent,
     RawContent,
-    Source
+    Source,
+    SynthesisQualityScore
 )
 from backend.utils.auth import verify_jwt_or_basic
 from backend.utils.rate_limiter import limiter, RATE_LIMITS
 from agents.theme_extractor import extract_and_track_themes
+from agents.synthesis_evaluator import SynthesisEvaluatorAgent
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -409,6 +411,42 @@ async def generate_synthesis(
         db.commit()
         db.refresh(synthesis)
 
+        # PRD-044: Run quality evaluation on synthesis
+        import os
+        quality_evaluation = None
+        if os.getenv("ENABLE_QUALITY_EVALUATION", "true").lower() == "true":
+            try:
+                logger.info(f"Running quality evaluation for synthesis {synthesis.id}...")
+                evaluator = SynthesisEvaluatorAgent()
+                quality_result = evaluator.evaluate(
+                    synthesis_output=result,
+                    original_content=content_items
+                )
+
+                # Save quality score to database
+                quality_score = SynthesisQualityScore(
+                    synthesis_id=synthesis.id,
+                    quality_score=quality_result["quality_score"],
+                    grade=quality_result["grade"],
+                    confluence_detection=quality_result["confluence_detection"],
+                    evidence_preservation=quality_result["evidence_preservation"],
+                    source_attribution=quality_result["source_attribution"],
+                    youtube_channel_granularity=quality_result["youtube_channel_granularity"],
+                    nuance_retention=quality_result["nuance_retention"],
+                    actionability=quality_result["actionability"],
+                    theme_continuity=quality_result["theme_continuity"],
+                    flags=json.dumps(quality_result.get("flags", [])),
+                    prompt_suggestions=json.dumps(quality_result.get("prompt_suggestions", []))
+                )
+                db.add(quality_score)
+                db.commit()
+
+                quality_evaluation = quality_result
+                logger.info(f"Quality evaluation complete: {quality_result['grade']} ({quality_result['quality_score']}/100)")
+            except Exception as quality_error:
+                # Don't fail synthesis if quality evaluation fails
+                logger.warning(f"Quality evaluation failed (non-fatal): {str(quality_error)}")
+
         # PRD-024: Extract and track themes from V3/V4 synthesis
         if version in ["3", "4"]:
             try:
@@ -420,32 +458,42 @@ async def generate_synthesis(
                 logger.warning(f"Theme extraction failed (non-fatal): {str(theme_error)}")
 
         # Return appropriate response format
+        # PRD-044: Include quality_evaluation in response if available
         if version == "4":
-            return {
+            response = {
                 "status": "success",
                 "version": "4.0",
                 "synthesis_id": synthesis.id,
                 **result,
                 "generated_at": synthesis.generated_at.isoformat()
             }
+            if quality_evaluation:
+                response["quality_evaluation"] = quality_evaluation
+            return response
         elif version == "3":
-            return {
+            response = {
                 "status": "success",
                 "version": "3.0",
                 "synthesis_id": synthesis.id,
                 **result,
                 "generated_at": synthesis.generated_at.isoformat()
             }
+            if quality_evaluation:
+                response["quality_evaluation"] = quality_evaluation
+            return response
         elif version == "2":
-            return {
+            response = {
                 "status": "success",
                 "version": "2.0",
                 "synthesis_id": synthesis.id,
                 **result,
                 "generated_at": synthesis.generated_at.isoformat()
             }
+            if quality_evaluation:
+                response["quality_evaluation"] = quality_evaluation
+            return response
         else:
-            return {
+            response = {
                 "status": "success",
                 "version": "1.0",
                 "synthesis_id": synthesis.id,
@@ -455,6 +503,9 @@ async def generate_synthesis(
                 "content_count": result.get("content_count", len(content_items)),
                 "generated_at": synthesis.generated_at.isoformat()
             }
+            if quality_evaluation:
+                response["quality_evaluation"] = quality_evaluation
+            return response
 
     except Exception as e:
         error_msg = f"Synthesis generation failed: {str(e)}\n{traceback.format_exc()}"
