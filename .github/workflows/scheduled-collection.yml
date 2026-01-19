@@ -159,6 +159,87 @@ jobs:
             echo "Synthesis generated: ID=$synthesis_id, Content count=$content_count"
           fi
 
+      # PRD-045: Health Check - runs even if collection/analysis failed
+      - name: Check Collection Health
+        if: always()
+        run: |
+          echo "Checking source health status..."
+
+          response=$(curl -s -X GET \
+            "${RAILWAY_API_URL}/api/health/sources" \
+            -H "X-API-Key: ${TRIGGER_API_KEY}" \
+            --max-time 30) || true
+
+          if [ -z "$response" ]; then
+            echo "::warning::Could not fetch health status"
+            exit 0
+          fi
+
+          overall=$(echo "$response" | jq -r '.overall_status // "unknown"')
+          echo "Overall health status: $overall"
+
+          # Show per-source status
+          echo "$response" | jq -r '.sources | to_entries[] | "\(.key): \(.value.status) - \(.value.message // "OK")"' || true
+
+          # Alert on critical status
+          if [ "$overall" = "critical" ]; then
+            echo "::error::Collection health is CRITICAL - check dashboard for details"
+          elif [ "$overall" = "degraded" ]; then
+            echo "::warning::Collection health is DEGRADED - some sources have issues"
+          fi
+
+          # Store for summary
+          echo "health_status=$overall" >> $GITHUB_OUTPUT
+
+      # PRD-045: Transcription status check (only on morning run)
+      - name: Check Transcription Status
+        if: contains(steps.run_type.outputs.run_type, '6am') || github.event_name == 'workflow_dispatch'
+        run: |
+          echo "Checking transcription queue status..."
+
+          response=$(curl -s -X GET \
+            "${RAILWAY_API_URL}/api/health/transcription" \
+            -H "X-API-Key: ${TRIGGER_API_KEY}" \
+            --max-time 30) || true
+
+          if [ -z "$response" ]; then
+            echo "::warning::Could not fetch transcription status"
+            exit 0
+          fi
+
+          pending=$(echo "$response" | jq -r '.summary.pending // 0')
+          failed=$(echo "$response" | jq -r '.summary.failed // 0')
+          backlog=$(echo "$response" | jq -r '.backlog.count // 0')
+
+          echo "Transcription status: $pending pending, $failed failed, $backlog in backlog"
+
+          if [ "$backlog" -gt 10 ]; then
+            echo "::warning::$backlog videos pending transcription for >24 hours"
+          fi
+
+          if [ "$failed" -gt 5 ]; then
+            echo "::warning::$failed videos have failed transcription"
+          fi
+
+      # PRD-045: Trigger alert check
+      - name: Run Alert Check
+        if: always()
+        run: |
+          echo "Running alert check..."
+
+          response=$(curl -s -X POST \
+            "${RAILWAY_API_URL}/api/health/check-alerts" \
+            -H "X-API-Key: ${TRIGGER_API_KEY}" \
+            --max-time 60) || true
+
+          if [ -n "$response" ]; then
+            alerts_created=$(echo "$response" | jq -r '.alerts_created // 0')
+            if [ "$alerts_created" -gt 0 ]; then
+              echo "::warning::$alerts_created new alerts created - check dashboard"
+              echo "$response" | jq -r '.new_alerts[] | "  - \(.severity): \(.message)"' || true
+            fi
+          fi
+
       - name: Summary
         run: |
           echo "## Collection Summary" >> $GITHUB_STEP_SUMMARY
@@ -166,3 +247,6 @@ jobs:
           echo "- **Run Type**: ${{ steps.run_type.outputs.run_type }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Job ID**: ${{ steps.collect.outputs.job_id }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Timestamp**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Health Status" >> $GITHUB_STEP_SUMMARY
+          echo "Check the [dashboard](${RAILWAY_API_URL}) for detailed source health." >> $GITHUB_STEP_SUMMARY

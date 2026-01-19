@@ -1,0 +1,411 @@
+/**
+ * Health Widget Component (PRD-045)
+ *
+ * Styles for the collection health monitoring widget in the header.
+ */
+
+/* ============================================================================
+   Health Widget Container
+   ============================================================================ */
+
+.health-widget {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+/* ============================================================================
+   Health Indicator Button
+   ============================================================================ */
+
+.health-indicator {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    background: var(--surface-secondary);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--duration-fast) var(--ease-out);
+}
+
+.health-indicator:hover {
+    background: var(--surface-tertiary);
+    border-color: var(--border-default);
+}
+
+.health-indicator:focus {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+}
+
+/* ============================================================================
+   Health Status Dot
+   ============================================================================ */
+
+.health-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+.health-dot.health-healthy {
+    background-color: var(--success);
+    box-shadow: 0 0 8px var(--success);
+}
+
+.health-dot.health-degraded,
+.health-dot.health-stale {
+    background-color: var(--warning);
+    box-shadow: 0 0 8px var(--warning);
+    animation: pulse-warning 2s ease-in-out infinite;
+}
+
+.health-dot.health-critical {
+    background-color: var(--error);
+    box-shadow: 0 0 8px var(--error);
+    animation: pulse-error 1s ease-in-out infinite;
+}
+
+.health-dot.health-unknown {
+    background-color: var(--text-muted);
+}
+
+@keyframes pulse-warning {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+@keyframes pulse-error {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.7; transform: scale(1.1); }
+}
+
+/* ============================================================================
+   Health Label
+   ============================================================================ */
+
+.health-label {
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
+    color: var(--text-secondary);
+}
+
+/* ============================================================================
+   Health Dropdown
+   ============================================================================ */
+
+.health-dropdown {
+    position: absolute;
+    top: calc(100% + var(--spacing-xs));
+    right: 0;
+    min-width: 320px;
+    max-width: 400px;
+    background: var(--surface-primary);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xl);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px);
+    transition: all var(--duration-fast) var(--ease-out);
+    z-index: var(--z-dropdown);
+}
+
+.health-dropdown.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+/* ============================================================================
+   Dropdown Header
+   ============================================================================ */
+
+.health-dropdown-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.health-dropdown-title {
+    font-size: var(--text-sm);
+    font-weight: var(--font-semibold);
+    color: var(--text-primary);
+}
+
+.health-refresh-btn {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-md);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all var(--duration-fast) var(--ease-out);
+}
+
+.health-refresh-btn:hover {
+    background: var(--surface-secondary);
+    color: var(--text-primary);
+}
+
+/* ============================================================================
+   Dropdown Content
+   ============================================================================ */
+
+.health-dropdown-content {
+    padding: var(--spacing-sm);
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.health-loading,
+.health-error,
+.health-empty {
+    padding: var(--spacing-md);
+    text-align: center;
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+}
+
+.health-error {
+    color: var(--error);
+}
+
+/* ============================================================================
+   Source Item
+   ============================================================================ */
+
+.health-source-item {
+    padding: var(--spacing-sm);
+    margin-bottom: var(--spacing-xs);
+    background: var(--surface-secondary);
+    border-radius: var(--radius-md);
+    border-left: 3px solid transparent;
+}
+
+.health-source-item:last-child {
+    margin-bottom: 0;
+}
+
+.health-source-item.health-healthy {
+    border-left-color: var(--success);
+}
+
+.health-source-item.health-degraded,
+.health-source-item.health-stale {
+    border-left-color: var(--warning);
+}
+
+.health-source-item.health-critical {
+    border-left-color: var(--error);
+}
+
+.health-source-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    margin-bottom: var(--spacing-xs);
+}
+
+.health-source-icon {
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--text-xs);
+    flex-shrink: 0;
+}
+
+.health-source-name {
+    flex: 1;
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
+    color: var(--text-primary);
+}
+
+.health-source-status-badge {
+    padding: 2px 6px;
+    font-size: var(--text-xs);
+    font-weight: var(--font-medium);
+    border-radius: var(--radius-sm);
+    text-transform: uppercase;
+}
+
+.health-source-status-badge.health-healthy {
+    background: var(--success-muted);
+    color: var(--success);
+}
+
+.health-source-status-badge.health-degraded,
+.health-source-status-badge.health-stale {
+    background: var(--warning-muted);
+    color: var(--warning);
+}
+
+.health-source-status-badge.health-critical {
+    background: var(--error-muted);
+    color: var(--error);
+}
+
+.health-source-status-badge.health-unknown {
+    background: var(--surface-tertiary);
+    color: var(--text-muted);
+}
+
+/* Source Details */
+.health-source-details {
+    padding-left: calc(18px + var(--spacing-xs));
+}
+
+.health-source-meta {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+.health-source-message {
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+    margin-top: var(--spacing-2xs);
+}
+
+.health-source-warning {
+    font-size: var(--text-xs);
+    color: var(--warning);
+    margin-top: var(--spacing-2xs);
+}
+
+/* ============================================================================
+   Alerts Section
+   ============================================================================ */
+
+.health-alerts-section {
+    border-top: 1px solid var(--border-subtle);
+    padding: var(--spacing-sm);
+}
+
+.health-alerts-header {
+    font-size: var(--text-xs);
+    font-weight: var(--font-semibold);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: var(--spacing-sm);
+}
+
+.health-alerts-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+/* Alert Item */
+.health-alert-item {
+    padding: var(--spacing-sm);
+    background: var(--surface-secondary);
+    border-radius: var(--radius-md);
+    border-left: 3px solid transparent;
+}
+
+.health-alert-item.health-alert-critical {
+    border-left-color: var(--error);
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.health-alert-item.health-alert-high {
+    border-left-color: var(--warning);
+    background: rgba(245, 158, 11, 0.1);
+}
+
+.health-alert-item.health-alert-medium {
+    border-left-color: var(--accent-primary);
+}
+
+.health-alert-item.health-alert-low {
+    border-left-color: var(--text-muted);
+}
+
+.health-alert-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-2xs);
+}
+
+.health-alert-severity {
+    font-size: 10px;
+    font-weight: var(--font-bold);
+    padding: 1px 4px;
+    border-radius: var(--radius-sm);
+}
+
+.health-alert-item.health-alert-critical .health-alert-severity {
+    background: var(--error);
+    color: white;
+}
+
+.health-alert-item.health-alert-high .health-alert-severity {
+    background: var(--warning);
+    color: var(--surface-primary);
+}
+
+.health-alert-source {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+}
+
+.health-alert-message {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+.health-alert-actions {
+    margin-top: var(--spacing-xs);
+    display: flex;
+    justify-content: flex-end;
+}
+
+.health-alert-ack-btn {
+    padding: 4px 8px;
+    font-size: var(--text-xs);
+    background: var(--surface-tertiary);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all var(--duration-fast) var(--ease-out);
+}
+
+.health-alert-ack-btn:hover {
+    background: var(--surface-primary);
+    border-color: var(--border-default);
+    color: var(--text-primary);
+}
+
+/* ============================================================================
+   Responsive
+   ============================================================================ */
+
+@media (max-width: 768px) {
+    .health-dropdown {
+        min-width: 280px;
+        max-width: calc(100vw - 32px);
+        right: -16px;
+    }
+
+    .desktop-only {
+        display: none !important;
+    }
+}
