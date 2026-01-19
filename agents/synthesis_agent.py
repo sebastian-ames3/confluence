@@ -914,7 +914,10 @@ Key events mentioned: {', '.join(extracted['dates'][:10]) or 'None'}
     "42macro": "2-3 sentences on 42Macro's current stance. What is Darius focusing on? What's his framework saying?",
     "discord": "2-3 sentences on Discord's current focus. What is Imran positioned for? What structures is he using?",
     "kt_technical": "2-3 sentences on KT Technical's view. What do the Elliott Wave counts show? Key levels?",
-    "youtube": "1-2 sentences if relevant content, otherwise null",
+    "youtube_moonshots": "1-2 sentences on Moonshots (Peter Diamandis) content if present, otherwise null. Focus: AI, technology, abundance.",
+    "youtube_forward_guidance": "1-2 sentences on Forward Guidance content if present, otherwise null. Focus: Macro, Fed policy.",
+    "youtube_jordi_visser": "1-2 sentences on Jordi Visser Labs content if present, otherwise null. Focus: Information synthesis, macro.",
+    "youtube_42macro": "1-2 sentences on 42 Macro video content if present, otherwise null. Focus: Institutional macro (video format of written research).",
     "substack": "1-2 sentences if relevant content, otherwise null"
   }},
 
@@ -995,6 +998,8 @@ Relevance triggers: catalyst_approaching, level_being_tested, scenario_playing_o
 
 ### 6. source_stances (required object)
 Narrative summary of what each source is currently thinking.
+IMPORTANT: For YouTube, create SEPARATE entries for each channel (youtube_moonshots, youtube_forward_guidance, youtube_jordi_visser, youtube_42macro) rather than a single "youtube" entry.
+Use these keys: 42macro, discord, kt_technical, youtube_moonshots, youtube_forward_guidance, youtube_jordi_visser, youtube_42macro, substack
 {{
   "source_name": {{
     "weight": numeric weight,

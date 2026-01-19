@@ -20,7 +20,7 @@ router = APIRouter()
 
 
 # Heartbeat thresholds (hours)
-DISCORD_THRESHOLD_HOURS = 25  # Discord should run daily, allow some buffer
+DISCORD_THRESHOLD_HOURS = 13  # Discord runs daily; tighter threshold for faster failure detection
 
 
 @router.post("/heartbeat/discord")

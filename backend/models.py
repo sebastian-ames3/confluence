@@ -490,7 +490,7 @@ class SymbolLevel(Base):
     """
     __tablename__ = "symbol_levels"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     symbol = Column(String(10), nullable=False, index=True)
     source = Column(String(20), nullable=False)  # kt_technical, discord
 
