@@ -20,6 +20,7 @@ import asyncio
 
 from backend.models import get_db, CollectionRun, RawContent, Source
 from backend.utils.deduplication import check_duplicate
+from backend.utils.sanitization import sanitize_search_query
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -488,13 +489,14 @@ def _get_content_for_synthesis(db: Session, cutoff: datetime, focus_topic: Optio
         AnalyzedContent.analyzed_at >= cutoff
     )
 
-    # Filter by topic if provided
+    # Filter by topic if provided (PRD-046: sanitize for SQL injection)
     if focus_topic:
-        topic_lower = focus_topic.lower()
-        query = query.filter(
-            (AnalyzedContent.key_themes.ilike(f"%{topic_lower}%")) |
-            (AnalyzedContent.tickers_mentioned.ilike(f"%{topic_lower}%"))
-        )
+        safe_topic = sanitize_search_query(focus_topic.lower())
+        if safe_topic:
+            query = query.filter(
+                (AnalyzedContent.key_themes.ilike(f"%{safe_topic}%")) |
+                (AnalyzedContent.tickers_mentioned.ilike(f"%{safe_topic}%"))
+            )
 
     results = query.order_by(desc(AnalyzedContent.analyzed_at)).all()
 

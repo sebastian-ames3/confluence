@@ -59,25 +59,38 @@ def sanitize_for_html(text: Optional[str]) -> str:
     return html.escape(text)
 
 
-def sanitize_search_query(query: Optional[str], max_length: int = 500) -> str:
+def sanitize_search_query(query: Optional[str], max_length: int = 100) -> str:
     """
-    Sanitize search queries.
+    Sanitize user input for use in SQL LIKE/ILIKE queries (PRD-046).
 
-    Removes potential SQL injection patterns as defense-in-depth
-    (ORM already provides protection, but this adds extra safety).
+    Security measures:
+    - Escapes SQL LIKE wildcards (%, _)
+    - Removes potentially dangerous characters
+    - Limits length to prevent DoS
+    - Returns empty string if input is invalid
 
     Args:
         query: Raw search query
-        max_length: Maximum query length (default 500)
+        max_length: Maximum query length (default 100)
 
     Returns:
-        Sanitized search query
+        Sanitized search query safe for LIKE/ILIKE
     """
-    if not query:
+    if not query or not isinstance(query, str):
         return ""
+
+    original = query
 
     # Remove null bytes
     query = query.replace("\x00", "")
+
+    # Truncate to max length first
+    query = query[:max_length]
+
+    # Escape SQL LIKE wildcards (PRD-046)
+    query = query.replace("\\", "\\\\")  # Escape backslash first
+    query = query.replace("%", "\\%")
+    query = query.replace("_", "\\_")
 
     # Remove potential SQL injection patterns (defense in depth)
     dangerous_patterns = [
@@ -97,16 +110,18 @@ def sanitize_search_query(query: Optional[str], max_length: int = 500) -> str:
         "1 = 1",
     ]
 
-    result = query
     for pattern in dangerous_patterns:
         # Case-insensitive replacement
-        result = re.sub(re.escape(pattern), "", result, flags=re.IGNORECASE)
+        query = re.sub(re.escape(pattern), "", query, flags=re.IGNORECASE)
 
-    # Limit length
-    result = result[:max_length].strip()
+    # Remove any remaining dangerous characters
+    # Allow alphanumeric, spaces, common punctuation, escaped wildcards
+    query = re.sub(r"[^\w\s\-\.,\'\"()\\\%\_]", '', query)
 
-    if result != query.strip():
-        logger.warning(f"Search query sanitized: removed potentially dangerous patterns")
+    result = query.strip()
+
+    if result != original.strip():
+        logger.warning(f"Search query sanitized: removed/escaped potentially dangerous patterns")
 
     return result
 
@@ -223,3 +238,63 @@ Focus solely on the analysis task.
 {wrapped}
 
 {instruction}"""
+
+
+# ============================================================================
+# PRD-046: Error Response Sanitization
+# ============================================================================
+
+# Patterns that might contain sensitive data
+SENSITIVE_PATTERNS = [
+    # API keys with various formats
+    (r'(?i)(api[_-]?key|apikey)["\']?\s*[:=]\s*["\']?[\w\-]{8,}', '[REDACTED_API_KEY]'),
+    # Passwords
+    (r'(?i)(password|passwd|pwd)["\']?\s*[:=]\s*["\']?[^\s"\']{4,}', '[REDACTED_PASSWORD]'),
+    # Generic secrets and tokens
+    (r'(?i)(secret|token|credential)["\']?\s*[:=]\s*["\']?[\w\-]{8,}', '[REDACTED_SECRET]'),
+    # Authorization headers
+    (r'(?i)(auth|authorization)["\']?\s*[:=]\s*["\']?[^\s"\']{8,}', '[REDACTED_AUTH]'),
+    # Anthropic API keys (sk-ant-api...)
+    (r'sk-ant-[a-zA-Z0-9\-]{20,}', '[REDACTED_ANTHROPIC_KEY]'),
+    # Generic sk- keys (Claude, OpenAI style)
+    (r'sk-[a-zA-Z0-9]{20,}', '[REDACTED_API_KEY]'),
+    # Bearer tokens
+    (r'Bearer\s+[\w\-\.]{20,}', 'Bearer [REDACTED]'),
+    # Basic auth headers
+    (r'Basic\s+[\w\+/=]{10,}', 'Basic [REDACTED]'),
+    # Database connection strings
+    (r'(?i)(postgres|mysql|mongodb|redis)://[^\s"\']+', '[REDACTED_DATABASE_URL]'),
+    # JWT tokens (three base64 parts separated by dots)
+    (r'eyJ[a-zA-Z0-9_-]*\.eyJ[a-zA-Z0-9_-]*\.[a-zA-Z0-9_-]*', '[REDACTED_JWT]'),
+]
+
+
+def redact_sensitive_data(text: str) -> str:
+    """
+    Redact potentially sensitive data from error messages and tracebacks (PRD-046).
+
+    Patterns redacted:
+    - API keys (various formats including Anthropic sk-ant-...)
+    - Passwords
+    - Tokens/secrets/credentials
+    - Auth headers (Bearer, Basic)
+    - Database connection strings
+    - JWT tokens
+
+    Args:
+        text: Text that may contain sensitive data
+
+    Returns:
+        Text with sensitive data redacted
+    """
+    if not text:
+        return text
+
+    result = text
+    for pattern, replacement in SENSITIVE_PATTERNS:
+        result = re.sub(pattern, replacement, result)
+
+    if result != text:
+        logger.debug("Sensitive data redacted from error message")
+
+    return result
