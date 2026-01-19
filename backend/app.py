@@ -100,20 +100,31 @@ app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 
 # Global exception handler to catch all unhandled errors and return JSON
+# PRD-046: Redact sensitive data from error responses
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     import traceback
     from fastapi.responses import JSONResponse
+    from backend.utils.sanitization import redact_sensitive_data
 
-    error_detail = f"{type(exc).__name__}: {str(exc)}\n{traceback.format_exc()}"
-    logger.error(f"Global exception handler: {error_detail}")
+    # Full detail for logging (internal - not redacted for debugging)
+    full_traceback = traceback.format_exc()
+    logger.error(f"Global exception handler: {type(exc).__name__}: {str(exc)}\n{full_traceback}")
+
+    # Redacted detail for response (external - PRD-046)
+    safe_message = redact_sensitive_data(str(exc))
+
+    # In production, don't expose full traceback
+    is_production = os.getenv("RAILWAY_ENV") == "production"
 
     return JSONResponse(
         status_code=500,
         content={
-            "detail": error_detail,
+            "detail": safe_message if is_production else f"{type(exc).__name__}: {safe_message}",
             "error_type": type(exc).__name__,
-            "error_message": str(exc)
+            "error_message": safe_message,
+            # Only include traceback in development
+            "traceback": None if is_production else redact_sensitive_data(full_traceback)
         }
     )
 

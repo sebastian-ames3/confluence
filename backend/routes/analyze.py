@@ -4,7 +4,7 @@ Content Analysis Routes
 API endpoints for triggering AI analysis of raw content.
 """
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any
 import logging
@@ -12,6 +12,7 @@ import json
 import os
 
 from backend.models import get_db, RawContent, AnalyzedContent, Source
+from backend.utils.rate_limiter import limiter
 from agents.content_classifier import ContentClassifierAgent
 from agents.image_intelligence import ImageIntelligenceAgent
 from agents.pdf_analyzer import PDFAnalyzerAgent
@@ -328,7 +329,8 @@ def run_pdf_analysis(raw_content, metadata: Dict, db: Session) -> Dict:
 
 
 @router.post("/classify/{raw_content_id}")
-async def classify_content(raw_content_id: int, db: Session = Depends(get_db)):
+@limiter.limit("10/minute")
+async def classify_content(request: Request, raw_content_id: int, db: Session = Depends(get_db)):
     """
     Classify a single piece of raw content.
 
@@ -398,7 +400,9 @@ async def classify_content(raw_content_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/classify-batch")
+@limiter.limit("5/minute")
 async def classify_batch(
+    request: Request,
     limit: int = 10,
     only_unprocessed: bool = True,
     db: Session = Depends(get_db)
@@ -521,7 +525,9 @@ async def classify_batch(
 
 
 @router.post("/reclassify-source/{source_name}")
+@limiter.limit("5/minute")
 async def reclassify_source(
+    request: Request,
     source_name: str,
     limit: int = 50,
     db: Session = Depends(get_db)

@@ -29,6 +29,7 @@ from backend.models import (
 )
 from backend.utils.auth import verify_jwt_or_basic
 from backend.utils.rate_limiter import limiter, RATE_LIMITS
+from backend.utils.sanitization import sanitize_search_query
 from agents.theme_extractor import extract_and_track_themes
 from agents.synthesis_evaluator import SynthesisEvaluatorAgent
 
@@ -844,13 +845,14 @@ def _get_content_for_synthesis(
             )
         )
 
-    # Filter by topic if provided
+    # Filter by topic if provided (PRD-046: sanitize for SQL injection)
     if focus_topic:
-        topic_lower = focus_topic.lower()
-        query = query.filter(
-            (AnalyzedContent.key_themes.ilike(f"%{topic_lower}%")) |
-            (AnalyzedContent.tickers_mentioned.ilike(f"%{topic_lower}%"))
-        )
+        safe_topic = sanitize_search_query(focus_topic.lower())
+        if safe_topic:
+            query = query.filter(
+                (AnalyzedContent.key_themes.ilike(f"%{safe_topic}%")) |
+                (AnalyzedContent.tickers_mentioned.ilike(f"%{safe_topic}%"))
+            )
 
     results = query.order_by(desc(AnalyzedContent.analyzed_at)).all()
 

@@ -61,8 +61,9 @@ async def search_content(
     Returns:
         Dictionary with search results and metadata
     """
-    # PRD-037: Sanitize search query
+    # PRD-037/046: Sanitize search query and source filter
     q = sanitize_search_query(q)
+    safe_source = sanitize_search_query(source) if source else None
 
     # Calculate cutoff date
     cutoff = datetime.utcnow() - timedelta(days=days)
@@ -76,9 +77,9 @@ async def search_content(
         .where(RawContent.collected_at >= cutoff)
     )
 
-    # Apply source filter if provided
-    if source:
-        stmt = stmt.where(Source.name.ilike(f"%{source}%"))
+    # Apply source filter if provided (PRD-046: sanitized)
+    if safe_source:
+        stmt = stmt.where(Source.name.ilike(f"%{safe_source}%"))
 
     # Apply search filter - search in content text and metadata
     stmt = stmt.where(
@@ -103,8 +104,8 @@ async def search_content(
             (AnalyzedContent.key_themes.ilike(search_pattern))
         )
     )
-    if source:
-        count_stmt = count_stmt.where(Source.name.ilike(f"%{source}%"))
+    if safe_source:
+        count_stmt = count_stmt.where(Source.name.ilike(f"%{safe_source}%"))
 
     count_result = await db.execute(count_stmt)
     total_matches = count_result.scalar() or 0
@@ -179,22 +180,23 @@ async def get_source_view(
     Returns:
         Dictionary with source's view on the topic
     """
-    # PRD-037: Sanitize topic query
+    # PRD-037/046: Sanitize topic query and source name
     topic = sanitize_search_query(topic)
+    safe_source_name = sanitize_search_query(source_name) if source_name else ""
 
     # Calculate cutoff date
     cutoff = datetime.utcnow() - timedelta(days=days)
     search_pattern = f"%{topic}%"
 
-    # Find the source
+    # Find the source (PRD-046: sanitized)
     source_result = await db.execute(
-        select(Source).where(Source.name.ilike(f"%{source_name}%"))
+        select(Source).where(Source.name.ilike(f"%{safe_source_name}%"))
     )
     source = source_result.scalar_one_or_none()
 
     if not source:
         return {
-            "source": source_name,
+            "source": source_name,  # Return original for display
             "topic": topic,
             "current_view": None,
             "message": f"Source '{source_name}' not found",
@@ -473,17 +475,19 @@ async def get_recent_from_source(
     Returns:
         Dictionary with recent items from the source
     """
+    # PRD-046: Sanitize source name
+    safe_source_name = sanitize_search_query(source_name) if source_name else ""
     cutoff = datetime.utcnow() - timedelta(days=days)
 
-    # Find the source
+    # Find the source (PRD-046: sanitized)
     source_result = await db.execute(
-        select(Source).where(Source.name.ilike(f"%{source_name}%"))
+        select(Source).where(Source.name.ilike(f"%{safe_source_name}%"))
     )
     source = source_result.scalar_one_or_none()
 
     if not source:
         return {
-            "source": source_name,
+            "source": source_name,  # Return original for display
             "items": [],
             "count": 0,
             "days": days,

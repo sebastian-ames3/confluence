@@ -13,7 +13,7 @@ PRD-045: Added transcription status tracking and sync mode option.
 All video transcriptions are now tracked in the database with status updates.
 """
 
-from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -31,6 +31,7 @@ from backend.models import (
 )
 from backend.utils.deduplication import check_duplicate
 from backend.utils.sanitization import sanitize_content_text, sanitize_url
+from backend.utils.rate_limiter import limiter, RATE_LIMITS
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/collect", tags=["collect"])
@@ -385,7 +386,9 @@ async def _queue_transcription_with_tracking(
 
 
 @router.post("/discord")
+@limiter.limit("10/minute")
 async def ingest_discord_data(
+    request: Request,
     messages: List[Dict[str, Any]],
     db: Session = Depends(get_db)
 ):
@@ -559,7 +562,9 @@ async def ingest_discord_data(
 
 
 @router.post("/42macro")
+@limiter.limit("10/minute")
 async def ingest_42macro_data(
+    request: Request,
     items: List[Dict[str, Any]],
     db: Session = Depends(get_db)
 ):
@@ -736,7 +741,9 @@ async def ingest_42macro_data(
 
 
 @router.post("/trigger/{source_name}")
+@limiter.limit(RATE_LIMITS["trigger"])
 async def trigger_collection(
+    request: Request,
     source_name: str,
     db: Session = Depends(get_db)
 ):
@@ -1119,7 +1126,9 @@ async def clear_source_data(
 
 
 @router.post("/retranscribe/42macro")
+@limiter.limit("10/minute")
 async def retranscribe_42macro_videos(
+    request: Request,
     db: Session = Depends(get_db)
 ):
     """
@@ -1331,7 +1340,9 @@ async def transcription_diagnostics():
 
 
 @router.post("/update-transcript/{content_id}")
+@limiter.limit("10/minute")
 async def update_transcript(
+    request: Request,
     content_id: int,
     payload: Dict[str, Any],
     db: Session = Depends(get_db)
@@ -1443,7 +1454,9 @@ async def update_transcript(
 
 
 @router.post("/retranscribe/{source_name}")
+@limiter.limit("10/minute")
 async def retranscribe_videos(
+    request: Request,
     source_name: str,
     batch_size: int = 5,
     db: Session = Depends(get_db)
