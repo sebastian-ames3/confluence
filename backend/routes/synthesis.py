@@ -42,8 +42,9 @@ router = APIRouter()
 
 # ============================================================================
 # PRD-047: Synthesis Generation Timeout
+# V4 tiered synthesis requires more time - increased default from 120s to 300s
 # ============================================================================
-SYNTHESIS_TIMEOUT_SECONDS = int(os.getenv("SYNTHESIS_TIMEOUT", "120"))
+SYNTHESIS_TIMEOUT_SECONDS = int(os.getenv("SYNTHESIS_TIMEOUT", "300"))
 synthesis_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="synthesis_")
 
 # ============================================================================
