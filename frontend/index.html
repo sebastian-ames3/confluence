@@ -181,7 +181,19 @@
                         <div class="sidebar-card" id="takeaways-section">
                             <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-md);">
                                 <div class="section-title" style="margin-bottom: 0;">Key Takeaways</div>
-                                <div style="display: flex; align-items: center; gap: var(--spacing-sm);">
+                                <div style="display: flex; align-items: center; gap: var(--spacing-md);">
+                                    <!-- PRD-041: Tier Selector -->
+                                    <div class="tier-selector" id="tier-selector" style="display: flex; gap: 2px; background: var(--glass-bg); padding: 2px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+                                        <button class="tier-btn" data-tier="1" title="Executive summary only" style="padding: 4px 10px; font-size: var(--text-xs); border: none; background: transparent; color: var(--text-muted); border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s;">
+                                            Tier 1
+                                        </button>
+                                        <button class="tier-btn" data-tier="2" title="Summary + source breakdowns" style="padding: 4px 10px; font-size: var(--text-xs); border: none; background: transparent; color: var(--text-muted); border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s;">
+                                            Tier 2
+                                        </button>
+                                        <button class="tier-btn active" data-tier="3" title="Full detail with content items" style="padding: 4px 10px; font-size: var(--text-xs); border: none; background: var(--accent-primary); color: white; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s;">
+                                            Tier 3
+                                        </button>
+                                    </div>
                                     <span class="synthesis-meta" style="font-size: var(--text-xs); color: var(--text-muted);">
                                         <span id="synthesis-window">-</span> |
                                         <span id="synthesis-count">0</span> items
@@ -535,6 +547,7 @@
             loadLatestSynthesis();
             loadThemesSummary();  // Load theme count for KPI card
             initFloatingPanel();  // Initialize floating status panel
+            setupTierSelector();  // PRD-041: Tier selector buttons
         });
 
         // Load just the themes summary for the KPI card (lightweight)
@@ -602,17 +615,20 @@
             }
         }
 
+        // PRD-041: Current tier selection (1=executive, 2=+sources, 3=full)
+        let currentTier = 3;
+
         // Load latest synthesis
         async function loadLatestSynthesis() {
             try {
-                const data = await apiFetch('/synthesis/latest');
+                const data = await apiFetch(`/synthesis/latest?tier=${currentTier}`);
 
                 if (data.status === 'not_found') {
                     showEmptySynthesis();
                     return;
                 }
 
-                displaySynthesis(data);
+                displaySynthesis(data, currentTier);
 
             } catch (error) {
                 console.error('Error loading synthesis:', error);
@@ -620,11 +636,37 @@
             }
         }
 
+        // PRD-041: Setup tier selector event listeners
+        function setupTierSelector() {
+            const tierButtons = document.querySelectorAll('.tier-btn');
+            tierButtons.forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const tier = parseInt(btn.dataset.tier);
+                    if (tier === currentTier) return;
+
+                    // Update button states
+                    tierButtons.forEach(b => {
+                        b.classList.remove('active');
+                        b.style.background = 'transparent';
+                        b.style.color = 'var(--text-muted)';
+                    });
+                    btn.classList.add('active');
+                    btn.style.background = 'var(--accent-primary)';
+                    btn.style.color = 'white';
+
+                    // Update tier and reload
+                    currentTier = tier;
+                    await loadLatestSynthesis();
+                });
+            });
+        }
+
         // Store current synthesis id for feedback (PRD-038)
         let currentSynthesisId = null;
 
         // Display synthesis content
-        function displaySynthesis(data) {
+        // PRD-041: tier parameter controls what sections are shown
+        function displaySynthesis(data, tier = 3) {
             document.getElementById('synthesis-empty').style.display = 'none';
             document.getElementById('takeaways-content').style.display = 'block';
             document.getElementById('synthesis-content').style.display = 'block';
@@ -635,6 +677,13 @@
             // Check version - V4 is the tiered synthesis (PRD-041)
             const isV4 = data.version === '4.0' || data.source_breakdowns;
             const isV3 = isV4 || data.version === '3.0' || data.confluence_zones || data.attention_priorities;
+
+            // PRD-041: Tier-based section visibility
+            // Tier 1: executive only (hide sources, priorities, confluence, conflicts)
+            // Tier 2: executive + sources (hide content items in source cards)
+            // Tier 3: full detail (show everything)
+            const showSources = tier >= 2;
+            const showContentItems = tier >= 3;
 
             // Update meta info
             document.getElementById('synthesis-window').textContent = data.time_window;
@@ -704,22 +753,34 @@
                 document.getElementById('synthesis-text').style.display = 'none';
                 document.getElementById('theme-tags').style.display = 'none';
 
+                // Always show executive summary (all tiers)
                 displayV3ExecutiveSummary(data.executive_summary || {});
-                displayV3AttentionPriorities(data.attention_priorities || []);
-                displayV3ConfluenceZones(data.confluence_zones || []);
-                displayV3ConflictWatch(data.conflict_watch || []);
 
-                // PRD-041: Use V4 source breakdowns if available, otherwise V3 source stances
-                if (isV4 && data.source_breakdowns) {
-                    displayV4SourceBreakdowns(data.source_breakdowns, data.content_summaries || []);
+                // PRD-041: Tier 1 hides these sections
+                if (showSources) {
+                    displayV3AttentionPriorities(data.attention_priorities || []);
+                    displayV3ConfluenceZones(data.confluence_zones || []);
+                    displayV3ConflictWatch(data.conflict_watch || []);
+
+                    // PRD-041: Use V4 source breakdowns if available, otherwise V3 source stances
+                    if (isV4 && data.source_breakdowns) {
+                        displayV4SourceBreakdowns(data.source_breakdowns, data.content_summaries || [], showContentItems);
+                    } else {
+                        displayV3SourceStances(data.source_stances || {});
+                    }
                 } else {
-                    displayV3SourceStances(data.source_stances || {});
+                    // Tier 1: Hide all additional sections
+                    document.getElementById('stances-section').style.display = 'none';
+                    document.getElementById('priorities-section').style.display = 'none';
+                    document.getElementById('confluence-section').style.display = 'none';
+                    document.getElementById('conflict-section').style.display = 'none';
                 }
             }
         }
 
         // PRD-041: Display V4 source breakdowns with interactive cards
-        function displayV4SourceBreakdowns(breakdowns, contentSummaries) {
+        // showContentItems: false for Tier 2, true for Tier 3
+        function displayV4SourceBreakdowns(breakdowns, contentSummaries, showContentItems = true) {
             const container = document.getElementById('v3-stances-list');
             const section = document.getElementById('stances-section');
 
@@ -731,11 +792,13 @@
 
             // Group content summaries by source for Tier 3
             const contentBySource = {};
-            contentSummaries.forEach(item => {
-                const key = item.channel ? `youtube:${item.channel}` : item.source;
-                if (!contentBySource[key]) contentBySource[key] = [];
-                contentBySource[key].push(item);
-            });
+            if (showContentItems) {
+                contentSummaries.forEach(item => {
+                    const key = item.channel ? `youtube:${item.channel}` : item.source;
+                    if (!contentBySource[key]) contentBySource[key] = [];
+                    contentBySource[key].push(item);
+                });
+            }
 
             container.innerHTML = Object.entries(breakdowns).map(([sourceName, data], index) => {
                 const bias = data.overall_bias || 'neutral';
@@ -795,7 +858,7 @@
                                     </div>
                                 ` : ''}
 
-                                ${hasContent ? `
+                                ${hasContent && showContentItems ? `
                                     <div class="source-perspective-content-list">
                                         <div class="source-perspective-insights-title">Content (${sourceContent.length} items)</div>
                                         ${sourceContent.slice(0, 3).map(c => `
