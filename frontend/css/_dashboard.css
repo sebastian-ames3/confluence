@@ -799,6 +799,38 @@
   padding: var(--spacing-lg);
 }
 
+/* ----- PRD-041: Tier Selector ----- */
+.tier-selector {
+  display: flex;
+  gap: 2px;
+  background: var(--glass-bg);
+  padding: 2px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+}
+
+.tier-btn {
+  padding: 4px 10px;
+  font-size: var(--text-xs);
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: var(--font-medium);
+}
+
+.tier-btn:hover:not(.active) {
+  background: var(--glass-bg-hover);
+  color: var(--text-secondary);
+}
+
+.tier-btn.active {
+  background: var(--accent-primary);
+  color: white;
+}
+
 /* ----- Responsive ----- */
 @media (max-width: 768px) {
   .themes-stats {
@@ -815,5 +847,11 @@
 
   .btn-generate, .btn-analyze {
     width: 100%;
+  }
+
+  .tier-selector {
+    order: -1;
+    width: 100%;
+    justify-content: center;
   }
 }
