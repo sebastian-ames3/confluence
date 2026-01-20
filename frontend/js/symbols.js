@@ -119,7 +119,7 @@ class SymbolsManager {
     }
 
     /**
-     * Render a single symbol card
+     * Render a single symbol card (PRD-048: Enhanced staleness display)
      */
     renderSymbolCard(symbol) {
         const ktStatus = this.getStatusIndicator(symbol.kt_view?.bias);
@@ -129,13 +129,22 @@ class SymbolsManager {
 
         const ktStale = symbol.kt_view?.is_stale;
         const discordStale = symbol.discord_view?.is_stale;
+        // PRD-048: Check overall symbol staleness
+        const overallStale = symbol.is_stale;
+        const stalenessClass = overallStale ? 'stale' : 'fresh';
+
+        // PRD-048: Build staleness warning if present
+        const stalenessWarning = symbol.staleness_message
+            ? `<div class="staleness-warning">${symbol.staleness_message}</div>`
+            : '';
 
         return `
-            <div class="symbol-card glass-card" data-symbol="${symbol.symbol}">
+            <div class="symbol-card glass-card ${stalenessClass}" data-symbol="${symbol.symbol}">
                 <div class="symbol-header">
                     <h3>${symbol.symbol}</h3>
                     ${symbol.active_levels_count ? `<span class="level-count">${symbol.active_levels_count} levels</span>` : ''}
                 </div>
+                ${stalenessWarning}
 
                 <div class="symbol-views">
                     <div class="view-column">
@@ -217,14 +226,20 @@ class SymbolsManager {
         const confluence = symbol.confluence || {};
         const levels = symbol.levels || [];
 
+        // PRD-048: Build overall staleness banner if data is stale
+        const overallStalenessWarning = symbol.staleness_message
+            ? `<div class="alert alert-warning staleness-banner">⚠️ ${symbol.staleness_message}</div>`
+            : '';
+
         content.innerHTML = `
             <h2>${symbol.symbol}</h2>
+            ${overallStalenessWarning}
 
             <div class="detail-grid">
                 <div class="detail-section">
                     <h3>KT Technical</h3>
                     <div class="detail-content">
-                        ${kt.kt_is_stale ? '<div class="alert alert-warning">⚠️ Data is stale - no update in 14+ days</div>' : ''}
+                        ${kt.stale_warning ? `<div class="alert alert-warning">⚠️ ${kt.stale_warning}</div>` : ''}
                         ${kt.wave_position ? `<p><strong>Wave:</strong> ${kt.wave_position} (${kt.wave_direction || 'N/A'})</p>` : ''}
                         ${kt.wave_phase ? `<p><strong>Phase:</strong> ${kt.wave_phase}</p>` : ''}
                         ${kt.wave_degree ? `<p><strong>Degree:</strong> ${kt.wave_degree}</p>` : ''}
@@ -233,14 +248,14 @@ class SymbolsManager {
                         ${kt.primary_support ? `<p><strong>Support:</strong> ${kt.primary_support}</p>` : ''}
                         ${kt.invalidation ? `<p><strong>Invalidation:</strong> ${kt.invalidation}</p>` : ''}
                         ${kt.notes ? `<p class="notes">${kt.notes}</p>` : ''}
-                        ${kt.last_updated ? `<p class="text-muted"><small>Updated: ${this.formatDate(kt.last_updated)}</small></p>` : ''}
+                        ${kt.last_updated ? `<p class="text-muted"><small>Updated: ${this.formatDate(kt.last_updated)}${kt.hours_since_update ? ` (${kt.hours_since_update}h ago)` : ''}</small></p>` : ''}
                     </div>
                 </div>
 
                 <div class="detail-section">
                     <h3>Discord Options</h3>
                     <div class="detail-content">
-                        ${discord.discord_is_stale ? '<div class="alert alert-warning">⚠️ Data is stale</div>' : ''}
+                        ${discord.stale_warning ? `<div class="alert alert-warning">⚠️ ${discord.stale_warning}</div>` : ''}
                         ${discord.quadrant ? `<p><strong>Quadrant:</strong> ${discord.quadrant}</p>` : ''}
                         ${discord.iv_regime ? `<p><strong>IV Regime:</strong> ${discord.iv_regime}</p>` : ''}
                         ${discord.strategy_rec ? `<p><strong>Strategy:</strong> ${discord.strategy_rec}</p>` : ''}

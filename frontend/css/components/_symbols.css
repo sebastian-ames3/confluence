@@ -454,6 +454,51 @@
 }
 
 /* ============================================
+   STALENESS INDICATORS (PRD-048)
+   ============================================ */
+
+/* Stale symbol card - visual degradation */
+.symbol-card.stale {
+    border-left: 3px solid var(--status-warning);
+    opacity: 0.85;
+}
+
+.symbol-card.stale:hover {
+    opacity: 0.95;
+}
+
+/* Staleness warning message in card */
+.staleness-warning {
+    font-size: 0.75rem;
+    color: var(--status-warning);
+    background: rgba(234, 179, 8, 0.1);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--spacing-sm);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.staleness-warning::before {
+    content: "⚠️";
+    font-size: 0.875rem;
+}
+
+/* Staleness banner in detail modal */
+.staleness-banner {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    font-weight: 500;
+}
+
+/* Fresh state (default, no special styling needed but explicit for clarity) */
+.symbol-card.fresh {
+    border-left: 3px solid transparent;
+}
+
+/* ============================================
    RESPONSIVE BREAKPOINTS (PRD-043)
    ============================================ */
 

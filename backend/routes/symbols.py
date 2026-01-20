@@ -4,10 +4,13 @@ Symbol-Level Confluence Tracking API (PRD-039)
 Endpoints for accessing symbol levels, state, and confluence analysis.
 
 PRD-036: Uses verify_jwt_or_basic for JWT + Basic Auth compatibility.
+PRD-048: Added staleness validation on read and concurrency lock on refresh.
 """
 
 import logging
-from typing import Optional, List
+import asyncio
+import os
+from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, desc
@@ -20,6 +23,17 @@ from backend.utils.auth import verify_jwt_or_basic
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/symbols", tags=["symbols"])
 
+# ============================================================================
+# PRD-048: Staleness Configuration
+# ============================================================================
+STALENESS_THRESHOLD_HOURS = int(os.getenv("SYMBOL_STALENESS_HOURS", "48"))
+
+# ============================================================================
+# PRD-048: Concurrency Lock for Symbol Refresh
+# ============================================================================
+_refresh_lock = asyncio.Lock()
+_refresh_in_progress = False
+
 
 # ============================================================================
 # Request/Response Models
@@ -31,6 +45,48 @@ class LevelUpdate(BaseModel):
     level_type: Optional[str] = None
     direction: Optional[str] = None
     is_active: Optional[bool] = None
+
+
+# ============================================================================
+# PRD-048: Staleness Calculation Helper
+# ============================================================================
+
+def calculate_staleness(last_updated: Optional[datetime]) -> Dict[str, Any]:
+    """
+    Calculate staleness info for symbol data (PRD-048).
+
+    Called on every read operation to provide real-time staleness status.
+
+    Args:
+        last_updated: Timestamp of last data update
+
+    Returns:
+        Dict with is_stale, hours_since_update, staleness_message
+    """
+    if not last_updated:
+        return {
+            "is_stale": True,
+            "hours_since_update": None,
+            "staleness_message": "Never updated"
+        }
+
+    hours_since = (datetime.utcnow() - last_updated).total_seconds() / 3600
+
+    is_stale = hours_since > STALENESS_THRESHOLD_HOURS
+    message = None
+
+    if is_stale:
+        if hours_since < 168:  # Less than a week
+            message = f"Data is {round(hours_since)}h old - may be outdated"
+        else:
+            days = round(hours_since / 24)
+            message = f"Data is {days} days old - may be outdated"
+
+    return {
+        "is_stale": is_stale,
+        "hours_since_update": round(hours_since, 1),
+        "staleness_message": message
+    }
 
 
 # ============================================================================
@@ -49,7 +105,7 @@ async def get_all_symbols(
     - KT Technical view (wave position, bias)
     - Discord view (quadrant, IV regime)
     - Confluence score
-    - Staleness warnings
+    - Staleness warnings (PRD-048: calculated on read)
     """
 
     try:
@@ -66,6 +122,11 @@ async def get_all_symbols(
                 )
             ).count()
 
+            # PRD-048: Calculate staleness on read for overall symbol
+            overall_staleness = calculate_staleness(state.updated_at)
+            kt_staleness = calculate_staleness(state.kt_last_updated)
+            discord_staleness = calculate_staleness(state.discord_last_updated)
+
             symbols.append({
                 "symbol": state.symbol,
                 "kt_view": {
@@ -73,26 +134,32 @@ async def get_all_symbols(
                     "wave_phase": state.kt_wave_phase,
                     "bias": state.kt_bias,
                     "last_updated": state.kt_last_updated.isoformat() if state.kt_last_updated else None,
-                    "is_stale": state.kt_is_stale,
-                    "stale_warning": state.kt_stale_warning
+                    "is_stale": kt_staleness["is_stale"],
+                    "hours_since_update": kt_staleness["hours_since_update"],
+                    "stale_warning": kt_staleness["staleness_message"] or state.kt_stale_warning
                 },
                 "discord_view": {
                     "quadrant": state.discord_quadrant,
                     "iv_regime": state.discord_iv_regime,
                     "last_updated": state.discord_last_updated.isoformat() if state.discord_last_updated else None,
-                    "is_stale": state.discord_is_stale
+                    "is_stale": discord_staleness["is_stale"],
+                    "hours_since_update": discord_staleness["hours_since_update"],
+                    "stale_warning": discord_staleness["staleness_message"]
                 },
                 "confluence": {
                     "score": state.confluence_score,
                     "aligned": state.sources_directionally_aligned
                 },
                 "active_levels_count": level_count,
-                "updated_at": state.updated_at.isoformat() if state.updated_at else None
+                "updated_at": state.updated_at.isoformat() if state.updated_at else None,
+                # PRD-048: Overall symbol staleness
+                **overall_staleness
             })
 
         return {
             "symbols": symbols,
-            "count": len(symbols)
+            "count": len(symbols),
+            "staleness_threshold_hours": STALENESS_THRESHOLD_HOURS
         }
 
     except Exception as e:
@@ -114,6 +181,7 @@ async def get_symbol_detail(
     - All active price levels
     - Confluence analysis
     - Trade setup suggestion
+    - Staleness info (PRD-048: calculated on read)
     """
     symbol = symbol.upper()
 
@@ -131,8 +199,16 @@ async def get_symbol_detail(
             )
         ).order_by(SymbolLevel.price.desc()).all()
 
+        # PRD-048: Calculate staleness on read
+        overall_staleness = calculate_staleness(state.updated_at)
+        kt_staleness = calculate_staleness(state.kt_last_updated)
+        discord_staleness = calculate_staleness(state.discord_last_updated)
+
         return {
             "symbol": symbol,
+            # PRD-048: Overall staleness info
+            **overall_staleness,
+            "staleness_threshold_hours": STALENESS_THRESHOLD_HOURS,
             "kt_technical": {
                 "wave_degree": state.kt_wave_degree,
                 "wave_position": state.kt_wave_position,
@@ -144,8 +220,9 @@ async def get_symbol_detail(
                 "invalidation": state.kt_invalidation,
                 "notes": state.kt_notes,
                 "last_updated": state.kt_last_updated.isoformat() if state.kt_last_updated else None,
-                "is_stale": state.kt_is_stale,
-                "stale_warning": state.kt_stale_warning,
+                "is_stale": kt_staleness["is_stale"],
+                "hours_since_update": kt_staleness["hours_since_update"],
+                "stale_warning": kt_staleness["staleness_message"] or state.kt_stale_warning,
                 "source_content_id": state.kt_source_content_id
             },
             "discord_options": {
@@ -155,7 +232,9 @@ async def get_symbol_detail(
                 "key_strikes": state.discord_key_strikes,
                 "notes": state.discord_notes,
                 "last_updated": state.discord_last_updated.isoformat() if state.discord_last_updated else None,
-                "is_stale": state.discord_is_stale,
+                "is_stale": discord_staleness["is_stale"],
+                "hours_since_update": discord_staleness["hours_since_update"],
+                "stale_warning": discord_staleness["staleness_message"],
                 "source_content_id": state.discord_source_content_id
             },
             "confluence": {
@@ -260,6 +339,7 @@ async def get_confluence_opportunities(
     - confluence_score > 0.7
     - sources_directionally_aligned = True
     - Trade setup suggestions
+    - Staleness info (PRD-048)
     """
 
     try:
@@ -272,6 +352,11 @@ async def get_confluence_opportunities(
 
         opportunities = []
         for state in states:
+            # PRD-048: Calculate staleness on read
+            overall_staleness = calculate_staleness(state.updated_at)
+            kt_staleness = calculate_staleness(state.kt_last_updated)
+            discord_staleness = calculate_staleness(state.discord_last_updated)
+
             opportunities.append({
                 "symbol": state.symbol,
                 "confluence_score": state.confluence_score,
@@ -280,12 +365,17 @@ async def get_confluence_opportunities(
                 "summary": state.confluence_summary,
                 "trade_setup": state.trade_setup_suggestion,
                 "kt_last_updated": state.kt_last_updated.isoformat() if state.kt_last_updated else None,
-                "discord_last_updated": state.discord_last_updated.isoformat() if state.discord_last_updated else None
+                "discord_last_updated": state.discord_last_updated.isoformat() if state.discord_last_updated else None,
+                # PRD-048: Staleness info
+                **overall_staleness,
+                "kt_is_stale": kt_staleness["is_stale"],
+                "discord_is_stale": discord_staleness["is_stale"]
             })
 
         return {
             "opportunities": opportunities,
-            "count": len(opportunities)
+            "count": len(opportunities),
+            "staleness_threshold_hours": STALENESS_THRESHOLD_HOURS
         }
 
     except Exception as e:
@@ -303,48 +393,62 @@ async def refresh_symbol_data(
     Manually trigger staleness check and recalculate confluence.
 
     Runs staleness check on all symbols and updates confluence scores.
+    PRD-048: Added concurrency lock to prevent simultaneous refreshes.
     """
+    global _refresh_in_progress
 
-    try:
-        from backend.utils.staleness_manager import (
-            check_and_mark_stale_data,
-            update_symbol_confluence
-        )
-
-        # Run staleness check
-        staleness_results = check_and_mark_stale_data(db)
-
-        # Recalculate confluence for all symbols
-        confluence_updates = []
-        states = db.query(SymbolState).all()
-        for state in states:
-            result = update_symbol_confluence(db, state.symbol)
-            if result.get("confluence", {}).get("aligned"):
-                confluence_updates.append({
-                    "symbol": state.symbol,
-                    "score": result["confluence"]["score"]
-                })
-
-        logger.info(f"Manual symbol refresh completed. "
-                   f"Staleness: {len(staleness_results.get('kt_stale_symbols', []))} KT, "
-                   f"{len(staleness_results.get('discord_stale_symbols', []))} Discord. "
-                   f"High confluence: {len(confluence_updates)} symbols")
-
+    # PRD-048: Check if refresh is already in progress
+    if _refresh_lock.locked() or _refresh_in_progress:
         return {
-            "message": "Symbol refresh completed",
-            "status": "success",
-            "staleness_check": {
-                "kt_stale_symbols": staleness_results.get("kt_stale_symbols", []),
-                "discord_stale_symbols": staleness_results.get("discord_stale_symbols", []),
-                "levels_marked_stale": staleness_results.get("stale_levels_marked", 0)
-            },
-            "confluence_updated": confluence_updates,
-            "total_symbols_checked": len(states)
+            "status": "already_refreshing",
+            "message": "Symbol refresh is already in progress. Please wait for it to complete."
         }
 
-    except Exception as e:
-        logger.error(f"Error refreshing symbols: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    async with _refresh_lock:
+        _refresh_in_progress = True
+        try:
+            from backend.utils.staleness_manager import (
+                check_and_mark_stale_data,
+                update_symbol_confluence
+            )
+
+            # Run staleness check
+            staleness_results = check_and_mark_stale_data(db)
+
+            # Recalculate confluence for all symbols
+            confluence_updates = []
+            states = db.query(SymbolState).all()
+            for state in states:
+                result = update_symbol_confluence(db, state.symbol)
+                if result.get("confluence", {}).get("aligned"):
+                    confluence_updates.append({
+                        "symbol": state.symbol,
+                        "score": result["confluence"]["score"]
+                    })
+
+            logger.info(f"Manual symbol refresh completed. "
+                       f"Staleness: {len(staleness_results.get('kt_stale_symbols', []))} KT, "
+                       f"{len(staleness_results.get('discord_stale_symbols', []))} Discord. "
+                       f"High confluence: {len(confluence_updates)} symbols")
+
+            return {
+                "message": "Symbol refresh completed",
+                "status": "success",
+                "staleness_check": {
+                    "kt_stale_symbols": staleness_results.get("kt_stale_symbols", []),
+                    "discord_stale_symbols": staleness_results.get("discord_stale_symbols", []),
+                    "levels_marked_stale": staleness_results.get("stale_levels_marked", 0)
+                },
+                "confluence_updated": confluence_updates,
+                "total_symbols_checked": len(states)
+            }
+
+        except Exception as e:
+            logger.error(f"Error refreshing symbols: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
+
+        finally:
+            _refresh_in_progress = False
 
 
 @router.post("/extract/{content_id}")
