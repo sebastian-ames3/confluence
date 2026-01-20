@@ -1100,10 +1100,11 @@ RESPOND WITH VALID JSON ONLY."""
 
         # Call Claude with v3 system prompt
         # Increased max_tokens for enhanced executive summary (PRD-025)
+        # Further increased to 8000 to prevent JSON truncation with large source_stances
         response = self.call_claude(
             prompt=prompt,
             system_prompt=self.SYSTEM_PROMPT_V3,
-            max_tokens=5000,
+            max_tokens=8000,
             temperature=0.25,
             expect_json=True
         )
