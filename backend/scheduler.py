@@ -30,6 +30,7 @@ from collectors.youtube_api import YouTubeCollector
 from collectors.substack_rss import SubstackCollector
 from collectors.macro42_selenium import Macro42Collector
 from collectors.kt_technical import KTTechnicalCollector
+from backend.utils.data_helpers import safe_get_analysis_result, safe_get_analysis_preview
 
 # Setup logging
 logging.basicConfig(
@@ -192,10 +193,8 @@ async def generate_post_collection_synthesis():
             # Build content items for synthesis
             content_items = []
             for analyzed, raw, source in results:
-                try:
-                    analysis_data = json.loads(analyzed.analysis_result) if analyzed.analysis_result else {}
-                except json.JSONDecodeError:
-                    analysis_data = {}
+                # PRD-047: Use safe helpers for analysis_result parsing
+                analysis_data = safe_get_analysis_result(analyzed)
 
                 try:
                     metadata = json.loads(raw.json_metadata) if raw.json_metadata else {}
@@ -207,7 +206,7 @@ async def generate_post_collection_synthesis():
                     "type": raw.content_type,
                     "title": metadata.get("title", f"{source.name} content"),
                     "timestamp": raw.collected_at.isoformat() if raw.collected_at else None,
-                    "summary": analysis_data.get("summary", analyzed.analysis_result[:500] if analyzed.analysis_result else ""),
+                    "summary": analysis_data.get("summary", safe_get_analysis_preview(analyzed, 500)),
                     "themes": analyzed.key_themes.split(",") if analyzed.key_themes else [],
                     "tickers": analyzed.tickers_mentioned.split(",") if analyzed.tickers_mentioned else [],
                     "sentiment": analyzed.sentiment,

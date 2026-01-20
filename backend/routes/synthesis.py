@@ -15,8 +15,11 @@ from sqlalchemy import desc, func
 from typing import Optional
 from datetime import datetime, timedelta
 from pydantic import BaseModel
+from concurrent.futures import ThreadPoolExecutor
+import asyncio
 import json
 import logging
+import os
 
 from backend.models import (
     get_db,
@@ -30,11 +33,18 @@ from backend.models import (
 from backend.utils.auth import verify_jwt_or_basic
 from backend.utils.rate_limiter import limiter, RATE_LIMITS
 from backend.utils.sanitization import sanitize_search_query
+from backend.utils.data_helpers import safe_get_analysis_result, safe_get_analysis_preview
 from agents.theme_extractor import extract_and_track_themes
 from agents.synthesis_evaluator import SynthesisEvaluatorAgent
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+# ============================================================================
+# PRD-047: Synthesis Generation Timeout
+# ============================================================================
+SYNTHESIS_TIMEOUT_SECONDS = int(os.getenv("SYNTHESIS_TIMEOUT", "120"))
+synthesis_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="synthesis_")
 
 # ============================================================================
 # YouTube Channel Display Names (PRD-040)
@@ -302,6 +312,30 @@ async def generate_synthesis(
         # Determine version
         version = synthesis_request.version
 
+        # PRD-047: Helper to run synthesis with timeout
+        async def run_synthesis_with_timeout(synthesis_func, *args, **kwargs):
+            """Run synthesis function with timeout protection."""
+            loop = asyncio.get_event_loop()
+            try:
+                result = await asyncio.wait_for(
+                    loop.run_in_executor(
+                        synthesis_executor,
+                        lambda: synthesis_func(*args, **kwargs)
+                    ),
+                    timeout=SYNTHESIS_TIMEOUT_SECONDS
+                )
+                return result
+            except asyncio.TimeoutError:
+                logger.error(f"Synthesis generation timed out after {SYNTHESIS_TIMEOUT_SECONDS}s")
+                raise HTTPException(
+                    status_code=504,
+                    detail={
+                        "error": "synthesis_timeout",
+                        "message": f"Synthesis generation timed out after {SYNTHESIS_TIMEOUT_SECONDS} seconds. Try reducing the time window or content volume.",
+                        "timeout_seconds": SYNTHESIS_TIMEOUT_SECONDS
+                    }
+                )
+
         if version == "4":
             # V4: Tiered Synthesis (PRD-041)
             # Get older content for re-review recommendations (7-30 days ago)
@@ -314,7 +348,8 @@ async def generate_synthesis(
             logger.info(f"Found {len(older_content)} older items for Tier 3 scanning")
 
             logger.info("Calling agent.analyze_v4() for tiered synthesis...")
-            result = agent.analyze_v4(
+            result = await run_synthesis_with_timeout(
+                agent.analyze_v4,
                 content_items=content_items,
                 older_content=older_content,
                 time_window=synthesis_request.time_window,
@@ -335,7 +370,8 @@ async def generate_synthesis(
             logger.info(f"Found {len(older_content)} older items for re-review scanning")
 
             logger.info("Calling agent.analyze_v3() for research consumption synthesis...")
-            result = agent.analyze_v3(
+            result = await run_synthesis_with_timeout(
+                agent.analyze_v3,
                 content_items=content_items,
                 older_content=older_content,
                 time_window=synthesis_request.time_window,
@@ -346,7 +382,8 @@ async def generate_synthesis(
 
         elif version == "2":
             logger.info("Calling agent.analyze_v2() for actionable synthesis...")
-            result = agent.analyze_v2(
+            result = await run_synthesis_with_timeout(
+                agent.analyze_v2,
                 content_items=content_items,
                 time_window=synthesis_request.time_window,
                 focus_topic=synthesis_request.focus_topic
@@ -355,7 +392,8 @@ async def generate_synthesis(
                        f"{len(result.get('strategic_ideas', []))} strategic ideas")
         else:
             logger.info("Calling agent.analyze() for legacy synthesis...")
-            result = agent.analyze(
+            result = await run_synthesis_with_timeout(
+                agent.analyze,
                 content_items=content_items,
                 time_window=synthesis_request.time_window,
                 focus_topic=synthesis_request.focus_topic
@@ -858,11 +896,8 @@ def _get_content_for_synthesis(
 
     content_items = []
     for analyzed, raw, source in results:
-        # Parse analysis result
-        try:
-            analysis_data = json.loads(analyzed.analysis_result) if analyzed.analysis_result else {}
-        except json.JSONDecodeError:
-            analysis_data = {}
+        # PRD-047: Use safe helpers for analysis_result parsing
+        analysis_data = safe_get_analysis_result(analyzed)
 
         # Parse metadata
         try:
@@ -887,7 +922,7 @@ def _get_content_for_synthesis(
             "type": raw.content_type,
             "title": metadata.get("title", f"{source.name} content"),
             "timestamp": raw.collected_at.isoformat() if raw.collected_at else None,
-            "summary": analysis_data.get("summary", analyzed.analysis_result[:500] if analyzed.analysis_result else ""),
+            "summary": analysis_data.get("summary", safe_get_analysis_preview(analyzed, 500)),
             "themes": analyzed.key_themes.split(",") if analyzed.key_themes else [],
             "tickers": analyzed.tickers_mentioned.split(",") if analyzed.tickers_mentioned else [],
             "sentiment": analyzed.sentiment,

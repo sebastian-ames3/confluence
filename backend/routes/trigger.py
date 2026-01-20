@@ -21,6 +21,7 @@ import asyncio
 from backend.models import get_db, CollectionRun, RawContent, Source
 from backend.utils.deduplication import check_duplicate
 from backend.utils.sanitization import sanitize_search_query
+from backend.utils.data_helpers import safe_get_analysis_result, safe_get_analysis_preview
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -502,11 +503,8 @@ def _get_content_for_synthesis(db: Session, cutoff: datetime, focus_topic: Optio
 
     content_items = []
     for analyzed, raw, source in results:
-        # Parse analysis result
-        try:
-            analysis_data = json.loads(analyzed.analysis_result) if analyzed.analysis_result else {}
-        except json.JSONDecodeError:
-            analysis_data = {}
+        # PRD-047: Use safe helpers for analysis_result parsing
+        analysis_data = safe_get_analysis_result(analyzed)
 
         # Parse metadata
         try:
@@ -519,7 +517,7 @@ def _get_content_for_synthesis(db: Session, cutoff: datetime, focus_topic: Optio
             "type": raw.content_type,
             "title": metadata.get("title", f"{source.name} content"),
             "timestamp": raw.collected_at.isoformat() if raw.collected_at else None,
-            "summary": analysis_data.get("summary", analyzed.analysis_result[:500] if analyzed.analysis_result else ""),
+            "summary": analysis_data.get("summary", safe_get_analysis_preview(analyzed, 500)),
             "themes": analyzed.key_themes.split(",") if analyzed.key_themes else [],
             "tickers": analyzed.tickers_mentioned.split(",") if analyzed.tickers_mentioned else [],
             "sentiment": analyzed.sentiment,
