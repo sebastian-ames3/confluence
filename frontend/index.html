@@ -184,13 +184,13 @@
                                 <div style="display: flex; align-items: center; gap: var(--spacing-md);">
                                     <!-- PRD-041: Tier Selector -->
                                     <div class="tier-selector" id="tier-selector" style="display: flex; gap: 2px; background: var(--glass-bg); padding: 2px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
-                                        <button class="tier-btn" data-tier="1" title="Executive summary only" style="padding: 4px 10px; font-size: var(--text-xs); border: none; background: transparent; color: var(--text-muted); border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s;">
+                                        <button type="button" class="tier-btn" data-tier="1" title="Executive summary only" style="padding: 4px 10px; font-size: var(--text-xs); border: none; background: transparent; color: var(--text-muted); border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s;">
                                             Tier 1
                                         </button>
-                                        <button class="tier-btn" data-tier="2" title="Summary + source breakdowns" style="padding: 4px 10px; font-size: var(--text-xs); border: none; background: transparent; color: var(--text-muted); border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s;">
+                                        <button type="button" class="tier-btn" data-tier="2" title="Summary + source breakdowns" style="padding: 4px 10px; font-size: var(--text-xs); border: none; background: transparent; color: var(--text-muted); border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s;">
                                             Tier 2
                                         </button>
-                                        <button class="tier-btn active" data-tier="3" title="Full detail with content items" style="padding: 4px 10px; font-size: var(--text-xs); border: none; background: var(--accent-primary); color: white; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s;">
+                                        <button type="button" class="tier-btn active" data-tier="3" title="Full detail with content items" style="padding: 4px 10px; font-size: var(--text-xs); border: none; background: var(--accent-primary); color: white; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s;">
                                             Tier 3
                                         </button>
                                     </div>
@@ -546,7 +546,6 @@
             loadStatus();
             loadLatestSynthesis();
             loadThemesSummary();  // Load theme count for KPI card
-            initFloatingPanel();  // Initialize floating status panel
             setupTierSelector();  // PRD-041: Tier selector buttons
         });
 
@@ -621,7 +620,15 @@
         // Load latest synthesis
         async function loadLatestSynthesis() {
             try {
+                console.log('[loadLatestSynthesis] Fetching with tier:', currentTier);
                 const data = await apiFetch(`/synthesis/latest?tier=${currentTier}`);
+                console.log('[loadLatestSynthesis] API response:', {
+                    version: data.version,
+                    hasSourceBreakdowns: !!data.source_breakdowns,
+                    hasContentSummaries: !!data.content_summaries,
+                    hasConfluenceZones: !!data.confluence_zones,
+                    status: data.status
+                });
 
                 if (data.status === 'not_found') {
                     showEmptySynthesis();
@@ -639,10 +646,20 @@
         // PRD-041: Setup tier selector event listeners
         function setupTierSelector() {
             const tierButtons = document.querySelectorAll('.tier-btn');
+            console.log('[TierSelector] Setting up tier buttons:', tierButtons.length, 'buttons found');
+
             tierButtons.forEach(btn => {
-                btn.addEventListener('click', async () => {
+                btn.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+
                     const tier = parseInt(btn.dataset.tier);
-                    if (tier === currentTier) return;
+                    console.log('[TierSelector] Button clicked, tier:', tier, 'currentTier:', currentTier);
+
+                    if (tier === currentTier) {
+                        console.log('[TierSelector] Same tier, skipping');
+                        return;
+                    }
 
                     // Update button states
                     tierButtons.forEach(b => {
@@ -655,10 +672,50 @@
                     btn.style.color = 'white';
 
                     // Update tier and reload
+                    const previousTier = currentTier;
                     currentTier = tier;
-                    await loadLatestSynthesis();
+                    console.log('[TierSelector] Tier changed from', previousTier, 'to', currentTier);
+
+                    // Show loading indicator
+                    btn.textContent = 'Loading...';
+                    btn.disabled = true;
+
+                    try {
+                        await loadLatestSynthesis();
+                        console.log('[TierSelector] Synthesis loaded successfully for tier', currentTier);
+                        // Show success toast if ToastManager is available
+                        if (typeof ToastManager !== 'undefined') {
+                            ToastManager.show(`Switched to Tier ${tier}`, 'success', 2000);
+                        }
+                    } catch (error) {
+                        console.error('[TierSelector] Error loading synthesis:', error);
+                        // Revert tier on error
+                        currentTier = previousTier;
+                        // Revert button styles
+                        btn.classList.remove('active');
+                        btn.style.background = 'transparent';
+                        btn.style.color = 'var(--text-muted)';
+                        // Re-activate previous tier button
+                        tierButtons.forEach(b => {
+                            if (parseInt(b.dataset.tier) === previousTier) {
+                                b.classList.add('active');
+                                b.style.background = 'var(--accent-primary)';
+                                b.style.color = 'white';
+                            }
+                        });
+                        // Show error toast if ToastManager is available
+                        if (typeof ToastManager !== 'undefined') {
+                            ToastManager.show('Failed to switch tier: ' + error.message, 'error');
+                        }
+                    } finally {
+                        // Restore button text
+                        btn.textContent = `Tier ${tier}`;
+                        btn.disabled = false;
+                    }
                 });
             });
+
+            console.log('[TierSelector] Setup complete');
         }
 
         // Store current synthesis id for feedback (PRD-038)
@@ -667,6 +724,8 @@
         // Display synthesis content
         // PRD-041: tier parameter controls what sections are shown
         function displaySynthesis(data, tier = 3) {
+            console.log('[displaySynthesis] Called with tier:', tier, 'data.version:', data.version);
+
             document.getElementById('synthesis-empty').style.display = 'none';
             document.getElementById('takeaways-content').style.display = 'block';
             document.getElementById('synthesis-content').style.display = 'block';
@@ -678,12 +737,16 @@
             const isV4 = data.version === '4.0' || data.source_breakdowns;
             const isV3 = isV4 || data.version === '3.0' || data.confluence_zones || data.attention_priorities;
 
+            console.log('[displaySynthesis] isV4:', isV4, 'isV3:', isV3);
+
             // PRD-041: Tier-based section visibility
             // Tier 1: executive only (hide sources, priorities, confluence, conflicts)
             // Tier 2: executive + sources (hide content items in source cards)
             // Tier 3: full detail (show everything)
             const showSources = tier >= 2;
             const showContentItems = tier >= 3;
+
+            console.log('[displaySynthesis] showSources:', showSources, 'showContentItems:', showContentItems);
 
             // Update meta info
             document.getElementById('synthesis-window').textContent = data.time_window;
@@ -758,18 +821,22 @@
 
                 // PRD-041: Tier 1 hides these sections
                 if (showSources) {
+                    console.log('[displaySynthesis] Showing source sections (tier 2/3)');
                     displayV3AttentionPriorities(data.attention_priorities || []);
                     displayV3ConfluenceZones(data.confluence_zones || []);
                     displayV3ConflictWatch(data.conflict_watch || []);
 
                     // PRD-041: Use V4 source breakdowns if available, otherwise V3 source stances
                     if (isV4 && data.source_breakdowns) {
+                        console.log('[displaySynthesis] Using V4 source breakdowns');
                         displayV4SourceBreakdowns(data.source_breakdowns, data.content_summaries || [], showContentItems);
                     } else {
+                        console.log('[displaySynthesis] Using V3 source stances');
                         displayV3SourceStances(data.source_stances || {});
                     }
                 } else {
                     // Tier 1: Hide all additional sections
+                    console.log('[displaySynthesis] Hiding all sections (tier 1)');
                     document.getElementById('stances-section').style.display = 'none';
                     document.getElementById('priorities-section').style.display = 'none';
                     document.getElementById('confluence-section').style.display = 'none';
