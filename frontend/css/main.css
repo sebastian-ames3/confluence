@@ -16,7 +16,7 @@
 @import 'charts/_charts.css';
 
 /* Accessibility */
-@import '_accessibility.css';
+@import 'design-system/_accessibility.css';
 @import '_colors-a11y.css';
 @import '_critical.css';
 
