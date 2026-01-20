@@ -190,8 +190,8 @@ class TestSynthesisTimeoutConfiguration:
         assert isinstance(SYNTHESIS_TIMEOUT_SECONDS, int)
         assert SYNTHESIS_TIMEOUT_SECONDS > 0
 
-    def test_default_timeout_is_120(self):
-        """Test default timeout is 120 seconds."""
+    def test_default_timeout_is_300(self):
+        """Test default timeout is 300 seconds (increased for V4 tiered synthesis)."""
         import os
         # Remove env var if set
         original = os.environ.pop("SYNTHESIS_TIMEOUT", None)
@@ -200,7 +200,7 @@ class TestSynthesisTimeoutConfiguration:
             import importlib
             import backend.routes.synthesis as syn
             importlib.reload(syn)
-            assert syn.SYNTHESIS_TIMEOUT_SECONDS == 120
+            assert syn.SYNTHESIS_TIMEOUT_SECONDS == 300
         finally:
             if original:
                 os.environ["SYNTHESIS_TIMEOUT"] = original
