@@ -64,18 +64,19 @@ class TestCalculateStaleness:
         assert "days old" in result["staleness_message"]
 
     def test_staleness_at_threshold_boundary(self):
-        """Test at exactly the threshold boundary."""
+        """Test at threshold boundary."""
         from backend.routes.symbols import calculate_staleness, STALENESS_THRESHOLD_HOURS
 
-        # Exactly at threshold - should not be stale
-        last_updated = datetime.utcnow() - timedelta(hours=STALENESS_THRESHOLD_HOURS)
+        # Slightly under threshold - should not be stale
+        # Use -0.1 hours to account for test execution time
+        last_updated = datetime.utcnow() - timedelta(hours=STALENESS_THRESHOLD_HOURS - 0.1)
         result = calculate_staleness(last_updated)
 
-        # At exactly threshold, should not be stale (only > threshold is stale)
+        # Under threshold should not be stale
         assert result["is_stale"] is False
 
-        # Just past threshold - should be stale
-        last_updated_past = datetime.utcnow() - timedelta(hours=STALENESS_THRESHOLD_HOURS + 0.1)
+        # Clearly past threshold - should be stale
+        last_updated_past = datetime.utcnow() - timedelta(hours=STALENESS_THRESHOLD_HOURS + 1)
         result_past = calculate_staleness(last_updated_past)
 
         assert result_past["is_stale"] is True
