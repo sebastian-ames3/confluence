@@ -549,6 +549,24 @@
             setupTierSelector();  // PRD-041: Tier selector buttons
         });
 
+        // Utility: Escape HTML to prevent XSS attacks
+        function escapeHtml(text) {
+            if (text === null || text === undefined) return '';
+            const str = String(text);
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        // Utility: Safe DOM element getter with null check
+        function getElement(id) {
+            const el = document.getElementById(id);
+            if (!el) {
+                console.warn(`Element not found: ${id}`);
+            }
+            return el;
+        }
+
         // Load just the themes summary for the KPI card (lightweight)
         async function loadThemesSummary() {
             try {
@@ -754,28 +772,30 @@
             document.getElementById('synthesis-time').textContent = data.generated_at ? formatDateTime(parseUTCDate(data.generated_at)) : '-';
 
             // Populate Key Takeaways (max 5 bullets)
-            const takeawaysList = document.getElementById('takeaways-list');
+            const takeawaysList = getElement('takeaways-list');
             const execSummary = data.executive_summary || {};
             const keyTakeaways = execSummary.key_takeaways || [];
 
-            if (keyTakeaways.length > 0) {
-                takeawaysList.innerHTML = keyTakeaways.slice(0, 5).map(t =>
-                    `<li style="margin-bottom: var(--spacing-xs); line-height: var(--leading-relaxed);">${t}</li>`
-                ).join('');
-            } else {
-                // Fallback: extract from synthesis summary
-                const synthesisSummary = data.synthesis_summary || data.synthesis || '';
-                // Better sentence splitting that handles abbreviations
-                const sentences = synthesisSummary
-                    .split(/(?<=[.!?])\s+(?=[A-Z])/)
-                    .filter(s => s.trim().length > 20)
-                    .slice(0, 5);
-                if (sentences.length > 0) {
-                    takeawaysList.innerHTML = sentences.map(s =>
-                        `<li style="margin-bottom: var(--spacing-xs); line-height: var(--leading-relaxed);">${s.trim()}.</li>`
+            if (takeawaysList) {
+                if (keyTakeaways.length > 0) {
+                    takeawaysList.innerHTML = keyTakeaways.slice(0, 5).map(t =>
+                        `<li style="margin-bottom: var(--spacing-xs); line-height: var(--leading-relaxed);">${escapeHtml(t)}</li>`
                     ).join('');
                 } else {
-                    takeawaysList.innerHTML = '<li style="color: var(--text-muted);">No key takeaways available.</li>';
+                    // Fallback: extract from synthesis summary
+                    const synthesisSummary = data.synthesis_summary || data.synthesis || '';
+                    // Better sentence splitting that handles abbreviations
+                    const sentences = synthesisSummary
+                        .split(/(?<=[.!?])\s+(?=[A-Z])/)
+                        .filter(s => s.trim().length > 20)
+                        .slice(0, 5);
+                    if (sentences.length > 0) {
+                        takeawaysList.innerHTML = sentences.map(s =>
+                            `<li style="margin-bottom: var(--spacing-xs); line-height: var(--leading-relaxed);">${escapeHtml(s.trim())}.</li>`
+                        ).join('');
+                    } else {
+                        takeawaysList.innerHTML = '<li style="color: var(--text-muted);">No key takeaways available.</li>';
+                    }
                 }
             }
 
@@ -790,23 +810,26 @@
             if (typeof regimeValue === 'object' && regimeValue !== null) {
                 regimeValue = regimeValue.current;
             }
-            if (regimeValue) {
-                const regimeClass = `regime-${regimeValue.replace('_', '-').replace(' ', '-')}`;
-                document.getElementById('market-regime-badge').innerHTML = `<span class="market-regime ${regimeClass}">${regimeValue}</span>`;
+            const regimeBadge = getElement('market-regime-badge');
+            if (regimeBadge && regimeValue) {
+                const regimeClass = `regime-${String(regimeValue).replace('_', '-').replace(' ', '-')}`;
+                regimeBadge.innerHTML = `<span class="market-regime ${escapeHtml(regimeClass)}">${escapeHtml(regimeValue)}</span>`;
             }
 
             // Synthesis text
-            const synthText = document.getElementById('synthesis-text');
+            const synthText = getElement('synthesis-text');
             const synthesisContent = data.synthesis_summary || data.synthesis || '';
             const paragraphs = synthesisContent.split('\n\n').filter(p => p.trim());
-            synthText.innerHTML = paragraphs.map(p => `<p style="margin-bottom: var(--spacing-sm);">${p}</p>`).join('');
+            if (synthText) {
+                synthText.innerHTML = paragraphs.map(p => `<p style="margin-bottom: var(--spacing-sm);">${escapeHtml(p)}</p>`).join('');
+            }
 
             // Theme tags
-            const themeTags = document.getElementById('theme-tags');
+            const themeTags = getElement('theme-tags');
             const themes = data.key_themes || [];
-            if (themes.length > 0) {
+            if (themeTags && themes.length > 0) {
                 themeTags.innerHTML = themes.map(theme =>
-                    `<span class="badge" style="background: var(--glass-bg); padding: var(--spacing-xs) var(--spacing-sm); border-radius: var(--radius-full); font-size: var(--text-xs);">${theme}</span>`
+                    `<span class="badge" style="background: var(--glass-bg); padding: var(--spacing-xs) var(--spacing-sm); border-radius: var(--radius-full); font-size: var(--text-xs);">${escapeHtml(theme)}</span>`
                 ).join('');
             }
 
@@ -848,8 +871,10 @@
         // PRD-041: Display V4 source breakdowns with interactive cards
         // showContentItems: false for Tier 2, true for Tier 3
         function displayV4SourceBreakdowns(breakdowns, contentSummaries, showContentItems = true) {
-            const container = document.getElementById('v3-stances-list');
-            const section = document.getElementById('stances-section');
+            const container = getElement('v3-stances-list');
+            const section = getElement('stances-section');
+
+            if (!section || !container) return;
 
             if (!breakdowns || Object.keys(breakdowns).length === 0) {
                 section.style.display = 'none';
@@ -883,13 +908,13 @@
                 const sparklinePath = generateSparklinePath(bias, index);
 
                 return `
-                    <div class="source-perspective-card" data-source="${sourceKey}" onclick="toggleSourcePerspective(this)">
+                    <div class="source-perspective-card" data-source="${escapeHtml(sourceKey)}" onclick="toggleSourcePerspective(this)">
                         <div class="source-perspective-header">
                             <div class="source-perspective-identity">
-                                <div class="source-perspective-icon">${sourceIcon}</div>
-                                <span class="source-perspective-name">${displayName}</span>
+                                <div class="source-perspective-icon">${escapeHtml(sourceIcon)}</div>
+                                <span class="source-perspective-name">${escapeHtml(displayName)}</span>
                             </div>
-                            <span class="source-perspective-bias ${bias}">${biasLabel}</span>
+                            <span class="source-perspective-bias ${escapeHtml(bias)}">${escapeHtml(biasLabel)}</span>
                         </div>
 
                         <div class="source-perspective-sparkline">
@@ -905,7 +930,7 @@
                             </svg>
                         </div>
 
-                        <div class="source-perspective-summary">${data.summary || ''}</div>
+                        <div class="source-perspective-summary">${escapeHtml(data.summary)}</div>
 
                         <div class="source-perspective-expand">
                             <span class="source-perspective-expand-icon">↓</span>
@@ -914,13 +939,13 @@
 
                         <div class="source-perspective-details">
                             <div class="source-perspective-details-inner">
-                                <div class="source-perspective-full-summary">${data.summary || ''}</div>
+                                <div class="source-perspective-full-summary">${escapeHtml(data.summary)}</div>
 
                                 ${data.key_insights && data.key_insights.length > 0 ? `
                                     <div class="source-perspective-insights">
                                         <div class="source-perspective-insights-title">Key Insights</div>
                                         <ul class="source-perspective-insights-list">
-                                            ${data.key_insights.map(i => `<li>${i}</li>`).join('')}
+                                            ${data.key_insights.map(i => `<li>${escapeHtml(i)}</li>`).join('')}
                                         </ul>
                                     </div>
                                 ` : ''}
@@ -930,8 +955,8 @@
                                         <div class="source-perspective-insights-title">Content (${sourceContent.length} items)</div>
                                         ${sourceContent.slice(0, 3).map(c => `
                                             <div class="source-perspective-content-item">
-                                                <div class="source-perspective-content-title">${c.title || 'Untitled'}</div>
-                                                ${c.summary ? `<div class="source-perspective-content-excerpt">${c.summary.substring(0, 120)}${c.summary.length > 120 ? '...' : ''}</div>` : ''}
+                                                <div class="source-perspective-content-title">${escapeHtml(c.title || 'Untitled')}</div>
+                                                ${c.summary ? `<div class="source-perspective-content-excerpt">${escapeHtml(c.summary.substring(0, 120))}${c.summary.length > 120 ? '...' : ''}</div>` : ''}
                                             </div>
                                         `).join('')}
                                         ${sourceContent.length > 3 ? `<div style="font-size: var(--text-xs); color: var(--text-muted); margin-top: var(--spacing-xs);">+ ${sourceContent.length - 3} more items</div>` : ''}
@@ -1128,8 +1153,10 @@
 
         // V3: Display source stances with interactive cards
         function displayV3SourceStances(stances) {
-            const container = document.getElementById('v3-stances-list');
-            const section = document.getElementById('stances-section');
+            const container = getElement('v3-stances-list');
+            const section = getElement('stances-section');
+
+            if (!section || !container) return;
 
             if (!stances || Object.keys(stances).length === 0) {
                 section.style.display = 'none';
@@ -1146,13 +1173,13 @@
                 const summary = data.current_stance_narrative || data.summary || '';
 
                 return `
-                    <div class="source-perspective-card" data-source="${sourceKey}" onclick="toggleSourcePerspective(this)">
+                    <div class="source-perspective-card" data-source="${escapeHtml(sourceKey)}" onclick="toggleSourcePerspective(this)">
                         <div class="source-perspective-header">
                             <div class="source-perspective-identity">
-                                <div class="source-perspective-icon">${sourceIcon}</div>
-                                <span class="source-perspective-name">${name}</span>
+                                <div class="source-perspective-icon">${escapeHtml(sourceIcon)}</div>
+                                <span class="source-perspective-name">${escapeHtml(name)}</span>
                             </div>
-                            <span class="source-perspective-bias ${bias}">${biasLabel}</span>
+                            <span class="source-perspective-bias ${escapeHtml(bias)}">${escapeHtml(biasLabel)}</span>
                         </div>
 
                         <div class="source-perspective-sparkline">
@@ -1168,7 +1195,7 @@
                             </svg>
                         </div>
 
-                        <div class="source-perspective-summary">${summary}</div>
+                        <div class="source-perspective-summary">${escapeHtml(summary)}</div>
 
                         <div class="source-perspective-expand">
                             <span class="source-perspective-expand-icon">↓</span>
@@ -1177,7 +1204,7 @@
 
                         <div class="source-perspective-details">
                             <div class="source-perspective-details-inner">
-                                <div class="source-perspective-full-summary">${summary}</div>
+                                <div class="source-perspective-full-summary">${escapeHtml(summary)}</div>
                             </div>
                         </div>
                     </div>
