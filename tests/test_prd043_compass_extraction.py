@@ -9,6 +9,7 @@ Tests:
 
 import os
 import pytest
+from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 
 # Set mock API key for testing before importing the agent
@@ -416,3 +417,41 @@ class TestSectorCompassExtraction:
         assert "SMH" in symbols
         assert "TSLA" in symbols
         assert "AMZN" in symbols
+
+
+class TestAutoExtractionPipeline:
+    """Test automatic compass extraction pipeline in Discord collector (PRD-043)."""
+
+    @pytest.mark.asyncio
+    async def test_auto_extraction_skips_unknown_images(self):
+        """Test that unknown images are skipped during auto-extraction."""
+        extractor = SymbolLevelExtractor(api_key="test-api-key")
+
+        with patch.object(extractor, 'call_claude_vision') as mock_vision:
+            # Return a response indicating not a compass
+            mock_vision.return_value = {"response": "This is a candlestick chart"}
+
+            result = extractor.classify_compass_image("/path/to/chart.png")
+            assert result == CompassType.UNKNOWN
+
+    def test_discord_collector_has_auto_extraction_methods(self):
+        """Test Discord collector has auto-extraction methods.
+
+        Skip if discord.py module has issues (e.g., in CI environment).
+        """
+        try:
+            from collectors.discord_self import DiscordSelfCollector
+        except (TypeError, ImportError) as e:
+            pytest.skip(f"Discord module not available: {e}")
+
+        # Verify methods exist
+        assert hasattr(DiscordSelfCollector, 'process_collected_image')
+        assert hasattr(DiscordSelfCollector, '_get_local_image_path')
+        assert hasattr(DiscordSelfCollector, 'save_to_database')
+
+        # Verify save_to_database is overridden (not just inherited)
+        import inspect
+        method = getattr(DiscordSelfCollector, 'save_to_database')
+        # Check method is defined in DiscordSelfCollector, not inherited
+        source_file = inspect.getfile(method)
+        assert 'discord_self' in source_file

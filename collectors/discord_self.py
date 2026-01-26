@@ -1011,3 +1011,232 @@ class DiscordSelfCollector(BaseCollector):
         except Exception as e:
             logger.error(f"Failed to send heartbeat: {e}")
             # Don't raise - heartbeat failure shouldn't block collection
+
+    async def process_collected_image(self, content_id: int, image_path: str) -> Optional[Dict[str, Any]]:
+        """
+        Automatically process collected Discord images for compass data (PRD-043).
+
+        Classifies the image type and extracts compass data if applicable.
+        Saves results to SymbolState records.
+
+        Args:
+            content_id: ID of the RawContent record
+            image_path: Path to the image file (local or URL)
+
+        Returns:
+            Extraction summary or None if not a compass image
+        """
+        try:
+            from agents.symbol_level_extractor import SymbolLevelExtractor, CompassType
+            from backend.models import SessionLocal
+
+            # Get local file path (download if URL)
+            local_path = await self._get_local_image_path(image_path)
+            if not local_path:
+                logger.warning(f"Could not get local image path for content {content_id}")
+                return None
+
+            # Initialize extractor
+            extractor = SymbolLevelExtractor()
+
+            # Classify compass type
+            compass_type = extractor.classify_compass_image(str(local_path))
+
+            if compass_type == CompassType.UNKNOWN:
+                logger.debug(f"Image {content_id} is not a compass chart, skipping extraction")
+                return None
+
+            logger.info(f"Detected {compass_type.value} for content {content_id}")
+
+            # Extract based on type
+            if compass_type == CompassType.STOCK_COMPASS:
+                result = extractor.extract_from_compass_image(str(local_path), content_id)
+            elif compass_type == CompassType.MACRO_COMPASS:
+                result = extractor.extract_from_macro_compass(str(local_path), content_id)
+            elif compass_type == CompassType.SECTOR_COMPASS:
+                result = extractor.extract_from_sector_compass(str(local_path), content_id)
+            else:
+                return None
+
+            # Save to database if we got compass data
+            if result.get("compass_data"):
+                db = SessionLocal()
+                try:
+                    save_summary = extractor.save_compass_to_db(
+                        db=db,
+                        compass_result=result,
+                        content_id=content_id
+                    )
+                    logger.info(
+                        f"Auto-extracted {compass_type.value} from content {content_id}: "
+                        f"{save_summary['symbols_processed']} symbols, "
+                        f"{save_summary['states_updated']} states updated"
+                    )
+                    return save_summary
+                finally:
+                    db.close()
+
+            return None
+
+        except ImportError as e:
+            logger.warning(f"Symbol extractor not available for auto-extraction: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"Auto-extraction failed for content {content_id}: {e}")
+            return None
+
+    async def _get_local_image_path(self, image_path: str) -> Optional[Path]:
+        """
+        Get local file path for an image, downloading from URL if needed.
+
+        Args:
+            image_path: Local path or URL to image
+
+        Returns:
+            Path to local file or None if failed
+        """
+        # If it's already a local path, return it
+        local_path = Path(image_path)
+        if local_path.exists():
+            return local_path
+
+        # If it's a URL, download it
+        if image_path.startswith('http'):
+            try:
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                temp_path = self.download_dir / f"temp_{timestamp}_compass.png"
+
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(image_path) as response:
+                        if response.status == 200:
+                            with open(temp_path, 'wb') as f:
+                                f.write(await response.read())
+                            return temp_path
+                        else:
+                            logger.warning(f"Failed to download image: HTTP {response.status}")
+                            return None
+            except Exception as e:
+                logger.error(f"Failed to download image from {image_path}: {e}")
+                return None
+
+        return None
+
+    async def save_to_database(self, content_items: List[Dict[str, Any]]) -> int:
+        """
+        Save collected content to database with auto-extraction for images (PRD-043).
+
+        Overrides base class to trigger compass extraction after saving images.
+
+        Args:
+            content_items: List of content items to save
+
+        Returns:
+            Number of items successfully saved
+        """
+        # PRD-034: Dry-run mode - skip database writes
+        if self.dry_run:
+            logger.info(f"[DRY RUN] Would save {len(content_items)} items to database")
+            return len(content_items)
+
+        from sqlalchemy.orm import Session
+        from backend.models import SessionLocal, RawContent, Source
+        import json
+
+        saved_count = 0
+        saved_image_records = []  # Track saved images for auto-extraction
+        db: Session = SessionLocal()
+
+        try:
+            # Get or create source record
+            source = db.query(Source).filter(Source.name == self.source_name).first()
+            if not source:
+                source = Source(
+                    name=self.source_name,
+                    type="discord",
+                    active=True
+                )
+                db.add(source)
+                db.commit()
+                db.refresh(source)
+
+            # Save each content item
+            skipped_duplicates = 0
+            for content in content_items:
+                if not self.validate_content(content):
+                    logger.warning(f"Skipping invalid content: {content.get('content_text', '')[:50]}")
+                    continue
+
+                prepared = self.prepare_for_database(content)
+                metadata = prepared.get("metadata", {})
+
+                # Check for duplicate by message_id
+                message_id = metadata.get("message_id")
+                if message_id:
+                    existing = db.query(RawContent).filter(
+                        RawContent.source_id == source.id,
+                        RawContent.json_metadata.contains(f'"message_id": "{message_id}"')
+                    ).first()
+                    if existing:
+                        skipped_duplicates += 1
+                        continue
+
+                raw_content = RawContent(
+                    source_id=source.id,
+                    content_type=prepared["content_type"],
+                    content_text=prepared.get("content_text"),
+                    file_path=prepared.get("file_path"),
+                    url=prepared.get("url"),
+                    json_metadata=json.dumps(metadata),
+                    processed=False
+                )
+
+                db.add(raw_content)
+                db.flush()  # Get the ID without committing
+
+                # Track images for auto-extraction (PRD-043)
+                if prepared["content_type"] == "image":
+                    image_path = prepared.get("file_path") or prepared.get("url")
+                    if image_path:
+                        saved_image_records.append({
+                            "content_id": raw_content.id,
+                            "image_path": image_path
+                        })
+
+                saved_count += 1
+
+            if skipped_duplicates > 0:
+                logger.info(f"Skipped {skipped_duplicates} duplicate items")
+
+            # Update last_collected_at
+            if saved_count > 0:
+                source.last_collected_at = datetime.utcnow()
+
+            db.commit()
+            logger.info(f"Saved {saved_count} items to database")
+
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Error saving to database: {str(e)}")
+            raise
+        finally:
+            db.close()
+
+        # PRD-043: Auto-extract compass data from saved images
+        if saved_image_records:
+            logger.info(f"Processing {len(saved_image_records)} images for compass extraction...")
+            extraction_count = 0
+            for record in saved_image_records:
+                try:
+                    result = await self.process_collected_image(
+                        content_id=record["content_id"],
+                        image_path=record["image_path"]
+                    )
+                    if result:
+                        extraction_count += 1
+                except Exception as e:
+                    logger.warning(f"Compass extraction failed for content {record['content_id']}: {e}")
+
+            if extraction_count > 0:
+                logger.info(f"Auto-extracted compass data from {extraction_count}/{len(saved_image_records)} images")
+
+        return saved_count
