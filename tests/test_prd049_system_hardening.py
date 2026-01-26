@@ -12,8 +12,33 @@ Covers:
 
 import pytest
 import json
+import sys
+import os
 from unittest.mock import Mock, patch, MagicMock
 from datetime import datetime
+
+# Check if MCP module is available (not installed in CI)
+MCP_AVAILABLE = False
+try:
+    # Add mcp directory to path for imports
+    mcp_path = os.path.join(os.path.dirname(__file__), '..', 'mcp')
+    if mcp_path not in sys.path:
+        sys.path.insert(0, mcp_path)
+    from confluence_client import (
+        extract_source_stances,
+        extract_confluence_zones,
+        extract_conflicts,
+        extract_attention_priorities,
+        extract_catalyst_calendar,
+        extract_executive_summary,
+        _validate_youtube_channel_key
+    )
+    MCP_AVAILABLE = True
+except ImportError:
+    pass
+
+# Skip decorator for MCP-dependent tests
+requires_mcp = pytest.mark.skipif(not MCP_AVAILABLE, reason="MCP module not available")
 
 
 # =============================================================================
@@ -168,10 +193,9 @@ class TestMCPTierAwareness:
         assert 'tier_returned' in source, "Should check tier_returned"
         assert 'Tier 2 or higher' in source, "Should warn when tier insufficient"
 
+    @requires_mcp
     def test_extract_source_stances_handles_v4_breakdowns(self):
         """extract_source_stances should normalize V4 breakdowns to V3 format."""
-        from mcp.confluence_client import extract_source_stances
-
         # V4 format input
         synthesis = {
             "source_breakdowns": {
@@ -198,37 +222,30 @@ class TestMCPTierAwareness:
         assert result["youtube:Forward Guidance"]["display_name"] == "Forward Guidance"
 
 
+@pytest.mark.skipif(not MCP_AVAILABLE, reason="MCP module not available")
 class TestYouTubeChannelFormatValidation:
     """Test YouTube channel format handling."""
 
     def test_validate_youtube_channel_key_standard_format(self):
         """Standard youtube:ChannelName format should parse correctly."""
-        from mcp.confluence_client import _validate_youtube_channel_key
-
         is_youtube, display_name = _validate_youtube_channel_key("youtube:Forward Guidance")
         assert is_youtube is True
         assert display_name == "Forward Guidance"
 
     def test_validate_youtube_channel_key_missing_name(self):
         """youtube: without channel name should handle gracefully."""
-        from mcp.confluence_client import _validate_youtube_channel_key
-
         is_youtube, display_name = _validate_youtube_channel_key("youtube:")
         assert is_youtube is True
         assert display_name == "Unknown Channel"
 
     def test_validate_youtube_channel_key_non_youtube(self):
         """Non-YouTube sources should return False."""
-        from mcp.confluence_client import _validate_youtube_channel_key
-
         is_youtube, display_name = _validate_youtube_channel_key("discord")
         assert is_youtube is False
         assert display_name == "discord"
 
     def test_validate_youtube_channel_key_variant_formats(self):
         """Variant formats (yt:, youtube_) should be detected with warning."""
-        from mcp.confluence_client import _validate_youtube_channel_key
-
         # These variant formats should be detected
         is_youtube, display_name = _validate_youtube_channel_key("yt:SomeChannel")
         assert is_youtube is True
@@ -238,8 +255,6 @@ class TestYouTubeChannelFormatValidation:
 
     def test_extract_source_stances_adds_youtube_flag(self):
         """Extracted stances should include is_youtube_channel flag."""
-        from mcp.confluence_client import extract_source_stances
-
         synthesis = {
             "source_breakdowns": {
                 "youtube:Moonshots": {"summary": "test", "overall_bias": "bullish"},
@@ -422,62 +437,43 @@ class TestMCPLogging:
 # Integration Tests
 # =============================================================================
 
+@pytest.mark.skipif(not MCP_AVAILABLE, reason="MCP module not available")
 class TestExtractFunctionsTypeValidation:
     """Test that extract functions handle invalid input."""
 
     def test_extract_confluence_zones_handles_non_dict(self):
         """extract_confluence_zones should return empty list for non-dict input."""
-        from mcp.confluence_client import extract_confluence_zones
-
         assert extract_confluence_zones(None) == []
         assert extract_confluence_zones("invalid") == []
         assert extract_confluence_zones([]) == []
 
     def test_extract_conflicts_handles_non_dict(self):
         """extract_conflicts should return empty list for non-dict input."""
-        from mcp.confluence_client import extract_conflicts
-
         assert extract_conflicts(None) == []
         assert extract_conflicts(123) == []
 
     def test_extract_attention_priorities_handles_non_dict(self):
         """extract_attention_priorities should return empty list for non-dict input."""
-        from mcp.confluence_client import extract_attention_priorities
-
         assert extract_attention_priorities(None) == []
         assert extract_attention_priorities({}) == []
 
     def test_extract_catalyst_calendar_handles_non_dict(self):
         """extract_catalyst_calendar should return empty list for non-dict input."""
-        from mcp.confluence_client import extract_catalyst_calendar
-
         assert extract_catalyst_calendar(None) == []
         assert extract_catalyst_calendar("string") == []
 
     def test_extract_executive_summary_handles_non_dict(self):
         """extract_executive_summary should return empty dict for non-dict input."""
-        from mcp.confluence_client import extract_executive_summary
-
         assert extract_executive_summary(None) == {}
         assert extract_executive_summary([1, 2, 3]) == {}
 
     def test_extract_source_stances_handles_non_dict(self):
         """extract_source_stances should return empty dict for non-dict input."""
-        from mcp.confluence_client import extract_source_stances
-
         assert extract_source_stances(None) == {}
         assert extract_source_stances("invalid") == {}
 
     def test_extract_functions_handle_missing_keys(self):
         """Extract functions should handle missing keys gracefully."""
-        from mcp.confluence_client import (
-            extract_confluence_zones,
-            extract_conflicts,
-            extract_attention_priorities,
-            extract_catalyst_calendar,
-            extract_executive_summary
-        )
-
         empty_synthesis = {}
 
         assert extract_confluence_zones(empty_synthesis) == []
@@ -488,12 +484,6 @@ class TestExtractFunctionsTypeValidation:
 
     def test_extract_functions_handle_wrong_type_values(self):
         """Extract functions should handle wrong type values gracefully."""
-        from mcp.confluence_client import (
-            extract_confluence_zones,
-            extract_conflicts,
-            extract_executive_summary
-        )
-
         # Values are wrong types
         bad_synthesis = {
             "confluence_zones": "not a list",
