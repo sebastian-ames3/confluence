@@ -1,0 +1,201 @@
+================================================================================
+SAMPLE CONTENT EXPORT
+Database: SQLite (local)
+Timestamp: 2026-01-26T17:50:20.302124Z
+Limit per type: 3
+================================================================================
+
+================================================================================
+42MACRO CONTENT SAMPLES
+================================================================================
+
+--- 42MACRO Video Transcripts (0 samples) ---
+
+--- 42MACRO PDF Text (0 samples) ---
+
+================================================================================
+DISCORD CONTENT SAMPLES
+================================================================================
+
+--- DISCORD Video Transcripts (3 samples) ---
+
+============================================================
+[DISCORD VIDEO #1] ID: 253
+Collected: 2025-12-02 20:36:58.747018
+Channel: macro-weekly
+Platform: unknown
+
+--- TRANSCRIPT START ---
+I have changed up the way I do the weekly portfolio this week, guys. Have decided to strip out the long-only and hedge section, and leave the other three sections (delta, theta, and vega) as alpha generation trades. See what you think and let me know. 
+
+https://us02web.zoom.us/rec/share/GHyV_LlKTKhwXxVEcHjM7OKi6Gq05tMMlnzMRsPzsL7Qk4-plGluP-ODmylDHtE.PSVdMcq9JDyfRKAE
+
+Portfolio Tracker: https://app.options-insight.com/portfolio
+
+* DELTA: Mixed bag. Thanksgiving SPX call fly expired worthless (as expected). Gains in TAN (solar) and cannabis ETFs provided some offset. The GBP naked puts added ahead of the UK budget got crushed and went to zero after the budget passed without drama — a frustrating premium loss, but the resulting 1% rally in GBP was positive for my UK-based personal balance sheet and added >$5k USD in translational gains on the Long Term portfolio.
+
+* THETA: Quiet week — no open theta trades and nothing new
+
+* VEGA: Decent outcome. Closed the VXX put fly before Thanksgiving at ~150% return, significantly outperforming outright VIX puts(at least until Wednesday). Good close out - Vol collapsed further into Friday and the fly would have ended near zero. Current low VIX levels into the December catalyst season create an attractive entry for cheap VIX broken wing call flies. Will look to enter this week.
+
+* HEDGE: Took a ~$5k hit on the sharp post-Thanksgiving rally (SPX put structures, GLD, and semi hedges all gave back gains). This was more than offset by powerful gains across the long-only book. Hedges remain in place for exactly these environments — protection against meaningful drawdowns, and we’re comfortable paying the “insurance premium” when the market rips higher.  If anything I’m still running light on hedges but my significant cash allocation makes me not in a rush to add more.
+
+* Long-Only Portfolio: Very strong week across equities, commodities, and crypto —  absorbed the hedge drag and drove overall positive performance.
+--- TRANSCRIPT END ---
+
+============================================================
+[DISCORD VIDEO #2] ID: 242
+Collected: 2025-12-02 20:36:58.742866
+Channel: macro-daily
+Platform: unknown
+
+--- TRANSCRIPT START ---
+https://us02web.zoom.us/rec/share/pjC6BzSr0Zy4WRcH3t5gr1d3FUoEEuLdTV5jXCS1ErCzYocbr2z9AzQIa9YlRuvH.I5VrljUcUWlb3ouR
+--- TRANSCRIPT END ---
+
+============================================================
+[DISCORD VIDEO #3] ID: 240
+Collected: 2025-12-02 20:36:58.741181
+Channel: macro-daily
+Platform: unknown
+
+--- TRANSCRIPT START ---
+https://us02web.zoom.us/rec/share/pV4ZB-FUp8hYLyUompAxc5gTdxh9Za_dXgPdaM0dgzTTvp_tsYr0pljKMZaqQzRo.OxvKWBhzEkXWMsEk
+--- TRANSCRIPT END ---
+
+--- DISCORD Messages (9 samples) ---
+
+============================================================
+[DISCORD MSG #1] ID: 274
+Collected: 2025-12-02 20:36:58.754461
+Channel: vix-monitor
+Author: gldking0952
+Priority: high
+
+--- MESSAGE CONTENT ---
+Thanks. Im going to try this one
+--- END MESSAGE ---
+
+============================================================
+[DISCORD MSG #2] ID: 275
+Collected: 2025-12-02 20:36:58.754461
+Channel: stock-trades
+Author: imranoptionsinsight
+Priority: high
+
+--- MESSAGE CONTENT ---
+Just wasn’t loving the look of the market and they expired in Dec so thought I’d keep the longer dated TSLA ones
+--- END MESSAGE ---
+
+============================================================
+[DISCORD MSG #3] ID: 276
+Collected: 2025-12-02 20:36:58.754461
+Channel: stock-trades
+Author: imranoptionsinsight
+Priority: high
+
+--- MESSAGE CONTENT ---
+Didn’t expect us to rip back so hard so quick
+--- END MESSAGE ---
+
+============================================================
+[DISCORD MSG #4] ID: 277
+Collected: 2025-12-02 20:36:58.754461
+Channel: stock-trades
+Author: imranoptionsinsight
+Priority: high
+
+--- MESSAGE CONTENT ---
+So just a risk management trade
+--- END MESSAGE ---
+
+============================================================
+[DISCORD MSG #5] ID: 270
+Collected: 2025-12-02 20:36:58.752779
+Channel: vix-monitor
+Author: imranoptionsinsight
+Priority: high
+
+--- MESSAGE CONTENT ---
+I added a Dec25 20/25/30 call fly for 0.25
+--- END MESSAGE ---
+
+============================================================
+[DISCORD MSG #6] ID: 271
+Collected: 2025-12-02 20:36:58.752779
+Channel: vix-monitor
+Author: gldking0952
+Priority: high
+
+--- MESSAGE CONTENT ---
+Could you share the option strat for this so i can better understand? I picked up a couple dec 17 20 strike calls yesterday just as a speculative small play with Venezuela headlines and FOMC. Sounds like what youre doing here may be more efficient
+--- END MESSAGE ---
+
+============================================================
+[DISCORD MSG #7] ID: 272
+Collected: 2025-12-02 20:36:58.752779
+Channel: vix-monitor
+Author: gldking0952
+Priority: high
+
+--- MESSAGE CONTENT ---
+The flies you talked about in this mornings video
+--- END MESSAGE ---
+
+============================================================
+[DISCORD MSG #8] ID: 273
+Collected: 2025-12-02 20:36:58.752779
+Channel: vix-monitor
+Author: imranoptionsinsight
+Priority: high
+
+--- MESSAGE CONTENT ---
+it's in <#1299263978312044554>
+--- END MESSAGE ---
+
+============================================================
+[DISCORD MSG #9] ID: 265
+Collected: 2025-12-02 20:36:58.751650
+Channel: macro-weekly
+Author: volker_28944
+Priority: high
+
+--- MESSAGE CONTENT ---
+Nice, will we be able to watch it as well?
+--- END MESSAGE ---
+
+================================================================================
+DATABASE SUMMARY
+================================================================================
+
+youtube:
+  Total items: 0
+  With text content: 0
+  Content types: []
+
+substack:
+  Total items: 0
+  With text content: 0
+  Content types: []
+
+twitter:
+  Total items: 0
+  With text content: 0
+  Content types: []
+
+42macro:
+  Total items: 0
+  With text content: 0
+  Content types: []
+
+kt_technical:
+  Total items: 0
+  With text content: 0
+  Content types: []
+
+discord:
+  Total items: 39
+  With text content: 39
+  Content types: ['pdf', 'video', 'text', 'image']
+
+Total analyzed content records: 0
