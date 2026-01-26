@@ -18,12 +18,25 @@ import logging
 import os
 import asyncio
 
-from backend.models import get_db, CollectionRun, RawContent, Source
+from backend.models import get_db, CollectionRun, RawContent, Source, TranscriptionStatus
 from backend.utils.deduplication import check_duplicate
 from backend.utils.sanitization import sanitize_search_query
 from backend.utils.data_helpers import safe_get_analysis_result, safe_get_analysis_preview
 
 logger = logging.getLogger(__name__)
+
+# PRD-050: Transcription queueing for trigger.py
+# Import transcription functions from collect.py for video processing
+try:
+    from backend.routes.collect import (
+        _queue_transcription_with_tracking,
+        SYNC_TRANSCRIPTION
+    )
+    TRANSCRIPTION_AVAILABLE = True
+except ImportError:
+    logger.warning("Transcription functions not available - videos will not be transcribed")
+    TRANSCRIPTION_AVAILABLE = False
+    SYNC_TRANSCRIPTION = False
 router = APIRouter()
 
 
@@ -310,7 +323,7 @@ async def _collect_from_source(db: Optional[Session], source_name: str, dry_run:
 
 
 async def _save_collected_items(db: Session, source_name: str, items: list) -> dict:
-    """Save collected items to database with duplicate detection."""
+    """Save collected items to database with duplicate detection and transcription queueing."""
     from dateutil.parser import parse as parse_datetime
 
     # Get or create source
@@ -331,6 +344,7 @@ async def _save_collected_items(db: Session, source_name: str, items: list) -> d
     # Save each item with duplicate detection
     saved_count = 0
     skipped_duplicates = 0
+    videos_to_transcribe = []  # PRD-050: Track videos for transcription
 
     for item in items:
         # Check for duplicates by URL or video_id
@@ -359,6 +373,16 @@ async def _save_collected_items(db: Session, source_name: str, items: list) -> d
             processed=False
         )
         db.add(raw_content)
+        db.flush()  # PRD-050: Get ID immediately for transcription tracking
+
+        # PRD-050: Queue video content for transcription
+        if item.get("content_type") == "video" and url:
+            videos_to_transcribe.append({
+                "raw_content_id": raw_content.id,
+                "url": url,
+                "title": metadata.get("title") or item.get("content_text", "")[:100]
+            })
+
         saved_count += 1
 
     db.commit()
@@ -366,7 +390,30 @@ async def _save_collected_items(db: Session, source_name: str, items: list) -> d
     if skipped_duplicates > 0:
         logger.info(f"Saved {saved_count} items, skipped {skipped_duplicates} duplicates for {source_name}")
 
-    return {"saved": saved_count, "skipped_duplicates": skipped_duplicates}
+    # PRD-050: Queue transcription for videos
+    transcription_queued = 0
+    if TRANSCRIPTION_AVAILABLE and videos_to_transcribe:
+        transcription_mode = "sync" if SYNC_TRANSCRIPTION else "async"
+        logger.info(f"Queueing {len(videos_to_transcribe)} videos for {transcription_mode} transcription from {source_name}")
+
+        for video in videos_to_transcribe:
+            try:
+                await _queue_transcription_with_tracking(
+                    db=db,
+                    content_id=video["raw_content_id"],
+                    video_url=video["url"],
+                    source=source_name,
+                    title=video["title"],
+                    metadata=None
+                )
+                transcription_queued += 1
+            except Exception as e:
+                logger.error(f"Failed to queue transcription for {video['raw_content_id']}: {e}")
+
+        if transcription_queued > 0:
+            logger.info(f"Queued {transcription_queued} videos from {source_name} for {transcription_mode} transcription")
+
+    return {"saved": saved_count, "skipped_duplicates": skipped_duplicates, "transcription_queued": transcription_queued}
 
 
 # ============================================================================
