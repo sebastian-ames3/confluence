@@ -752,8 +752,12 @@
             currentSynthesisId = data.id;
 
             // Check version - V4 is the tiered synthesis (PRD-041)
-            const isV4 = data.version === '4.0' || data.source_breakdowns;
-            const isV3 = isV4 || data.version === '3.0' || data.confluence_zones || data.attention_priorities;
+            // PRD-049: Use explicit version string parsing for robustness
+            const version = String(data.version || '1.0');
+            const isV4 = version.startsWith('4');
+            const isV3 = version.startsWith('3') || version.startsWith('4');
+
+            console.log('[displaySynthesis] isV4:', isV4, 'isV3:', isV3);
 
             console.log('[displaySynthesis] isV4:', isV4, 'isV3:', isV3);
 
@@ -920,12 +924,13 @@
                         <div class="source-perspective-sparkline">
                             <svg viewBox="0 0 200 48" preserveAspectRatio="none">
                                 <defs>
-                                    <linearGradient id="sparkline-gradient-${index}" x1="0%" y1="0%" x2="0%" y2="100%">
+                                    <!-- PRD-049: Use v4 prefix to avoid ID collision with V3 sparklines -->
+                                    <linearGradient id="sparkline-gradient-v4-${index}" x1="0%" y1="0%" x2="0%" y2="100%">
                                         <stop offset="0%" style="stop-color: var(--card-accent, var(--primary)); stop-opacity: 0.3"/>
                                         <stop offset="100%" style="stop-color: var(--card-accent, var(--primary)); stop-opacity: 0"/>
                                     </linearGradient>
                                 </defs>
-                                <path class="sparkline-area" d="${sparklinePath} L 200 48 L 0 48 Z" fill="url(#sparkline-gradient-${index})"/>
+                                <path class="sparkline-area" d="${sparklinePath} L 200 48 L 0 48 Z" fill="url(#sparkline-gradient-v4-${index})"/>
                                 <path class="sparkline-path" d="${sparklinePath}"/>
                             </svg>
                         </div>
@@ -1140,11 +1145,13 @@
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-md); font-size: var(--text-sm);">
                         <div style="padding: var(--spacing-sm); background: rgba(16, 185, 129, 0.1); border-radius: var(--radius-md);">
                             <div style="color: var(--success); font-weight: var(--font-medium);">Bull Case</div>
-                            <div style="color: var(--text-secondary);">${c.bull_case?.view || '-'}</div>
+                            <!-- PRD-049: Use nullish coalescing instead of || for proper undefined handling -->
+                            <div style="color: var(--text-secondary);">${c.bull_case?.view ?? '-'}</div>
                         </div>
                         <div style="padding: var(--spacing-sm); background: rgba(239, 68, 68, 0.1); border-radius: var(--radius-md);">
                             <div style="color: var(--danger); font-weight: var(--font-medium);">Bear Case</div>
-                            <div style="color: var(--text-secondary);">${c.bear_case?.view || '-'}</div>
+                            <!-- PRD-049: Use nullish coalescing instead of || for proper undefined handling -->
+                            <div style="color: var(--text-secondary);">${c.bear_case?.view ?? '-'}</div>
                         </div>
                     </div>
                 </div>

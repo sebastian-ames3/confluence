@@ -661,6 +661,7 @@
   color: var(--card-accent, var(--primary));
 }
 
+/* PRD-049: Sync icon transition with panel transition (both use normal) */
 .source-perspective-expand-icon {
   transition: transform var(--transition-normal);
 }
@@ -670,18 +671,32 @@
 }
 
 /* Expanded content */
+/* PRD-049: Sync transition with icon (normal instead of slow) */
 .source-perspective-details {
   max-height: 0;
   overflow: hidden;
-  transition: max-height var(--transition-slow) ease-out;
+  transition: max-height var(--transition-normal) ease-out;
 }
 
+/* PRD-049: Responsive max-height for expanded card content */
 .source-perspective-card.expanded .source-perspective-details {
-  max-height: 500px;
+  max-height: 400px;
   overflow-y: auto;
 }
 
-/* Custom scrollbar for expanded details */
+@media (min-width: 768px) {
+  .source-perspective-card.expanded .source-perspective-details {
+    max-height: 500px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .source-perspective-card.expanded .source-perspective-details {
+    max-height: 600px;
+  }
+}
+
+/* Custom scrollbar for expanded details (WebKit/Chromium) */
 .source-perspective-card.expanded .source-perspective-details::-webkit-scrollbar {
   width: 6px;
 }
@@ -698,6 +713,14 @@
 
 .source-perspective-card.expanded .source-perspective-details::-webkit-scrollbar-thumb:hover {
   background: var(--text-muted);
+}
+
+/* PRD-049: Firefox scrollbar styling fallback */
+@supports (scrollbar-width: thin) {
+  .source-perspective-card.expanded .source-perspective-details {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-default) var(--glass-bg-light);
+  }
 }
 
 .source-perspective-details-inner {
@@ -777,7 +800,8 @@
 }
 
 /* ----- Responsive ----- */
-@media (max-width: 1200px) {
+/* PRD-049: Align breakpoint with design system --breakpoint-xl (1280px) */
+@media (max-width: 1280px) {
   .source-perspectives-grid {
     grid-template-columns: repeat(2, 1fr);
   }

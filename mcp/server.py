@@ -469,6 +469,12 @@ Use this to understand synthesis quality and identify improvement areas.""",
 @server.call_tool()
 async def call_tool(name: str, arguments: dict):
     """Handle tool calls."""
+    import time
+    start_time = time.time()
+
+    # PRD-049: Structured logging for tool calls
+    logger.info(f"[MCP] Tool '{name}' called with args: {arguments}")
+
     try:
         client = get_client()
 
@@ -517,14 +523,33 @@ async def call_tool(name: str, arguments: dict):
         elif name == "get_source_stance":
             source = arguments.get("source", "").lower()
             synthesis = client.get_latest_synthesis()
+
+            # PRD-049: Check tier awareness - source stances require Tier 2+ data
+            tier_returned = synthesis.get("tier_returned")
+            version = synthesis.get("version", "1.0")
+            if version == "4.0" and tier_returned == 1:
+                return [TextContent(
+                    type="text",
+                    text="Error: Source stance data requires Tier 2 or higher. The current synthesis was returned at Tier 1 (executive summary only)."
+                )]
+
             stances = extract_source_stances(synthesis)
+
+            # PRD-049: Check if stances data is available
+            if not stances:
+                return [TextContent(
+                    type="text",
+                    text="No source stance data available in the current synthesis. This may indicate a V1/V2 synthesis or missing source_breakdowns."
+                )]
 
             # Find matching source (case-insensitive, supports partial matching)
             matched_stance = None
             matched_key = None
 
             for key, value in stances.items():
-                key_lower = key.lower()
+                if not isinstance(value, dict):
+                    continue
+                key_lower = key.lower() if isinstance(key, str) else ""
                 # Exact match
                 if key_lower == source:
                     matched_stance = value
@@ -593,93 +618,190 @@ async def call_tool(name: str, arguments: dict):
             )]
 
         # PRD-024: Theme Tracking Tools
+        # PRD-049: Added try/catch and explicit None validation
         elif name == "get_themes":
-            status = arguments.get("status")
-            themes = client.get_themes(status=status)
-            return [TextContent(
-                type="text",
-                text=json.dumps(themes, indent=2)
-            )]
+            try:
+                status = arguments.get("status")
+                themes = client.get_themes(status=status)
+                return [TextContent(
+                    type="text",
+                    text=json.dumps(themes, indent=2)
+                )]
+            except Exception as e:
+                logger.error(f"get_themes failed: {e}")
+                return [TextContent(
+                    type="text",
+                    text=f"Error fetching themes: {str(e)}"
+                )]
 
         elif name == "get_active_themes":
-            themes = client.get_active_themes()
-            return [TextContent(
-                type="text",
-                text=json.dumps(themes, indent=2)
-            )]
+            try:
+                themes = client.get_active_themes()
+                return [TextContent(
+                    type="text",
+                    text=json.dumps(themes, indent=2)
+                )]
+            except Exception as e:
+                logger.error(f"get_active_themes failed: {e}")
+                return [TextContent(
+                    type="text",
+                    text=f"Error fetching active themes: {str(e)}"
+                )]
 
         elif name == "get_theme_detail":
             theme_id = arguments.get("theme_id")
-            if not theme_id:
+            # PRD-049: Use explicit None check (0 is valid but falsy)
+            if theme_id is None:
                 return [TextContent(
                     type="text",
                     text="Error: theme_id is required"
                 )]
-            theme = client.get_theme(theme_id)
-            return [TextContent(
-                type="text",
-                text=json.dumps(theme, indent=2)
-            )]
+            try:
+                # Ensure theme_id is an integer
+                theme_id = int(theme_id)
+                theme = client.get_theme(theme_id)
+                return [TextContent(
+                    type="text",
+                    text=json.dumps(theme, indent=2)
+                )]
+            except ValueError:
+                return [TextContent(
+                    type="text",
+                    text=f"Error: theme_id must be an integer, got '{theme_id}'"
+                )]
+            except Exception as e:
+                logger.error(f"get_theme_detail failed for id {theme_id}: {e}")
+                return [TextContent(
+                    type="text",
+                    text=f"Error fetching theme {theme_id}: {str(e)}"
+                )]
 
         elif name == "get_themes_summary":
-            summary = client.get_themes_summary()
-            return [TextContent(
-                type="text",
-                text=json.dumps(summary, indent=2)
-            )]
+            try:
+                summary = client.get_themes_summary()
+                return [TextContent(
+                    type="text",
+                    text=json.dumps(summary, indent=2)
+                )]
+            except Exception as e:
+                logger.error(f"get_themes_summary failed: {e}")
+                return [TextContent(
+                    type="text",
+                    text=f"Error fetching themes summary: {str(e)}"
+                )]
 
         # PRD-039: Symbol-Level Confluence Tools
+        # PRD-049: Added try/catch and validation
         elif name == "get_symbol_analysis":
             symbol = arguments.get("symbol", "").upper()
-            analysis = client.get_symbol_detail(symbol)
-            return [TextContent(
-                type="text",
-                text=json.dumps(analysis, indent=2)
-            )]
+            if not symbol:
+                return [TextContent(
+                    type="text",
+                    text="Error: symbol is required"
+                )]
+            try:
+                analysis = client.get_symbol_detail(symbol)
+                return [TextContent(
+                    type="text",
+                    text=json.dumps(analysis, indent=2)
+                )]
+            except Exception as e:
+                logger.error(f"get_symbol_analysis failed for {symbol}: {e}")
+                return [TextContent(
+                    type="text",
+                    text=f"Error fetching analysis for {symbol}: {str(e)}"
+                )]
 
         elif name == "get_symbol_levels":
             symbol = arguments.get("symbol", "").upper()
-            source = arguments.get("source")
-            levels = client.get_symbol_levels(symbol, source)
-            return [TextContent(
-                type="text",
-                text=json.dumps(levels, indent=2)
-            )]
+            if not symbol:
+                return [TextContent(
+                    type="text",
+                    text="Error: symbol is required"
+                )]
+            try:
+                source = arguments.get("source")
+                levels = client.get_symbol_levels(symbol, source)
+                return [TextContent(
+                    type="text",
+                    text=json.dumps(levels, indent=2)
+                )]
+            except Exception as e:
+                logger.error(f"get_symbol_levels failed for {symbol}: {e}")
+                return [TextContent(
+                    type="text",
+                    text=f"Error fetching levels for {symbol}: {str(e)}"
+                )]
 
         elif name == "get_confluence_opportunities":
-            opportunities = client.get_confluence_opportunities()
-            return [TextContent(
-                type="text",
-                text=json.dumps(opportunities, indent=2)
-            )]
+            try:
+                opportunities = client.get_confluence_opportunities()
+                return [TextContent(
+                    type="text",
+                    text=json.dumps(opportunities, indent=2)
+                )]
+            except Exception as e:
+                logger.error(f"get_confluence_opportunities failed: {e}")
+                return [TextContent(
+                    type="text",
+                    text=f"Error fetching confluence opportunities: {str(e)}"
+                )]
 
         elif name == "get_trade_setup":
             symbol = arguments.get("symbol", "").upper()
-            detail = client.get_symbol_detail(symbol)
+            if not symbol:
+                return [TextContent(
+                    type="text",
+                    text="Error: symbol is required"
+                )]
+            try:
+                detail = client.get_symbol_detail(symbol)
 
-            # Extract trade setup from confluence data
-            trade_setup = {
-                "symbol": symbol,
-                "kt_bias": detail.get("kt_technical", {}).get("bias"),
-                "discord_quadrant": detail.get("discord_options", {}).get("quadrant"),
-                "confluence_score": detail.get("confluence", {}).get("score"),
-                "trade_setup": detail.get("confluence", {}).get("trade_setup"),
-                "levels": detail.get("levels", [])
-            }
+                # Extract trade setup from confluence data
+                trade_setup = {
+                    "symbol": symbol,
+                    "kt_bias": detail.get("kt_technical", {}).get("bias"),
+                    "discord_quadrant": detail.get("discord_options", {}).get("quadrant"),
+                    "confluence_score": detail.get("confluence", {}).get("score"),
+                    "trade_setup": detail.get("confluence", {}).get("trade_setup"),
+                    "levels": detail.get("levels", [])
+                }
 
-            return [TextContent(
-                type="text",
-                text=json.dumps(trade_setup, indent=2)
-            )]
+                return [TextContent(
+                    type="text",
+                    text=json.dumps(trade_setup, indent=2)
+                )]
+            except Exception as e:
+                logger.error(f"get_trade_setup failed for {symbol}: {e}")
+                return [TextContent(
+                    type="text",
+                    text=f"Error getting trade setup for {symbol}: {str(e)}"
+                )]
 
         # PRD-044: Synthesis Quality Tool
+        # PRD-049: Added try/catch and type validation
         elif name == "get_synthesis_quality":
             synthesis_id = arguments.get("synthesis_id")
-            quality = client.get_synthesis_quality(synthesis_id)
-            return [TextContent(
-                type="text",
-                text=json.dumps(quality, indent=2)
-            )]
+            try:
+                # Convert synthesis_id to int if provided
+                if synthesis_id is not None:
+                    synthesis_id = int(synthesis_id)
+                quality = client.get_synthesis_quality(synthesis_id)
+                return [TextContent(
+                    type="text",
+                    text=json.dumps(quality, indent=2)
+                )]
+            except ValueError:
+                return [TextContent(
+                    type="text",
+                    text=f"Error: synthesis_id must be an integer, got '{arguments.get('synthesis_id')}'"
+                )]
+            except Exception as e:
+                logger.error(f"get_synthesis_quality failed: {e}")
+                return [TextContent(
+                    type="text",
+                    text=f"Error fetching synthesis quality: {str(e)}"
+                )]
 
         else:
             return [TextContent(
@@ -688,11 +810,15 @@ async def call_tool(name: str, arguments: dict):
             )]
 
     except Exception as e:
-        logger.error(f"Error calling tool {name}: {e}")
+        elapsed = time.time() - start_time
+        logger.error(f"[MCP] Tool '{name}' failed after {elapsed:.2f}s: {e}")
         return [TextContent(
             type="text",
             text=f"Error: {str(e)}"
         )]
+    finally:
+        elapsed = time.time() - start_time
+        logger.info(f"[MCP] Tool '{name}' completed in {elapsed:.2f}s")
 
 
 async def run_stdio():

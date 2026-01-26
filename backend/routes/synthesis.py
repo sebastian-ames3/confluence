@@ -288,6 +288,14 @@ async def generate_synthesis(
     if synthesis_request.time_window not in time_deltas:
         raise HTTPException(status_code=400, detail=f"Invalid time_window. Use: {list(time_deltas.keys())}")
 
+    # PRD-049: Explicit version validation
+    valid_versions = ["1", "2", "3", "4"]
+    if synthesis_request.version not in valid_versions:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid version '{synthesis_request.version}'. Use: {valid_versions}"
+        )
+
     cutoff = datetime.utcnow() - time_deltas[synthesis_request.time_window]
 
     # Wrap everything in try/except to capture any errors
@@ -432,12 +440,29 @@ async def generate_synthesis(
             schema_ver = "1.0"
 
         # Save to database
+        # PRD-049: Use explicit None checks for list fallbacks (empty lists are valid)
+        key_themes_data = result.get("key_themes")
+        if key_themes_data is None:
+            key_themes_data = [t.get("theme", "") for t in result.get("confluence_zones", [])]
+
+        high_conviction_data = result.get("high_conviction_ideas")
+        if high_conviction_data is None:
+            high_conviction_data = result.get("tactical_ideas")
+        if high_conviction_data is None:
+            high_conviction_data = result.get("attention_priorities", [])
+
+        contradictions_data = result.get("contradictions")
+        if contradictions_data is None:
+            contradictions_data = result.get("watch_list")
+        if contradictions_data is None:
+            contradictions_data = result.get("conflict_watch", [])
+
         synthesis = Synthesis(
             schema_version=schema_ver,
             synthesis=synthesis_text,
-            key_themes=json.dumps(result.get("key_themes", []) or [t.get("theme", "") for t in result.get("confluence_zones", [])]),
-            high_conviction_ideas=json.dumps(result.get("high_conviction_ideas", []) or result.get("tactical_ideas", []) or result.get("attention_priorities", [])),
-            contradictions=json.dumps(result.get("contradictions", []) or result.get("watch_list", []) or result.get("conflict_watch", [])),
+            key_themes=json.dumps(key_themes_data),
+            high_conviction_ideas=json.dumps(high_conviction_data),
+            contradictions=json.dumps(contradictions_data),
             market_regime=market_regime_str,
             catalysts=json.dumps(result.get("catalysts", []) or result.get("catalyst_calendar", [])),
             synthesis_json=json.dumps(result) if version in ["2", "3", "4"] else None,
@@ -595,28 +620,32 @@ async def get_latest_synthesis(
             data["version"] = schema_version
 
             # PRD-041: Filter response by tier for V4
-            if schema_version == "4.0" and tier < 3:
-                if tier == 1:
-                    # Tier 1: Executive summary only
-                    data.pop("source_breakdowns", None)
-                    data.pop("content_summaries", None)
-                elif tier == 2:
-                    # Tier 2: Include source breakdowns, exclude content summaries
-                    data.pop("content_summaries", None)
+            # PRD-049: Add tier_returned field for MCP tier awareness
+            if schema_version == "4.0":
+                data["tier_returned"] = tier
+                if tier < 3:
+                    if tier == 1:
+                        # Tier 1: Executive summary only
+                        data.pop("source_breakdowns", None)
+                        data.pop("content_summaries", None)
+                    elif tier == 2:
+                        # Tier 2: Include source breakdowns, exclude content summaries
+                        data.pop("content_summaries", None)
 
             return data
         except json.JSONDecodeError:
             pass  # Fall back to v1 format
 
     # Return v1 format (backwards compatibility)
+    # PRD-049: Ensure null safety for synthesis and market_regime fields
     return {
         "id": synthesis.id,
         "version": schema_version,
-        "synthesis": synthesis.synthesis,
+        "synthesis": synthesis.synthesis or "",
         "key_themes": json.loads(synthesis.key_themes) if synthesis.key_themes else [],
         "high_conviction_ideas": json.loads(synthesis.high_conviction_ideas) if synthesis.high_conviction_ideas else [],
         "contradictions": json.loads(synthesis.contradictions) if synthesis.contradictions else [],
-        "market_regime": synthesis.market_regime,
+        "market_regime": synthesis.market_regime or "unknown",
         "catalysts": json.loads(synthesis.catalysts) if synthesis.catalysts else [],
         "time_window": synthesis.time_window,
         "content_count": synthesis.content_count,
