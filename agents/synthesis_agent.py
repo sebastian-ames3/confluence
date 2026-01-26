@@ -237,7 +237,7 @@ Be direct. Be specific. Be actionable."""
         response["time_window"] = time_window
         response["content_count"] = len(content_items)
         response["sources_included"] = list(set(item.get("source", "unknown") for item in content_items))
-        response["generated_at"] = datetime.utcnow().isoformat() + "Z"
+        response["generated_at"] = datetime.utcnow().isoformat() + "Z" + "Z"
 
         # Validate required fields
         required_fields = ["synthesis", "key_themes", "high_conviction_ideas"]
@@ -351,7 +351,7 @@ Respond with valid JSON only."""
             "time_window": time_window,
             "content_count": 0,
             "sources_included": [],
-            "generated_at": datetime.utcnow().isoformat() + "Z"
+            "generated_at": datetime.utcnow().isoformat() + "Z" + "Z"
         }
 
     def generate_topic_synthesis(
@@ -399,7 +399,7 @@ Respond with valid JSON only."""
                 "contradictions": [],
                 "topic": topic,
                 "content_count": 0,
-                "generated_at": datetime.utcnow().isoformat() + "Z"
+                "generated_at": datetime.utcnow().isoformat() + "Z" + "Z"
             }
 
         return self.analyze(relevant_items, time_window="topic_search", focus_topic=topic)
@@ -756,7 +756,7 @@ RESPOND WITH VALID JSON ONLY. Be SPECIFIC with all levels, dates, and numbers.""
             "time_window": time_window,
             "content_count": 0,
             "sources_included": [],
-            "generated_at": datetime.utcnow().isoformat()
+            "generated_at": datetime.utcnow().isoformat() + "Z"
         }
 
     def analyze_v2(
@@ -806,7 +806,7 @@ RESPOND WITH VALID JSON ONLY. Be SPECIFIC with all levels, dates, and numbers.""
         response["time_window"] = time_window
         response["content_count"] = len(content_items)
         response["sources_included"] = list(set(item.get("source", "unknown") for item in content_items))
-        response["generated_at"] = datetime.utcnow().isoformat()
+        response["generated_at"] = datetime.utcnow().isoformat() + "Z"
         if focus_topic:
             response["focus_topic"] = focus_topic
 
@@ -824,6 +824,8 @@ RESPOND WITH VALID JSON ONLY. Be SPECIFIC with all levels, dates, and numbers.""
             self.validate_response_schema(response, required_fields)
         except Exception as e:
             logger.warning(f"V2 schema validation failed: {e}, returning partial response")
+            response["validation_passed"] = False
+            response["validation_error"] = str(e)
 
         logger.info(f"Generated v2 synthesis: {len(response.get('tactical_ideas', []))} tactical, "
                    f"{len(response.get('strategic_ideas', []))} strategic ideas")
@@ -1086,7 +1088,7 @@ RESPOND WITH VALID JSON ONLY."""
             "time_window": time_window,
             "content_count": 0,
             "sources_included": [],
-            "generated_at": datetime.utcnow().isoformat()
+            "generated_at": datetime.utcnow().isoformat() + "Z"
         }
 
     def analyze_v3(
@@ -1148,7 +1150,7 @@ RESPOND WITH VALID JSON ONLY."""
         response["content_count"] = len(content_items)
         response["older_content_scanned"] = len(older_content) if older_content else 0
         response["sources_included"] = list(set(item.get("source", "unknown") for item in content_items))
-        response["generated_at"] = datetime.utcnow().isoformat()
+        response["generated_at"] = datetime.utcnow().isoformat() + "Z"
         if focus_topic:
             response["focus_topic"] = focus_topic
 
@@ -1167,6 +1169,8 @@ RESPOND WITH VALID JSON ONLY."""
             self.validate_response_schema(response, required_fields)
         except Exception as e:
             logger.warning(f"V3 schema validation failed: {e}, returning partial response")
+            response["validation_passed"] = False
+            response["validation_error"] = str(e)
 
         logger.info(f"Generated v3 synthesis: {len(response.get('confluence_zones', []))} confluence zones, "
                    f"{len(response.get('attention_priorities', []))} priorities")
@@ -1256,7 +1260,8 @@ Respond with valid JSON only."""
                 try:
                     import json
                     analysis = json.loads(analysis)
-                except:
+                except (json.JSONDecodeError, TypeError) as e:
+                    logger.warning(f"Failed to parse analysis_result for content {content_id}: {e}")
                     analysis = {}
 
             content_summary = analysis.get("content_summary", {})
@@ -1300,7 +1305,7 @@ Respond with valid JSON only."""
             "content_count": 0,
             "sources_included": [],
             "youtube_channels_included": [],
-            "generated_at": datetime.utcnow().isoformat()
+            "generated_at": datetime.utcnow().isoformat() + "Z"
         }
 
     def analyze_v4(
@@ -1381,7 +1386,9 @@ Respond with valid JSON only."""
                     "key_insights": [],
                     "themes": [],
                     "overall_bias": "neutral",
-                    "content_titles": [item.get("title", "Untitled") for item in items]
+                    "content_titles": [item.get("title", "Untitled") for item in items],
+                    "degraded": True,
+                    "degradation_reason": str(e)
                 }
 
             # Add metadata
@@ -1417,7 +1424,7 @@ Respond with valid JSON only."""
             "older_content_scanned": len(older_content) if older_content else 0,
             "sources_included": list(set(item.get("source", "unknown") for item in content_items)),
             "youtube_channels_included": youtube_channels,
-            "generated_at": datetime.utcnow().isoformat()
+            "generated_at": datetime.utcnow().isoformat() + "Z"
         }
 
         if focus_topic:
