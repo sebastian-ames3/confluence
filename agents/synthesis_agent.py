@@ -842,7 +842,8 @@ RESPOND WITH VALID JSON ONLY. Be SPECIFIC with all levels, dates, and numbers.""
         content_items: List[Dict[str, Any]],
         time_window: str,
         older_content: Optional[List[Dict[str, Any]]] = None,
-        focus_topic: Optional[str] = None
+        focus_topic: Optional[str] = None,
+        kt_symbol_data: Optional[List[Dict[str, Any]]] = None
     ) -> str:
         """Build prompt for research consumption synthesis (v3)."""
 
@@ -924,6 +925,34 @@ RESPOND WITH VALID JSON ONLY. Be SPECIFIC with all levels, dates, and numbers.""
         # Extract levels for reference
         extracted = self._extract_levels_from_content(content_items)
 
+        # Build KT Technical symbol data section
+        kt_symbol_section = ""
+        if kt_symbol_data:
+            kt_symbol_section = "\n## KT TECHNICAL SYMBOL-LEVEL DATA\n"
+            kt_symbol_section += "The following structured Elliott Wave analysis data is extracted from KT Technical. Use this to provide SPECIFIC levels and wave counts in the synthesis.\n\n"
+            for sym_data in kt_symbol_data:
+                symbol = sym_data.get("symbol", "UNKNOWN")
+                kt_symbol_section += f"### {symbol}\n"
+                if sym_data.get("wave_position"):
+                    kt_symbol_section += f"- Wave Position: {sym_data['wave_position']}\n"
+                if sym_data.get("wave_direction"):
+                    kt_symbol_section += f"- Wave Direction: {sym_data['wave_direction']}\n"
+                if sym_data.get("wave_phase"):
+                    kt_symbol_section += f"- Wave Phase: {sym_data['wave_phase']}\n"
+                if sym_data.get("bias"):
+                    kt_symbol_section += f"- Bias: {sym_data['bias']}\n"
+                if sym_data.get("primary_target"):
+                    kt_symbol_section += f"- Primary Target: {sym_data['primary_target']}\n"
+                if sym_data.get("primary_support"):
+                    kt_symbol_section += f"- Primary Support: {sym_data['primary_support']}\n"
+                if sym_data.get("invalidation"):
+                    kt_symbol_section += f"- Invalidation Level: {sym_data['invalidation']}\n"
+                if sym_data.get("notes"):
+                    kt_symbol_section += f"- Notes: {sym_data['notes']}\n"
+                if sym_data.get("last_updated"):
+                    kt_symbol_section += f"- Last Updated: {sym_data['last_updated']}\n"
+                kt_symbol_section += "\n"
+
         focus_instruction = ""
         if focus_topic:
             focus_instruction = f"\n\nFOCUS: Pay particular attention to content related to: {focus_topic}\n"
@@ -935,6 +964,7 @@ Remember: You are helping the user CONSUME their research, not telling them what
 ## RECENT CONTENT (past {time_window})
 {content_section}
 {older_section}
+{kt_symbol_section}
 ## EXTRACTED REFERENCE DATA
 Price levels mentioned: {', '.join(extracted['price_levels'][:15]) or 'None'}
 Key events mentioned: {', '.join(extracted['dates'][:10]) or 'None'}
@@ -1096,7 +1126,8 @@ RESPOND WITH VALID JSON ONLY."""
         content_items: List[Dict[str, Any]],
         older_content: Optional[List[Dict[str, Any]]] = None,
         time_window: str = "24h",
-        focus_topic: Optional[str] = None
+        focus_topic: Optional[str] = None,
+        kt_symbol_data: Optional[List[Dict[str, Any]]] = None
     ) -> Dict[str, Any]:
         """
         Generate research consumption synthesis (V3 - PRD-021).
@@ -1114,6 +1145,7 @@ RESPOND WITH VALID JSON ONLY."""
             older_content: Older content (7-30 days) for re-review scanning
             time_window: Time window being analyzed ("24h", "7d", "30d")
             focus_topic: Optional specific topic to focus on
+            kt_symbol_data: KT Technical symbol-level data (wave counts, levels, bias)
 
         Returns:
             Research consumption synthesis (v3 schema)
@@ -1124,13 +1156,16 @@ RESPOND WITH VALID JSON ONLY."""
         logger.info(f"Generating v3 synthesis for {len(content_items)} items over {time_window}")
         if older_content:
             logger.info(f"Including {len(older_content)} older items for re-review scanning")
+        if kt_symbol_data:
+            logger.info(f"Including KT Technical data for {len(kt_symbol_data)} symbols")
 
         # Build the v3 prompt
         prompt = self._build_synthesis_prompt_v3(
             content_items,
             time_window,
             older_content=older_content,
-            focus_topic=focus_topic
+            focus_topic=focus_topic,
+            kt_symbol_data=kt_symbol_data
         )
 
         # Call Claude with v3 system prompt
@@ -1313,7 +1348,8 @@ Respond with valid JSON only."""
         content_items: List[Dict[str, Any]],
         older_content: Optional[List[Dict[str, Any]]] = None,
         time_window: str = "24h",
-        focus_topic: Optional[str] = None
+        focus_topic: Optional[str] = None,
+        kt_symbol_data: Optional[List[Dict[str, Any]]] = None
     ) -> Dict[str, Any]:
         """
         Generate tiered synthesis (V4 - PRD-041).
@@ -1328,6 +1364,7 @@ Respond with valid JSON only."""
             older_content: Older content (7-30 days) for re-review scanning
             time_window: Time window being analyzed ("24h", "7d", "30d")
             focus_topic: Optional specific topic to focus on
+            kt_symbol_data: KT Technical symbol-level data (wave counts, levels, bias)
 
         Returns:
             Tiered synthesis (v4 schema)
@@ -1342,7 +1379,8 @@ Respond with valid JSON only."""
             content_items=content_items,
             older_content=older_content,
             time_window=time_window,
-            focus_topic=focus_topic
+            focus_topic=focus_topic,
+            kt_symbol_data=kt_symbol_data
         )
 
         # TIER 2: Generate source breakdowns

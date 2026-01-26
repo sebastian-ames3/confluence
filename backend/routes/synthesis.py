@@ -28,7 +28,8 @@ from backend.models import (
     AnalyzedContent,
     RawContent,
     Source,
-    SynthesisQualityScore
+    SynthesisQualityScore,
+    SymbolState
 )
 from backend.utils.auth import verify_jwt_or_basic
 from backend.utils.rate_limiter import limiter, RATE_LIMITS
@@ -345,6 +346,11 @@ async def generate_synthesis(
                     }
                 )
 
+        # Get KT Technical symbol-level data for V3/V4 synthesis
+        kt_symbol_data = []
+        if version in ["3", "4"]:
+            kt_symbol_data = _get_kt_symbol_data(db)
+
         if version == "4":
             # V4: Tiered Synthesis (PRD-041)
             # Get older content for re-review recommendations (7-30 days ago)
@@ -362,7 +368,8 @@ async def generate_synthesis(
                 content_items=content_items,
                 older_content=older_content,
                 time_window=synthesis_request.time_window,
-                focus_topic=synthesis_request.focus_topic
+                focus_topic=synthesis_request.focus_topic,
+                kt_symbol_data=kt_symbol_data
             )
             logger.info(f"V4 Analysis complete: {len(result.get('source_breakdowns', {}))} source breakdowns, "
                        f"{len(result.get('content_summaries', []))} content summaries")
@@ -384,7 +391,8 @@ async def generate_synthesis(
                 content_items=content_items,
                 older_content=older_content,
                 time_window=synthesis_request.time_window,
-                focus_topic=synthesis_request.focus_topic
+                focus_topic=synthesis_request.focus_topic,
+                kt_symbol_data=kt_symbol_data
             )
             logger.info(f"V3 Analysis complete: {len(result.get('confluence_zones', []))} confluence zones, "
                        f"{len(result.get('attention_priorities', []))} priorities")
@@ -961,3 +969,37 @@ def _get_content_for_synthesis(
         })
 
     return content_items
+
+
+def _get_kt_symbol_data(db: Session) -> list:
+    """
+    Get KT Technical symbol-level data from SymbolState.
+
+    Returns structured wave analysis data (wave position, bias, levels)
+    for symbols that have been analyzed by KT Technical.
+
+    This data is passed to the synthesis agent to ensure symbol-level
+    technical analysis (SPX/QQQ levels, wave counts) is included in synthesis.
+    """
+    # Query symbols with KT Technical data
+    states = db.query(SymbolState).filter(
+        SymbolState.kt_last_updated.isnot(None)
+    ).all()
+
+    kt_data = []
+    for state in states:
+        kt_data.append({
+            "symbol": state.symbol,
+            "wave_position": state.kt_wave_position,
+            "wave_direction": state.kt_wave_direction,
+            "wave_phase": state.kt_wave_phase,
+            "bias": state.kt_bias,
+            "primary_target": state.kt_primary_target,
+            "primary_support": state.kt_primary_support,
+            "invalidation": state.kt_invalidation,
+            "notes": state.kt_notes,
+            "last_updated": state.kt_last_updated.isoformat() if state.kt_last_updated else None
+        })
+
+    logger.info(f"Found KT Technical data for {len(kt_data)} symbols")
+    return kt_data
