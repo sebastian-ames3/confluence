@@ -304,8 +304,8 @@ class TestUICompatibility:
         index_path = Path(__file__).parent.parent / "frontend" / "index.html"
         content = index_path.read_text(encoding='utf-8')
 
-        # Should display the name from the object entries
-        assert "${name}" in content, \
+        # Should display the name from the object entries (with or without escapeHtml for XSS protection)
+        assert "${name}" in content or "${escapeHtml(name)}" in content, \
             "Source name should be displayed from data, not hardcoded"
 
     def test_no_hardcoded_youtube_in_stances(self):

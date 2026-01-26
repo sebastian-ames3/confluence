@@ -678,6 +678,26 @@
 
 .source-perspective-card.expanded .source-perspective-details {
   max-height: 500px;
+  overflow-y: auto;
+}
+
+/* Custom scrollbar for expanded details */
+.source-perspective-card.expanded .source-perspective-details::-webkit-scrollbar {
+  width: 6px;
+}
+
+.source-perspective-card.expanded .source-perspective-details::-webkit-scrollbar-track {
+  background: var(--glass-bg-light);
+  border-radius: 3px;
+}
+
+.source-perspective-card.expanded .source-perspective-details::-webkit-scrollbar-thumb {
+  background: var(--border-default);
+  border-radius: 3px;
+}
+
+.source-perspective-card.expanded .source-perspective-details::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
 }
 
 .source-perspective-details-inner {

@@ -221,8 +221,41 @@ def extract_attention_priorities(synthesis: Dict[str, Any]) -> List[Dict[str, An
 
 
 def extract_source_stances(synthesis: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
-    """Extract source stances from synthesis."""
-    return synthesis.get("source_stances", {})
+    """Extract source stances from synthesis.
+
+    PRD-041: V4 synthesis uses source_breakdowns instead of source_stances.
+    This function falls back to source_breakdowns when source_stances is empty,
+    normalizing the data structure for consistent MCP tool output.
+    """
+    # First try V3 source_stances
+    stances = synthesis.get("source_stances", {})
+    if stances:
+        return stances
+
+    # Fall back to V4 source_breakdowns
+    breakdowns = synthesis.get("source_breakdowns", {})
+    if not breakdowns:
+        return {}
+
+    # Normalize V4 breakdowns to match V3 stance structure
+    normalized = {}
+    for source_name, data in breakdowns.items():
+        # Format display name for YouTube channels (youtube:Channel Name -> Channel Name)
+        display_name = source_name
+        if source_name.startswith("youtube:"):
+            display_name = source_name.split(":", 1)[1]
+
+        normalized[source_name] = {
+            "current_stance_narrative": data.get("summary", ""),
+            "summary": data.get("summary", ""),
+            "key_insights": data.get("key_insights", []),
+            "themes": data.get("themes", []),
+            "overall_bias": data.get("overall_bias", "neutral"),
+            "content_count": data.get("content_count", 0),
+            "display_name": display_name
+        }
+
+    return normalized
 
 
 def extract_catalyst_calendar(synthesis: Dict[str, Any]) -> List[Dict[str, Any]]:

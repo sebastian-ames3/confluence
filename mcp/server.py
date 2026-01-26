@@ -171,19 +171,27 @@ Available sources:
 - discord (Imran's options flow and trades)
 - 42macro (institutional macro research)
 - kt_technical (Elliott Wave analysis)
-- youtube (macro commentary)
 - substack (thematic research)
+
+YouTube channels (PRD-040 granularity):
+- youtube:42 Macro (Darius Dale's video content)
+- youtube:Forward Guidance (macro/crypto interviews)
+- youtube:Jordi Visser Labs (Weiss Multi-Strategy)
+- youtube:Moonshots (growth/momentum)
+
+You can search by partial name (e.g., "forward" matches "youtube:Forward Guidance").
 
 Returns:
 - Narrative of what the source is thinking
-- Key themes they're focused on
-- Overall bias (bullish, bearish, cautious, neutral, mixed)""",
+- Key insights and themes
+- Overall bias (bullish, bearish, cautious, neutral, mixed)
+- Content count""",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "source": {
                         "type": "string",
-                        "description": "Source name: discord, 42macro, kt_technical, youtube, or substack"
+                        "description": "Source name (discord, 42macro, kt_technical, substack) or YouTube channel (youtube:Channel Name or partial match like 'forward')"
                     }
                 },
                 "required": ["source"]
@@ -511,17 +519,44 @@ async def call_tool(name: str, arguments: dict):
             synthesis = client.get_latest_synthesis()
             stances = extract_source_stances(synthesis)
 
-            # Find matching source (case-insensitive)
+            # Find matching source (case-insensitive, supports partial matching)
             matched_stance = None
+            matched_key = None
+
             for key, value in stances.items():
-                if key.lower() == source or source in key.lower():
-                    matched_stance = {"source": key, **value}
+                key_lower = key.lower()
+                # Exact match
+                if key_lower == source:
+                    matched_stance = value
+                    matched_key = key
+                    break
+                # Partial match (e.g., "forward" matches "youtube:Forward Guidance")
+                if source in key_lower:
+                    matched_stance = value
+                    matched_key = key
+                    break
+                # Match display name for YouTube channels
+                display_name = value.get("display_name", "").lower()
+                if display_name and source in display_name:
+                    matched_stance = value
+                    matched_key = key
                     break
 
             if matched_stance:
+                # Format output with display name
+                display_name = matched_stance.get("display_name", matched_key)
+                output = {
+                    "source": matched_key,
+                    "display_name": display_name,
+                    "narrative": matched_stance.get("current_stance_narrative") or matched_stance.get("summary", ""),
+                    "key_insights": matched_stance.get("key_insights", []),
+                    "themes": matched_stance.get("themes", []),
+                    "overall_bias": matched_stance.get("overall_bias", "neutral"),
+                    "content_count": matched_stance.get("content_count", 0)
+                }
                 return [TextContent(
                     type="text",
-                    text=json.dumps(matched_stance, indent=2)
+                    text=json.dumps(output, indent=2)
                 )]
             else:
                 available = list(stances.keys())

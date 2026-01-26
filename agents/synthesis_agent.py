@@ -147,8 +147,8 @@ When sources disagree, provide a WEIGHTED synthesis view:
 the weighted view is moderately bullish with [specific invalidation conditions]."
 
 CATALYST EXTRACTION:
-Extract SPECIFIC DATES from content. Convert "December FOMC" to "December 17-18 FOMC".
-Known 2025 dates: FOMC Dec 17-18, NFP first Friday of month, CPI ~10th of month.
+Extract SPECIFIC DATES from content. Convert vague references like "December FOMC" to specific dates when known.
+Standard economic calendar patterns: NFP is first Friday of month, CPI is typically 10th-13th, FOMC meets ~8x/year, Quad Witch is 3rd Friday of Mar/Jun/Sep/Dec.
 Rate each catalyst's expected impact (high/medium/low) on the relevant thesis.
 
 Be direct. Be specific. Be actionable."""
@@ -167,6 +167,39 @@ Be direct. Be specific. Be actionable."""
         """
         super().__init__(api_key=api_key, model=model)
         logger.info("Initialized SynthesisAgent")
+
+    def _get_catalyst_date_hints(self) -> str:
+        """Generate dynamic catalyst date hints based on current month.
+
+        Key economic events follow predictable patterns:
+        - NFP: First Friday of month
+        - CPI: Usually 10th-13th of month
+        - FOMC: 8 meetings/year on predictable schedule
+        - Quad Witch: 3rd Friday of Mar, Jun, Sep, Dec
+        """
+        now = datetime.now()
+        month_name = now.strftime("%B")
+        year = now.year
+
+        # Calculate first Friday (NFP day)
+        first_day = datetime(now.year, now.month, 1)
+        days_until_friday = (4 - first_day.weekday()) % 7
+        if days_until_friday == 0:
+            days_until_friday = 7 if first_day.weekday() != 4 else 0
+        nfp_day = 1 + days_until_friday
+
+        # Calculate third Friday (potential Quad Witch)
+        third_friday = nfp_day + 14
+        quad_witch_months = [3, 6, 9, 12]
+        quad_witch_note = f", Quad Witch {month_name} {third_friday}" if now.month in quad_witch_months else ""
+
+        # CPI is typically 10th-13th
+        cpi_estimate = "~10th-13th"
+
+        # FOMC meets roughly every 6 weeks - provide general guidance
+        fomc_note = "FOMC meets ~every 6 weeks (check Fed calendar for exact dates)"
+
+        return f"Current month: {month_name} {year}. NFP typically {month_name} {nfp_day}, CPI {cpi_estimate} of month{quad_witch_note}. {fomc_note}"
 
     def analyze(
         self,
@@ -681,7 +714,7 @@ For EACH tactical idea, include ALL of these fields:
   "risk_scenario": "what surprise would mean"
 }}
 
-Known December 2025 dates: NFP Dec 6, CPI Dec 11, FOMC Dec 17-18, Quad Witch Dec 19
+Economic calendar patterns: NFP is first Friday of month, CPI is typically 10th-13th, FOMC meets ~8x/year (check Fed calendar), Quad Witch is 3rd Friday of Mar/Jun/Sep/Dec.
 
 ### 7. source_summary (required object)
 {{
@@ -1026,7 +1059,7 @@ Upcoming events with source perspectives.
   "pre_event_review": "Specific older content to review before this event, or null"
 }}
 
-Known December 2025 dates: NFP Dec 6, CPI Dec 11, FOMC Dec 17-18, Quad Witch Dec 19
+Economic calendar patterns: NFP is first Friday of month, CPI is typically 10th-13th, FOMC meets ~8x/year (check Fed calendar), Quad Witch is 3rd Friday of Mar/Jun/Sep/Dec.
 
 RESPOND WITH VALID JSON ONLY."""
 
