@@ -126,7 +126,8 @@ async def trigger_collection(
     # NOTE: Discord and 42macro are collected locally via Task Scheduler on Sebastian's laptop
     # - Discord: Requires Discord self-bot token (local only)
     # - 42macro: Requires Chrome/Selenium (not available on Railway Nixpacks)
-    all_sources = ["youtube", "substack"]
+    # KT Technical uses requests/BeautifulSoup and can run on Railway
+    all_sources = ["youtube", "substack", "kt_technical"]
 
     if request.sources:
         sources_to_collect = [s for s in request.sources if s in all_sources]
@@ -308,6 +309,17 @@ async def _collect_from_source(db: Optional[Session], source_name: str, dry_run:
             raise ValueError("MACRO42_EMAIL and MACRO42_PASSWORD not configured")
 
         collector = Macro42Collector(email=email, password=password, headless=True)
+        items = await collector.collect()
+
+    elif source_name == "kt_technical":
+        from collectors.kt_technical import KTTechnicalCollector
+
+        email = os.getenv("KT_EMAIL")
+        password = os.getenv("KT_PASSWORD")
+        if not email or not password:
+            raise ValueError("KT_EMAIL and KT_PASSWORD not configured")
+
+        collector = KTTechnicalCollector(email=email, password=password)
         items = await collector.collect()
 
     else:
