@@ -205,6 +205,70 @@ class ConfluenceClient:
         """Get quality score trends over time."""
         return self._request("GET", f"/api/quality/trends?days={days}")
 
+    # =====================================================
+    # CONTENT BROWSING API (PRD-051: Individual Content Access)
+    # =====================================================
+
+    def list_recent_content(
+        self,
+        source: Optional[str] = None,
+        content_type: Optional[str] = None,
+        days: int = 7,
+        limit: int = 20
+    ) -> Dict[str, Any]:
+        """
+        List recent content items across all sources.
+
+        Args:
+            source: Optional filter by source (youtube, 42macro, discord, kt_technical, substack)
+            content_type: Optional filter by type (video, pdf, text, image)
+            days: Number of days to look back (default 7)
+            limit: Maximum items to return (default 20)
+
+        Returns:
+            Dictionary with list of content items including:
+            - id: Content ID for use with get_content_detail
+            - title: Content title
+            - source: Source name
+            - channel: YouTube channel name if applicable
+            - type: Content type
+            - date: Collection date
+            - summary: Brief summary
+            - themes: Extracted themes
+            - has_transcript: Whether full transcript is available
+        """
+        params = {"days": days, "limit": limit}
+        if source:
+            params["source"] = source
+        if content_type:
+            params["content_type"] = content_type
+
+        query_string = "&".join(f"{k}={v}" for k, v in params.items())
+        return self._request("GET", f"/api/search/recent?{query_string}")
+
+    def get_content_detail(self, content_id: int) -> Dict[str, Any]:
+        """
+        Get full details for a specific content item.
+
+        This enables discussion of individual videos, PDFs, and articles
+        by retrieving the full transcript/text and analysis.
+
+        Args:
+            content_id: ID of the content item (from list_recent_content)
+
+        Returns:
+            Dictionary with full content details including:
+            - id: Content ID
+            - source: Source name
+            - type: Content type (video, pdf, text, etc.)
+            - title: Content title
+            - url: Original URL
+            - content_text: Full transcript/text content
+            - metadata: Video-specific info (channel, duration, views)
+            - analysis: AI analysis results (summary, key_points, themes, sentiment)
+        """
+        return self._request("GET", f"/api/search/content/{content_id}")
+
 
 # Convenience functions for extracting synthesis components
 # PRD-049: Added type validation to return structured errors

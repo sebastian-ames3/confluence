@@ -462,6 +462,89 @@ Use this to understand synthesis quality and identify improvement areas.""",
                 },
                 "required": []
             }
+        ),
+        # PRD-051: Individual Content Access Tools
+        Tool(
+            name="list_recent_content",
+            description="""List recent videos, PDFs, and articles from your research sources.
+
+Use this to browse what content has been collected recently, then use
+get_content_detail to dive into a specific video or document.
+
+Args:
+- source: Optional filter (youtube, 42macro, discord, kt_technical, substack)
+- content_type: Optional filter (video, pdf, text, image)
+- days: Days to look back (default 7)
+- limit: Max items to return (default 20)
+
+Returns list of content items with:
+- id: Use this with get_content_detail to get full content
+- title: Video/document title
+- source: Which source (youtube, discord, etc.)
+- channel: YouTube channel name if applicable
+- type: Content type (video, pdf, etc.)
+- date: When collected
+- summary: Brief summary
+- themes: Extracted themes
+- has_transcript: Whether full transcript is available
+
+Example: "Show me recent Forward Guidance videos" → list_recent_content(source="youtube", content_type="video")""",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "source": {
+                        "type": "string",
+                        "description": "Filter by source: youtube, 42macro, discord, kt_technical, substack"
+                    },
+                    "content_type": {
+                        "type": "string",
+                        "description": "Filter by type: video, pdf, text, image"
+                    },
+                    "days": {
+                        "type": "integer",
+                        "description": "Days to look back (default 7)"
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Max items to return (default 20)"
+                    }
+                },
+                "required": []
+            }
+        ),
+        Tool(
+            name="get_content_detail",
+            description="""Get full details for a specific video, PDF, or article.
+
+Use list_recent_content first to find content, then use this tool
+with the content ID to get the full transcript/text and analysis.
+
+Args:
+- content_id: The numeric ID from list_recent_content
+
+Returns:
+- Full content text (transcript for videos, full text for PDFs/articles)
+- Complete AI analysis (summary, key points, themes, sentiment)
+- Metadata (channel, duration, views for videos)
+- Trade ideas and market implications extracted by AI
+
+Example conversation:
+User: "What did Forward Guidance say about Bitcoin?"
+Assistant: [uses list_recent_content to find FG videos mentioning Bitcoin]
+Assistant: [uses get_content_detail to get full transcript of relevant video]
+Assistant: "In the January 15th episode, Jack discussed..."
+
+This enables detailed discussion of individual pieces of research content.""",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "content_id": {
+                        "type": "integer",
+                        "description": "Content ID from list_recent_content"
+                    }
+                },
+                "required": ["content_id"]
+            }
         )
     ]
 
@@ -801,6 +884,65 @@ async def call_tool(name: str, arguments: dict):
                 return [TextContent(
                     type="text",
                     text=f"Error fetching synthesis quality: {str(e)}"
+                )]
+
+        # PRD-051: Individual Content Access Tools
+        elif name == "list_recent_content":
+            try:
+                source = arguments.get("source")
+                content_type = arguments.get("content_type")
+                days = arguments.get("days", 7)
+                limit = arguments.get("limit", 20)
+
+                result = client.list_recent_content(
+                    source=source,
+                    content_type=content_type,
+                    days=days,
+                    limit=limit
+                )
+                return [TextContent(
+                    type="text",
+                    text=json.dumps(result, indent=2)
+                )]
+            except Exception as e:
+                logger.error(f"list_recent_content failed: {e}")
+                return [TextContent(
+                    type="text",
+                    text=f"Error listing recent content: {str(e)}"
+                )]
+
+        elif name == "get_content_detail":
+            content_id = arguments.get("content_id")
+            if content_id is None:
+                return [TextContent(
+                    type="text",
+                    text="Error: content_id is required"
+                )]
+            try:
+                content_id = int(content_id)
+                result = client.get_content_detail(content_id)
+
+                # Check for error response
+                if result.get("error") == "not_found":
+                    return [TextContent(
+                        type="text",
+                        text=f"Content with ID {content_id} not found"
+                    )]
+
+                return [TextContent(
+                    type="text",
+                    text=json.dumps(result, indent=2)
+                )]
+            except ValueError:
+                return [TextContent(
+                    type="text",
+                    text=f"Error: content_id must be an integer, got '{arguments.get('content_id')}'"
+                )]
+            except Exception as e:
+                logger.error(f"get_content_detail failed for id {content_id}: {e}")
+                return [TextContent(
+                    type="text",
+                    text=f"Error fetching content detail: {str(e)}"
                 )]
 
         else:

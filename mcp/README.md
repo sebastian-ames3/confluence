@@ -55,19 +55,57 @@ Close and reopen Claude Desktop to load the MCP server.
 In Claude Desktop, you should see "confluence-research" in the MCP tools. Try asking:
 > "What should I focus on this week based on my research?"
 
-## Available Tools
+## Available Tools (21 total)
+
+### Synthesis Tools
 
 | Tool | Description |
 |------|-------------|
-| `get_latest_synthesis` | Full v3 synthesis with all sections |
+| `get_latest_synthesis` | Full V4 tiered synthesis with executive summary, source breakdowns, and content summaries |
 | `get_executive_summary` | Quick overview of what sources are saying |
 | `get_confluence_zones` | Where your sources align |
 | `get_conflicts` | Where sources disagree |
 | `get_attention_priorities` | Ranked list of what to focus on |
-| `get_source_stance` | What a specific source is saying |
+
+### Source Tools
+
+| Tool | Description |
+|------|-------------|
+| `get_source_stance` | What a specific source is saying (supports YouTube channels individually) |
 | `get_catalyst_calendar` | Upcoming events with source perspectives |
 | `get_re_review_recommendations` | Older content worth revisiting |
 | `search_research` | Search content for specific topics |
+
+### Theme Tracking Tools (PRD-024)
+
+| Tool | Description |
+|------|-------------|
+| `get_themes` | List all tracked investment themes with status filter |
+| `get_active_themes` | Get currently active themes (emerging + active) |
+| `get_theme_detail` | Deep dive into a specific theme by ID |
+| `get_themes_summary` | Statistics about tracked themes |
+
+### Symbol Analysis Tools (PRD-039)
+
+| Tool | Description |
+|------|-------------|
+| `get_symbol_analysis` | Full KT Technical + Discord analysis for a symbol |
+| `get_symbol_levels` | Price levels (support/resistance/targets) for a symbol |
+| `get_confluence_opportunities` | Symbols where KT and Discord are aligned |
+| `get_trade_setup` | Generate trade setup based on current state |
+
+### Quality Tool (PRD-044)
+
+| Tool | Description |
+|------|-------------|
+| `get_synthesis_quality` | AI-evaluated quality metrics for synthesis |
+
+### Content Browsing Tools (PRD-051)
+
+| Tool | Description |
+|------|-------------|
+| `list_recent_content` | Browse recent videos, PDFs, articles by source/type |
+| `get_content_detail` | Get full transcript/text and analysis for a specific content item |
 
 ## Example Conversations
 
@@ -80,11 +118,24 @@ In Claude Desktop, you should see "confluence-research" in the MCP tools. Try as
 **Source-specific:**
 > "What is Discord/Imran saying about the market?"
 
+**YouTube channel specific:**
+> "What did Forward Guidance say this week?"
+
 **Conflicts:**
 > "Where do my sources disagree?"
 
 **Preparation:**
 > "What should I review before FOMC?"
+
+**Theme tracking:**
+> "What themes are emerging in my research?"
+
+**Symbol analysis:**
+> "What are the key levels for SPX right now?"
+
+**Individual video discussion:**
+> "Show me recent YouTube videos"
+> "Tell me more about video #123" (using get_content_detail)
 
 ## Troubleshooting
 

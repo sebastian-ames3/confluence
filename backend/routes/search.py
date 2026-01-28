@@ -559,3 +559,204 @@ async def get_recent_from_source(
         "days": days,
         "content_type_filter": content_type
     }
+
+
+@router.get("/content/{content_id}")
+@limiter.limit(RATE_LIMITS["search"])
+async def get_content_detail(
+    request: Request,
+    content_id: int,
+    db: AsyncSession = Depends(get_async_db),
+    user: str = Depends(verify_jwt_or_basic)
+):
+    """
+    Get detailed information about a specific content item.
+
+    Returns the full content with analysis, themes, transcript (if video),
+    and all extracted insights. This endpoint enables discussion of
+    individual videos, PDFs, and other content items.
+
+    Args:
+        content_id: ID of the RawContent record
+
+    Returns:
+        Dictionary with full content details and analysis
+    """
+    # Query content with analysis and source
+    stmt = (
+        select(RawContent, AnalyzedContent, Source)
+        .outerjoin(AnalyzedContent, RawContent.id == AnalyzedContent.raw_content_id)
+        .join(Source, RawContent.source_id == Source.id)
+        .where(RawContent.id == content_id)
+    )
+
+    result = await db.execute(stmt)
+    row = result.first()
+
+    if not row:
+        return {
+            "error": "not_found",
+            "message": f"Content with ID {content_id} not found"
+        }
+
+    raw, analyzed, source = row
+
+    # Parse metadata
+    metadata = {}
+    if raw.json_metadata:
+        try:
+            metadata = json.loads(raw.json_metadata)
+        except json.JSONDecodeError:
+            pass
+
+    # Parse full analysis result
+    analysis_data = {}
+    if analyzed and analyzed.analysis_result:
+        try:
+            analysis_data = json.loads(analyzed.analysis_result)
+        except json.JSONDecodeError:
+            pass
+
+    # Build comprehensive response
+    response = {
+        "id": raw.id,
+        "source": source.name,
+        "type": raw.content_type,
+        "title": metadata.get("title", f"{source.name} content"),
+        "url": metadata.get("url") or metadata.get("video_url"),
+        "collected_at": raw.collected_at.isoformat() if raw.collected_at else None,
+
+        # Metadata (video-specific fields, etc.)
+        "metadata": {
+            "channel_name": metadata.get("channel_name"),
+            "channel_display": metadata.get("channel_display"),
+            "duration": metadata.get("duration"),
+            "view_count": metadata.get("view_count"),
+            "publish_date": metadata.get("publish_date") or metadata.get("published_at"),
+            "description": metadata.get("description"),
+        },
+
+        # Full content text (transcript for videos, text for articles/PDFs)
+        "content_text": raw.content_text,
+
+        # Analysis results
+        "analysis": {
+            "summary": analysis_data.get("summary"),
+            "key_points": analysis_data.get("key_points", []),
+            "themes": analyzed.key_themes.split(",") if analyzed and analyzed.key_themes else [],
+            "tickers_mentioned": analyzed.tickers_mentioned.split(",") if analyzed and analyzed.tickers_mentioned else [],
+            "sentiment": analyzed.sentiment if analyzed else None,
+            "conviction": analyzed.conviction if analyzed else None,
+            "time_horizon": analyzed.time_horizon if analyzed else None,
+            "market_implications": analysis_data.get("market_implications"),
+            "trade_ideas": analysis_data.get("trade_ideas", []),
+            "risks": analysis_data.get("risks", []),
+        },
+
+        "analyzed_at": analyzed.analyzed_at.isoformat() if analyzed and analyzed.analyzed_at else None,
+    }
+
+    return response
+
+
+@router.get("/recent")
+@limiter.limit(RATE_LIMITS["search"])
+async def list_recent_content(
+    request: Request,
+    source: Optional[str] = Query(None, description="Filter by source name"),
+    content_type: Optional[str] = Query(None, description="Filter by type: video, pdf, text, image"),
+    days: int = Query(7, ge=1, le=30, description="Days to look back"),
+    limit: int = Query(20, ge=1, le=100, description="Maximum items to return"),
+    db: AsyncSession = Depends(get_async_db),
+    user: str = Depends(verify_jwt_or_basic)
+):
+    """
+    List recent content across all sources or filtered by source/type.
+
+    Returns a list of recent content items with basic info and analysis.
+    Use get_content_detail to get full content for a specific item.
+
+    Args:
+        source: Optional source filter (e.g., "youtube", "42macro", "discord")
+        content_type: Optional type filter ("video", "pdf", "text", "image")
+        days: Number of days to look back (default 7)
+        limit: Maximum items to return (default 20)
+
+    Returns:
+        Dictionary with list of recent content items
+    """
+    cutoff = datetime.utcnow() - timedelta(days=days)
+
+    # Build query
+    stmt = (
+        select(RawContent, AnalyzedContent, Source)
+        .outerjoin(AnalyzedContent, RawContent.id == AnalyzedContent.raw_content_id)
+        .join(Source, RawContent.source_id == Source.id)
+        .where(RawContent.collected_at >= cutoff)
+    )
+
+    # Apply source filter
+    if source:
+        safe_source = sanitize_search_query(source)
+        if safe_source:
+            stmt = stmt.where(Source.name.ilike(f"%{safe_source}%"))
+
+    # Apply content type filter
+    if content_type:
+        stmt = stmt.where(RawContent.content_type == content_type)
+
+    # Order by recency and limit
+    stmt = stmt.order_by(desc(RawContent.collected_at)).limit(limit)
+
+    result = await db.execute(stmt)
+    results = result.all()
+
+    # Format results
+    items = []
+    for raw, analyzed, src in results:
+        # Parse metadata
+        metadata = {}
+        if raw.json_metadata:
+            try:
+                metadata = json.loads(raw.json_metadata)
+            except json.JSONDecodeError:
+                pass
+
+        # Get summary from analysis
+        summary = None
+        if analyzed and analyzed.analysis_result:
+            try:
+                analysis = json.loads(analyzed.analysis_result)
+                summary = analysis.get("summary")
+            except json.JSONDecodeError:
+                pass
+
+        if not summary and raw.content_text:
+            summary = raw.content_text[:300]
+            if len(raw.content_text) > 300:
+                summary += "..."
+
+        items.append({
+            "id": raw.id,
+            "title": metadata.get("title", f"{src.name} content"),
+            "source": src.name,
+            "channel": metadata.get("channel_name"),
+            "channel_display": metadata.get("channel_display"),
+            "type": raw.content_type,
+            "date": raw.collected_at.strftime("%Y-%m-%d") if raw.collected_at else None,
+            "datetime": raw.collected_at.isoformat() if raw.collected_at else None,
+            "summary": summary,
+            "themes": analyzed.key_themes.split(",") if analyzed and analyzed.key_themes else [],
+            "sentiment": analyzed.sentiment if analyzed else None,
+            "conviction": analyzed.conviction if analyzed else None,
+            "url": metadata.get("url") or metadata.get("video_url"),
+            "has_transcript": bool(raw.content_text and len(raw.content_text) > 100)
+        })
+
+    return {
+        "items": items,
+        "count": len(items),
+        "days": days,
+        "source_filter": source,
+        "content_type_filter": content_type
+    }
