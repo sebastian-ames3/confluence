@@ -738,3 +738,138 @@ async def debug_chrome_environment(
         result["nix_store_chromium_error"] = str(e)
 
     return result
+
+
+# ============================================================================
+# PRD-052: Manual Transcription Processing
+# ============================================================================
+
+@router.post("/process-transcriptions")
+async def process_pending_transcriptions(
+    limit: int = 10,
+    api_key: str = Depends(verify_api_key),
+    db: Session = Depends(get_db)
+):
+    """
+    Manually trigger processing of pending video transcriptions.
+
+    This endpoint is useful for processing a backlog of videos that
+    were collected but not transcribed (e.g., due to server restarts
+    during async processing).
+
+    The background processor runs automatically, but this endpoint
+    allows manual triggering for immediate processing.
+
+    Args:
+        limit: Maximum number of pending items to process (default 10)
+
+    Returns:
+        Status of queued transcriptions
+    """
+    from backend.models import TranscriptionStatus, RawContent, Source
+    from datetime import datetime
+    from sqlalchemy import and_
+
+    # Find pending items
+    pending = db.query(TranscriptionStatus, RawContent).join(
+        RawContent, TranscriptionStatus.content_id == RawContent.id
+    ).filter(
+        and_(
+            TranscriptionStatus.status == "pending",
+            TranscriptionStatus.retry_count < 3
+        )
+    ).order_by(TranscriptionStatus.created_at).limit(limit).all()
+
+    if not pending:
+        return {
+            "status": "no_pending",
+            "message": "No pending transcriptions to process",
+            "processed": 0
+        }
+
+    # Get the processor and trigger processing
+    queued = []
+    for status, raw_content in pending:
+        # Mark as processing
+        status.status = "processing"
+        status.last_attempt_at = datetime.utcnow()
+
+        # Get metadata
+        metadata = {}
+        if raw_content.json_metadata:
+            try:
+                metadata = json.loads(raw_content.json_metadata)
+            except json.JSONDecodeError:
+                pass
+
+        queued.append({
+            "content_id": raw_content.id,
+            "status_id": status.id,
+            "title": metadata.get("title", "Unknown"),
+            "url": raw_content.url or metadata.get("url", "Unknown")
+        })
+
+    db.commit()
+
+    # Start processing in background
+    import asyncio
+    from backend.workers import get_processor
+    processor = get_processor()
+
+    # Trigger the processor to pick up items now
+    asyncio.create_task(processor._process_pending())
+
+    return {
+        "status": "queued",
+        "message": f"Queued {len(queued)} transcriptions for processing",
+        "processed": len(queued),
+        "items": queued
+    }
+
+
+@router.get("/transcription-status")
+async def get_transcription_status(
+    api_key: str = Depends(verify_api_key),
+    db: Session = Depends(get_db)
+):
+    """
+    Get current transcription queue status.
+
+    Returns counts of pending, processing, completed, and failed transcriptions.
+    """
+    from backend.models import TranscriptionStatus
+    from sqlalchemy import func
+
+    # Get counts by status
+    counts = db.query(
+        TranscriptionStatus.status,
+        func.count(TranscriptionStatus.id)
+    ).group_by(TranscriptionStatus.status).all()
+
+    status_counts = {status: count for status, count in counts}
+
+    # Get recent failures
+    recent_failures = db.query(TranscriptionStatus).filter(
+        TranscriptionStatus.status == "failed"
+    ).order_by(TranscriptionStatus.last_attempt_at.desc()).limit(5).all()
+
+    return {
+        "summary": {
+            "pending": status_counts.get("pending", 0),
+            "processing": status_counts.get("processing", 0),
+            "completed": status_counts.get("completed", 0),
+            "failed": status_counts.get("failed", 0),
+            "skipped": status_counts.get("skipped", 0)
+        },
+        "total": sum(status_counts.values()),
+        "recent_failures": [
+            {
+                "id": f.id,
+                "content_id": f.content_id,
+                "error": f.error_message,
+                "retries": f.retry_count,
+                "last_attempt": f.last_attempt_at.isoformat() if f.last_attempt_at else None
+            }
+            for f in recent_failures
+        ]
+    }

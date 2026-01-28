@@ -15,9 +15,13 @@ Observability (PRD-034):
 - Sentry error monitoring (when SENTRY_DSN is configured)
 - Environment variable validation at startup
 
-Version: 1.0.2 - PRD-034 Observability Foundation
+Background Processing (PRD-052):
+- Transcription processor runs on startup to handle pending videos
+
+Version: 1.0.3 - PRD-052 Background Transcription Processing
 """
 
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -85,11 +89,45 @@ logger.info("Database tables initialized")
 # Import rate limiter
 from backend.utils.rate_limiter import limiter, rate_limit_exceeded_handler
 
-# Initialize FastAPI app
+# ============================================================================
+# PRD-052: Background Transcription Processor
+# ============================================================================
+# Enable/disable background processor via environment variable
+ENABLE_TRANSCRIPTION_PROCESSOR = os.getenv("ENABLE_TRANSCRIPTION_PROCESSOR", "true").lower() == "true"
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Manage application lifecycle - startup and shutdown."""
+    # Startup
+    if ENABLE_TRANSCRIPTION_PROCESSOR:
+        try:
+            from backend.workers import start_processor
+            await start_processor()
+            logger.info("Background transcription processor started")
+        except Exception as e:
+            logger.error(f"Failed to start transcription processor: {e}")
+    else:
+        logger.info("Transcription processor disabled via ENABLE_TRANSCRIPTION_PROCESSOR=false")
+
+    yield  # App is running
+
+    # Shutdown
+    if ENABLE_TRANSCRIPTION_PROCESSOR:
+        try:
+            from backend.workers import stop_processor
+            await stop_processor()
+            logger.info("Background transcription processor stopped")
+        except Exception as e:
+            logger.error(f"Error stopping transcription processor: {e}")
+
+
+# Initialize FastAPI app with lifespan
 app = FastAPI(
     title="Macro Confluence Hub API",
     description="Investment research aggregation and confluence analysis system",
-    version="1.0.0",
+    version="1.0.3",
+    lifespan=lifespan
 )
 
 # Add rate limiter to app state
