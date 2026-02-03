@@ -31,7 +31,7 @@ from confluence_client import (
     extract_confluence_zones,
     extract_conflicts,
     extract_attention_priorities,
-    extract_source_stances,
+    extract_source_breakdowns,
     extract_catalyst_calendar,
     extract_re_review_recommendations,
     extract_executive_summary
@@ -68,26 +68,16 @@ async def list_tools():
             name="get_latest_synthesis",
             description="""Get the latest research synthesis from Confluence Hub.
 
-Returns the full tiered synthesis (V4) including:
-
-TIER 1 - Executive Overview:
-- Macro context and synthesis narrative
-- Key takeaways (3-5 bullets)
+Returns the full synthesis including:
+- Executive summary with macro context and key takeaways
 - Confluence zones (where sources align)
 - Conflict watch (where sources disagree)
 - Attention priorities (what to focus on)
 - Catalyst calendar (upcoming events)
+- Source breakdowns (per-source detailed summaries, YouTube channels shown separately)
+- Content summaries (per-content item summaries)
 
-TIER 2 - Source Breakdowns (PRD-041):
-- Per-source detailed summaries (YouTube channels shown separately)
-- Key insights from each source with specific data points
-- Each YouTube channel (Moonshots, Forward Guidance, etc.) gets its own breakdown
-
-TIER 3 - Content Detail:
-- Per-content summaries (each video, PDF, post)
-- Themes and tickers mentioned in each piece of content
-
-Use this for a comprehensive overview of your research with drill-down capability.""",
+Use this for a comprehensive overview of your research.""",
             inputSchema={
                 "type": "object",
                 "properties": {},
@@ -635,67 +625,50 @@ async def call_tool(name: str, arguments: dict):
             source = arguments.get("source", "").lower()
             synthesis = client.get_latest_synthesis()
 
-            # PRD-049: Check tier awareness - source stances require Tier 2+ data
-            tier_returned = synthesis.get("tier_returned")
-            version = synthesis.get("version", "1.0")
-            if version == "4.0" and tier_returned == 1:
+            breakdowns = extract_source_breakdowns(synthesis)
+
+            if not breakdowns:
                 return [TextContent(
                     type="text",
-                    text="Error: Source stance data requires Tier 2 or higher. The current synthesis was returned at Tier 1 (executive summary only)."
-                )]
-
-            stances = extract_source_stances(synthesis)
-
-            # PRD-049: Check if stances data is available
-            if not stances:
-                return [TextContent(
-                    type="text",
-                    text="No source stance data available in the current synthesis. This may indicate a V1/V2 synthesis or missing source_breakdowns."
+                    text="No source breakdown data available in the current synthesis."
                 )]
 
             # Find matching source (case-insensitive, supports partial matching)
-            matched_stance = None
+            matched_data = None
             matched_key = None
 
-            for key, value in stances.items():
+            for key, value in breakdowns.items():
                 if not isinstance(value, dict):
                     continue
                 key_lower = key.lower() if isinstance(key, str) else ""
                 # Exact match
                 if key_lower == source:
-                    matched_stance = value
+                    matched_data = value
                     matched_key = key
                     break
                 # Partial match (e.g., "forward" matches "youtube:Forward Guidance")
                 if source in key_lower:
-                    matched_stance = value
-                    matched_key = key
-                    break
-                # Match display name for YouTube channels
-                display_name = value.get("display_name", "").lower()
-                if display_name and source in display_name:
-                    matched_stance = value
+                    matched_data = value
                     matched_key = key
                     break
 
-            if matched_stance:
-                # Format output with display name
-                display_name = matched_stance.get("display_name", matched_key)
+            if matched_data:
+                display_name = matched_key.split(":", 1)[1] if ":" in matched_key else matched_key
                 output = {
                     "source": matched_key,
                     "display_name": display_name,
-                    "narrative": matched_stance.get("current_stance_narrative") or matched_stance.get("summary", ""),
-                    "key_insights": matched_stance.get("key_insights", []),
-                    "themes": matched_stance.get("themes", []),
-                    "overall_bias": matched_stance.get("overall_bias", "neutral"),
-                    "content_count": matched_stance.get("content_count", 0)
+                    "narrative": matched_data.get("summary", ""),
+                    "key_insights": matched_data.get("key_insights", []),
+                    "themes": matched_data.get("themes", []),
+                    "overall_bias": matched_data.get("overall_bias", "neutral"),
+                    "content_count": matched_data.get("content_count", 0)
                 }
                 return [TextContent(
                     type="text",
                     text=json.dumps(output, indent=2)
                 )]
             else:
-                available = list(stances.keys())
+                available = list(breakdowns.keys())
                 return [TextContent(
                     type="text",
                     text=f"Source '{source}' not found. Available sources: {available}"
@@ -963,40 +936,6 @@ async def call_tool(name: str, arguments: dict):
                 return [TextContent(
                     type="text",
                     text=f"Error listing recent content: {str(e)}"
-                )]
-
-        elif name == "get_content_detail":
-            content_id = arguments.get("content_id")
-            if content_id is None:
-                return [TextContent(
-                    type="text",
-                    text="Error: content_id is required"
-                )]
-            try:
-                content_id = int(content_id)
-                result = client.get_content_detail(content_id)
-
-                # Check for error response
-                if result.get("error") == "not_found":
-                    return [TextContent(
-                        type="text",
-                        text=f"Content with ID {content_id} not found"
-                    )]
-
-                return [TextContent(
-                    type="text",
-                    text=json.dumps(result, indent=2)
-                )]
-            except ValueError:
-                return [TextContent(
-                    type="text",
-                    text=f"Error: content_id must be an integer, got '{arguments.get('content_id')}'"
-                )]
-            except Exception as e:
-                logger.error(f"get_content_detail failed for id {content_id}: {e}")
-                return [TextContent(
-                    type="text",
-                    text=f"Error fetching content detail: {str(e)}"
                 )]
 
         else:

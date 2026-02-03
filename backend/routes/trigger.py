@@ -18,7 +18,7 @@ import logging
 import os
 import asyncio
 
-from backend.models import get_db, CollectionRun, RawContent, Source, TranscriptionStatus
+from backend.models import get_db, CollectionRun, RawContent, Source, TranscriptionStatus, SymbolState, SynthesisQualityScore
 from backend.utils.deduplication import check_duplicate
 from backend.utils.sanitization import sanitize_search_query
 from backend.utils.data_helpers import safe_get_analysis_result, safe_get_analysis_preview
@@ -461,9 +461,10 @@ async def trigger_analysis(
         )
 
     try:
-        # Import synthesis generation logic
         from agents.synthesis_agent import SynthesisAgent
-        from backend.models import Synthesis, AnalyzedContent
+        from agents.synthesis_evaluator import SynthesisEvaluatorAgent
+        from agents.theme_extractor import extract_and_track_themes
+        from backend.models import Synthesis, AnalyzedContent, SynthesisQualityScore
 
         # Get time cutoff
         time_deltas = {
@@ -483,22 +484,41 @@ async def trigger_analysis(
                 "content_count": 0
             }
 
+        # Get older content for re-review recommendations
+        older_cutoff = datetime.utcnow() - timedelta(days=30)
+        older_content = _get_content_for_synthesis(db, older_cutoff, request.focus_topic, end_date=cutoff)
+
+        # Get KT symbol data
+        kt_symbol_data = _get_kt_symbol_data(db)
+
         # Generate synthesis
         agent = SynthesisAgent()
         result = agent.analyze(
             content_items=content_items,
+            older_content=older_content,
             time_window=request.time_window,
-            focus_topic=request.focus_topic
+            focus_topic=request.focus_topic,
+            kt_symbol_data=kt_symbol_data
         )
+
+        # Extract summary for flat columns
+        exec_summary = result.get("executive_summary", {})
+        synthesis_text = ""
+        market_regime_str = "unclear"
+        if isinstance(exec_summary, dict):
+            synthesis_text = exec_summary.get("synthesis_narrative", exec_summary.get("narrative", ""))
+            market_regime_str = exec_summary.get("overall_tone", "unclear")
 
         # Save synthesis
         synthesis = Synthesis(
-            synthesis=result.get("synthesis", ""),
-            key_themes=json.dumps(result.get("key_themes", [])),
-            high_conviction_ideas=json.dumps(result.get("high_conviction_ideas", [])),
-            contradictions=json.dumps(result.get("contradictions", [])),
-            market_regime=result.get("market_regime"),
-            catalysts=json.dumps(result.get("catalysts", [])),
+            schema_version="5.0",
+            synthesis=synthesis_text,
+            key_themes=json.dumps([t.get("theme", "") for t in result.get("confluence_zones", [])]),
+            high_conviction_ideas=json.dumps(result.get("attention_priorities", [])),
+            contradictions=json.dumps(result.get("conflict_watch", [])),
+            market_regime=market_regime_str,
+            catalysts=json.dumps(result.get("catalyst_calendar", [])),
+            synthesis_json=json.dumps(result),
             time_window=request.time_window,
             content_count=result.get("content_count", len(content_items)),
             sources_included=json.dumps(result.get("sources_included", [])),
@@ -511,13 +531,46 @@ async def trigger_analysis(
 
         logger.info(f"Generated synthesis {synthesis.id} with {len(content_items)} content items")
 
+        # Run quality evaluation
+        if os.getenv("ENABLE_QUALITY_EVALUATION", "true").lower() == "true":
+            try:
+                evaluator = SynthesisEvaluatorAgent()
+                quality_result = evaluator.evaluate(
+                    synthesis_output=result,
+                    original_content=content_items
+                )
+                quality_score = SynthesisQualityScore(
+                    synthesis_id=synthesis.id,
+                    quality_score=quality_result["quality_score"],
+                    grade=quality_result["grade"],
+                    confluence_detection=quality_result["confluence_detection"],
+                    evidence_preservation=quality_result["evidence_preservation"],
+                    source_attribution=quality_result["source_attribution"],
+                    youtube_channel_granularity=quality_result["youtube_channel_granularity"],
+                    nuance_retention=quality_result["nuance_retention"],
+                    actionability=quality_result["actionability"],
+                    theme_continuity=quality_result["theme_continuity"],
+                    flags=json.dumps(quality_result.get("flags", [])),
+                    prompt_suggestions=json.dumps(quality_result.get("prompt_suggestions", []))
+                )
+                db.add(quality_score)
+                db.commit()
+            except Exception as qe:
+                logger.warning(f"Quality evaluation failed (non-fatal): {qe}")
+
+        # Extract and track themes
+        try:
+            extract_and_track_themes(result, db)
+        except Exception as te:
+            logger.warning(f"Theme extraction failed (non-fatal): {te}")
+
         return {
             "status": "success",
             "synthesis_id": synthesis.id,
             "content_count": len(content_items),
             "time_window": request.time_window,
-            "market_regime": result.get("market_regime"),
-            "key_themes": result.get("key_themes", [])[:5],  # Top 5
+            "market_regime": market_regime_str,
+            "key_themes": [t.get("theme", "") for t in result.get("confluence_zones", [])][:5],
             "generated_at": synthesis.generated_at.isoformat()
         }
 
@@ -535,7 +588,7 @@ async def trigger_analysis(
         )
 
 
-def _get_content_for_synthesis(db: Session, cutoff: datetime, focus_topic: Optional[str] = None) -> list:
+def _get_content_for_synthesis(db: Session, cutoff: datetime, focus_topic: Optional[str] = None, end_date: Optional[datetime] = None) -> list:
     """Get analyzed content for synthesis generation."""
     from backend.models import AnalyzedContent, RawContent, Source
     from sqlalchemy import desc
@@ -548,6 +601,9 @@ def _get_content_for_synthesis(db: Session, cutoff: datetime, focus_topic: Optio
     ).filter(
         AnalyzedContent.analyzed_at >= cutoff
     )
+
+    if end_date:
+        query = query.filter(AnalyzedContent.analyzed_at < end_date)
 
     # Filter by topic if provided (PRD-046: sanitize for SQL injection)
     if focus_topic:
@@ -587,6 +643,27 @@ def _get_content_for_synthesis(db: Session, cutoff: datetime, focus_topic: Optio
         })
 
     return content_items
+
+
+def _get_kt_symbol_data(db: Session) -> list:
+    """Get KT Technical symbol data for synthesis."""
+    from backend.models import SymbolState
+    try:
+        symbols = db.query(SymbolState).filter(
+            SymbolState.kt_wave_count.isnot(None)
+        ).all()
+        return [
+            {
+                "symbol": s.symbol,
+                "wave_count": s.kt_wave_count,
+                "bias": s.kt_bias,
+                "updated_at": s.kt_updated_at.isoformat() if s.kt_updated_at else None
+            }
+            for s in symbols
+        ]
+    except Exception as e:
+        logger.warning(f"Failed to get KT symbol data: {e}")
+        return []
 
 
 # ============================================================================

@@ -116,23 +116,16 @@ class TestSynthesisPromptBuilding:
         assert "channel_display" in content, \
             "Prompt building should reference channel_display"
 
-    def test_v2_prompt_groups_by_channel(self):
-        """Verify _build_synthesis_prompt_v2 groups YouTube by channel."""
+    def test_prompt_groups_by_channel(self):
+        """Verify _build_prompt groups YouTube by channel."""
         agent_path = Path(__file__).parent.parent / "agents" / "synthesis_agent.py"
         content = agent_path.read_text(encoding='utf-8')
 
-        # Check v2 method exists and uses channel grouping
-        assert "def _build_synthesis_prompt_v2" in content
+        # Check prompt builder exists and uses channel grouping
+        assert "def _build_prompt" in content
         # The method should use youtube:channel_display pattern
         assert 'youtube:' in content or "youtube:" in content, \
             "Should use youtube:channel_display pattern for grouping"
-
-    def test_v3_prompt_groups_by_channel(self):
-        """Verify _build_synthesis_prompt_v3 groups YouTube by channel."""
-        agent_path = Path(__file__).parent.parent / "agents" / "synthesis_agent.py"
-        content = agent_path.read_text(encoding='utf-8')
-
-        assert "def _build_synthesis_prompt_v3" in content
 
     def test_youtube_header_format(self):
         """Verify YouTube content uses 'YOUTUBE - ChannelName' header format."""
@@ -290,23 +283,23 @@ class TestUICompatibility:
         index_path = Path(__file__).parent.parent / "frontend" / "index.html"
         assert index_path.exists(), "frontend/index.html should exist"
 
-    def test_source_stances_display_is_dynamic(self):
-        """Verify source stances display uses dynamic source names."""
+    def test_source_breakdowns_display_is_dynamic(self):
+        """Verify source breakdowns display uses dynamic source names."""
         index_path = Path(__file__).parent.parent / "frontend" / "index.html"
         content = index_path.read_text(encoding='utf-8')
 
-        # Should iterate over stances dynamically
-        assert "Object.entries(stances)" in content, \
-            "Source stances should be displayed dynamically"
+        # Should iterate over breakdowns dynamically
+        assert "Object.entries(breakdowns)" in content, \
+            "Source breakdowns should be displayed dynamically"
 
-    def test_source_stances_uses_name_variable(self):
-        """Verify source stances display shows the source name from data."""
+    def test_source_breakdowns_uses_name_variable(self):
+        """Verify source breakdowns display shows the source name from data."""
         index_path = Path(__file__).parent.parent / "frontend" / "index.html"
         content = index_path.read_text(encoding='utf-8')
 
-        # Should display the name from the object entries (with or without escapeHtml for XSS protection)
-        assert "${name}" in content or "${escapeHtml(name)}" in content, \
-            "Source name should be displayed from data, not hardcoded"
+        # Should display the display name (with escapeHtml for XSS protection)
+        assert "${escapeHtml(displayName)}" in content, \
+            "Source display name should be displayed from data, not hardcoded"
 
     def test_no_hardcoded_youtube_in_stances(self):
         """Verify no hardcoded 'youtube' string in source stances display."""
