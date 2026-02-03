@@ -43,9 +43,16 @@ class ConfluenceClient:
         """Get the latest research synthesis with full detail."""
         return self._request("GET", "/api/synthesis/latest")
 
-    def get_synthesis_history(self, limit: int = 5) -> List[Dict[str, Any]]:
+    def get_synthesis_history(self, limit: int = 5, offset: int = 0) -> List[Dict[str, Any]]:
         """Get recent synthesis history."""
-        return self._request("GET", f"/api/synthesis/history?limit={limit}")
+        params = f"limit={limit}"
+        if offset > 0:
+            params += f"&offset={offset}"
+        return self._request("GET", f"/api/synthesis/history?{params}")
+
+    def get_synthesis_by_id(self, synthesis_id: int) -> Dict[str, Any]:
+        """Get a specific synthesis by ID."""
+        return self._request("GET", f"/api/synthesis/{synthesis_id}")
 
     def search_content(
         self,
@@ -194,6 +201,23 @@ class ConfluenceClient:
     def get_quality_trends(self, days: int = 30) -> Dict[str, Any]:
         """Get quality score trends over time."""
         return self._request("GET", f"/api/quality/trends?days={days}")
+
+    def get_quality_flagged(self, limit: int = 10) -> Dict[str, Any]:
+        """Get syntheses with quality flags."""
+        return self._request("GET", f"/api/quality/flagged?limit={limit}")
+
+    def get_source_health(self) -> Dict[str, Any]:
+        """Get health status for all sources."""
+        return self._request("GET", "/api/health/sources")
+
+    def get_active_alerts(self, include_acknowledged: bool = False) -> Dict[str, Any]:
+        """Get active system alerts."""
+        params = f"include_acknowledged={'true' if include_acknowledged else 'false'}"
+        return self._request("GET", f"/api/health/alerts?{params}")
+
+    def get_theme_evolution(self, theme_id: int) -> Dict[str, Any]:
+        """Get historical evolution data for a theme."""
+        return self._request("GET", f"/api/dashboard/historical/{theme_id}")
 
     # =====================================================
     # CONTENT BROWSING API (PRD-051: Individual Content Access)

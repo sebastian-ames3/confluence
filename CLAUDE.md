@@ -130,6 +130,13 @@ Source weights: 42macro=1.5, discord=1.5, kt_technical=1.2, substack=1.0, youtub
 | `get_confluence_opportunities` | Aligned high-conviction setups |
 | `get_trade_setup` | Trade idea for symbol |
 | `get_synthesis_quality` | Quality score with grades and flags |
+| `get_synthesis_history` | Browse past synthesis runs |
+| `get_synthesis_by_id` | Fetch a specific past synthesis |
+| `get_quality_trends` | Quality score trends over time |
+| `get_quality_flagged` | Syntheses with quality issues |
+| `get_system_health` | All source health status |
+| `get_active_alerts` | Active system alerts |
+| `get_theme_evolution` | Historical evolution data for a theme |
 
 ---
 
