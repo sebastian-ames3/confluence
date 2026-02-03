@@ -216,6 +216,7 @@ async def generate_synthesis(
             logger.info(f"Theme extraction complete: {theme_result.get('created', 0)} created, "
                        f"{theme_result.get('updated', 0)} updated")
         except Exception as theme_error:
+            db.rollback()
             logger.warning(f"Theme extraction failed (non-fatal): {str(theme_error)}")
 
         # Return response
