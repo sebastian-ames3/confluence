@@ -563,6 +563,151 @@ This enables detailed discussion of individual pieces of research content.""",
                 },
                 "required": ["content_id"]
             }
+        ),
+        # New tools: synthesis history, quality, health, theme evolution
+        Tool(
+            name="get_synthesis_history",
+            description="""Get a list of recent synthesis runs.
+
+Returns synthesis metadata (ID, timestamp, time window, content count)
+for browsing past syntheses. Use get_synthesis_by_id to fetch full detail.
+
+Args:
+- limit: Number of results (1-50, default 10)
+- offset: Pagination offset (default 0)""",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "limit": {
+                        "type": "integer",
+                        "description": "Number of results (1-50, default 10)"
+                    },
+                    "offset": {
+                        "type": "integer",
+                        "description": "Pagination offset (default 0)"
+                    }
+                },
+                "required": []
+            }
+        ),
+        Tool(
+            name="get_synthesis_by_id",
+            description="""Get a specific past synthesis by its ID.
+
+Returns the full synthesis document including executive summary,
+confluence zones, conflicts, attention priorities, and source breakdowns.
+
+Use get_synthesis_history to find synthesis IDs.
+
+Args:
+- synthesis_id: The numeric synthesis ID (required)""",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "synthesis_id": {
+                        "type": "integer",
+                        "description": "Synthesis ID (from get_synthesis_history)"
+                    }
+                },
+                "required": ["synthesis_id"]
+            }
+        ),
+        Tool(
+            name="get_quality_trends",
+            description="""Get quality score trends over a time period.
+
+Shows how synthesis quality has changed over time, including
+overall scores, per-criterion trends, and grade distribution.
+
+Args:
+- days: Number of days to look back (1-90, default 30)""",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "days": {
+                        "type": "integer",
+                        "description": "Days to look back (1-90, default 30)"
+                    }
+                },
+                "required": []
+            }
+        ),
+        Tool(
+            name="get_quality_flagged",
+            description="""Get syntheses that have quality flags/issues.
+
+Returns syntheses where one or more quality criteria scored poorly,
+including the specific flags and details about what went wrong.
+
+Args:
+- limit: Number of results (default 10)""",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "limit": {
+                        "type": "integer",
+                        "description": "Number of results (default 10)"
+                    }
+                },
+                "required": []
+            }
+        ),
+        Tool(
+            name="get_system_health",
+            description="""Get health status for all data sources.
+
+Returns per-source health including:
+- Last collection time
+- Collection success/failure counts
+- Data freshness and staleness warnings
+- Overall system status
+
+Use this to check if data collection is running properly.""",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "required": []
+            }
+        ),
+        Tool(
+            name="get_active_alerts",
+            description="""Get active system alerts.
+
+Returns alerts about issues like stale data, failed collections,
+or degraded service. Alerts have severity levels and timestamps.
+
+Args:
+- include_acknowledged: Include already-acknowledged alerts (default false)""",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "include_acknowledged": {
+                        "type": "boolean",
+                        "description": "Include acknowledged alerts (default false)"
+                    }
+                },
+                "required": []
+            }
+        ),
+        Tool(
+            name="get_theme_evolution",
+            description="""Get historical evolution data for a specific theme.
+
+Shows how a theme has changed over time including conviction shifts,
+source mentions, and status transitions.
+
+Args:
+- theme_id: The numeric theme ID (required)""",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "theme_id": {
+                        "type": "integer",
+                        "description": "Theme ID number"
+                    }
+                },
+                "required": ["theme_id"]
+            }
         )
     ]
 
@@ -936,6 +1081,153 @@ async def call_tool(name: str, arguments: dict):
                 return [TextContent(
                     type="text",
                     text=f"Error listing recent content: {str(e)}"
+                )]
+
+        # New tools: synthesis history, quality, health, theme evolution
+        elif name == "get_synthesis_history":
+            try:
+                limit = arguments.get("limit", 10)
+                offset = arguments.get("offset", 0)
+                limit = int(limit)
+                offset = int(offset)
+                result = client.get_synthesis_history(limit=limit, offset=offset)
+                return [TextContent(
+                    type="text",
+                    text=json.dumps(result, indent=2)
+                )]
+            except ValueError:
+                return [TextContent(
+                    type="text",
+                    text="Error: limit and offset must be integers"
+                )]
+            except Exception as e:
+                logger.error(f"get_synthesis_history failed: {e}")
+                return [TextContent(
+                    type="text",
+                    text=f"Error fetching synthesis history: {str(e)}"
+                )]
+
+        elif name == "get_synthesis_by_id":
+            synthesis_id = arguments.get("synthesis_id")
+            if synthesis_id is None:
+                return [TextContent(
+                    type="text",
+                    text="Error: synthesis_id is required"
+                )]
+            try:
+                synthesis_id = int(synthesis_id)
+                result = client.get_synthesis_by_id(synthesis_id)
+                return [TextContent(
+                    type="text",
+                    text=json.dumps(result, indent=2)
+                )]
+            except ValueError:
+                return [TextContent(
+                    type="text",
+                    text=f"Error: synthesis_id must be an integer, got '{arguments.get('synthesis_id')}'"
+                )]
+            except Exception as e:
+                logger.error(f"get_synthesis_by_id failed for id {synthesis_id}: {e}")
+                return [TextContent(
+                    type="text",
+                    text=f"Error fetching synthesis {synthesis_id}: {str(e)}"
+                )]
+
+        elif name == "get_quality_trends":
+            try:
+                days = arguments.get("days", 30)
+                days = int(days)
+                result = client.get_quality_trends(days=days)
+                return [TextContent(
+                    type="text",
+                    text=json.dumps(result, indent=2)
+                )]
+            except ValueError:
+                return [TextContent(
+                    type="text",
+                    text="Error: days must be an integer"
+                )]
+            except Exception as e:
+                logger.error(f"get_quality_trends failed: {e}")
+                return [TextContent(
+                    type="text",
+                    text=f"Error fetching quality trends: {str(e)}"
+                )]
+
+        elif name == "get_quality_flagged":
+            try:
+                limit = arguments.get("limit", 10)
+                limit = int(limit)
+                result = client.get_quality_flagged(limit=limit)
+                return [TextContent(
+                    type="text",
+                    text=json.dumps(result, indent=2)
+                )]
+            except ValueError:
+                return [TextContent(
+                    type="text",
+                    text="Error: limit must be an integer"
+                )]
+            except Exception as e:
+                logger.error(f"get_quality_flagged failed: {e}")
+                return [TextContent(
+                    type="text",
+                    text=f"Error fetching flagged syntheses: {str(e)}"
+                )]
+
+        elif name == "get_system_health":
+            try:
+                result = client.get_source_health()
+                return [TextContent(
+                    type="text",
+                    text=json.dumps(result, indent=2)
+                )]
+            except Exception as e:
+                logger.error(f"get_system_health failed: {e}")
+                return [TextContent(
+                    type="text",
+                    text=f"Error fetching system health: {str(e)}"
+                )]
+
+        elif name == "get_active_alerts":
+            try:
+                include_acknowledged = arguments.get("include_acknowledged", False)
+                result = client.get_active_alerts(include_acknowledged=bool(include_acknowledged))
+                return [TextContent(
+                    type="text",
+                    text=json.dumps(result, indent=2)
+                )]
+            except Exception as e:
+                logger.error(f"get_active_alerts failed: {e}")
+                return [TextContent(
+                    type="text",
+                    text=f"Error fetching active alerts: {str(e)}"
+                )]
+
+        elif name == "get_theme_evolution":
+            theme_id = arguments.get("theme_id")
+            if theme_id is None:
+                return [TextContent(
+                    type="text",
+                    text="Error: theme_id is required"
+                )]
+            try:
+                theme_id = int(theme_id)
+                result = client.get_theme_evolution(theme_id)
+                return [TextContent(
+                    type="text",
+                    text=json.dumps(result, indent=2)
+                )]
+            except ValueError:
+                return [TextContent(
+                    type="text",
+                    text=f"Error: theme_id must be an integer, got '{arguments.get('theme_id')}'"
+                )]
+            except Exception as e:
+                logger.error(f"get_theme_evolution failed for id {theme_id}: {e}")
+                return [TextContent(
+                    type="text",
+                    text=f"Error fetching theme evolution {theme_id}: {str(e)}"
                 )]
 
         else:
