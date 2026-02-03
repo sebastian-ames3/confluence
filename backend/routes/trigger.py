@@ -572,6 +572,7 @@ def _get_content_for_synthesis(db: Session, cutoff: datetime, focus_topic: Optio
             metadata = {}
 
         content_items.append({
+            "id": raw.id,
             "source": source.name,
             "type": raw.content_type,
             "title": metadata.get("title", f"{source.name} content"),
@@ -581,7 +582,8 @@ def _get_content_for_synthesis(db: Session, cutoff: datetime, focus_topic: Optio
             "tickers": analyzed.tickers_mentioned.split(",") if analyzed.tickers_mentioned else [],
             "sentiment": analyzed.sentiment,
             "conviction": analyzed.conviction,
-            "content_text": raw.content_text[:1000] if raw.content_text else ""
+            "content_text": raw.content_text[:50000] if raw.content_text else "",
+            "key_quotes": analysis_data.get("key_quotes", []),
         })
 
     return content_items

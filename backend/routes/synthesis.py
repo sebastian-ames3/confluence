@@ -954,6 +954,7 @@ def _get_content_for_synthesis(
                 channel_display = "Youtube"  # Fallback for old data without channel_name
 
         content_items.append({
+            "id": raw.id,
             "source": source.name,
             "channel": channel_name,  # PRD-040: Raw channel key (e.g., "peter_diamandis")
             "channel_display": channel_display,  # PRD-040: Display name (e.g., "Moonshots")
@@ -965,7 +966,8 @@ def _get_content_for_synthesis(
             "tickers": analyzed.tickers_mentioned.split(",") if analyzed.tickers_mentioned else [],
             "sentiment": analyzed.sentiment,
             "conviction": analyzed.conviction,
-            "content_text": raw.content_text[:1000] if raw.content_text else ""
+            "content_text": raw.content_text[:50000] if raw.content_text else "",
+            "key_quotes": analysis_data.get("key_quotes", []),
         })
 
     return content_items

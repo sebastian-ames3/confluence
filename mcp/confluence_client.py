@@ -62,45 +62,33 @@ class ConfluenceClient:
         """
         Search across collected research content.
 
-        Note: This uses the status/overview endpoint and filters.
-        For a full search, we'd need to add a search endpoint to the API.
+        Uses the /api/search/content endpoint which does server-side
+        SQL search across content text, metadata, and themes.
         """
-        # Get recent analyzed content
-        params = {"days": days}
+        params = {"q": query, "days": days, "limit": 50}
         if source:
             params["source"] = source
 
         try:
-            # Try the debug endpoint which has content details
-            result = self._request("GET", "/api/synthesis/debug")
-            content_items = result.get("content_items", [])
+            result = self._request("GET", "/api/search/content", params=params)
+            api_results = result.get("results", [])
 
-            # Filter by query (simple text match)
-            query_lower = query.lower()
+            # Normalize to consistent format for MCP
             matches = []
-            for item in content_items:
-                # Search in title, content, themes
-                searchable = " ".join([
-                    str(item.get("title", "")),
-                    str(item.get("content_text", "")),
-                    str(item.get("summary", "")),
-                    " ".join(item.get("themes", []))
-                ]).lower()
+            for item in api_results:
+                matches.append({
+                    "id": item.get("id"),
+                    "source": item.get("source"),
+                    "title": item.get("title"),
+                    "date": item.get("date"),
+                    "type": item.get("type"),
+                    "themes": item.get("themes", []),
+                    "sentiment": item.get("sentiment"),
+                    "conviction": item.get("conviction"),
+                    "summary": item.get("analysis_summary") or item.get("snippet", "")
+                })
 
-                if query_lower in searchable:
-                    # Filter by source if specified
-                    if source and item.get("source", "").lower() != source.lower():
-                        continue
-                    matches.append({
-                        "source": item.get("source"),
-                        "title": item.get("title"),
-                        "date": item.get("timestamp") or item.get("collected_at"),
-                        "themes": item.get("themes", []),
-                        "sentiment": item.get("sentiment"),
-                        "summary": str(item.get("summary", item.get("content_text", "")))[:500]
-                    })
-
-            return matches[:20]  # Limit results
+            return matches
 
         except Exception as e:
             return [{"error": str(e)}]
@@ -115,7 +103,11 @@ class ConfluenceClient:
         days: int = 7
     ) -> List[Dict[str, Any]]:
         """Get recent content from a specific source."""
-        return self.search_content("", source=source, days=days)
+        try:
+            result = self._request("GET", f"/api/search/recent/{source}", params={"days": days})
+            return result.get("items", [])
+        except Exception as e:
+            return [{"error": str(e)}]
 
     # =====================================================
     # THEME TRACKING API (PRD-024)
@@ -181,6 +173,10 @@ class ConfluenceClient:
     def get_confluence_opportunities(self) -> Dict[str, Any]:
         """Get symbols where KT and Discord are aligned (high confluence)."""
         return self._request("GET", "/api/symbols/confluence/opportunities")
+
+    def get_content_detail(self, content_id: int) -> Dict[str, Any]:
+        """Get full content detail by ID, including complete transcript text."""
+        return self._request("GET", f"/api/content/{content_id}")
 
     # PRD-044: Synthesis Quality Methods
     def get_synthesis_quality(self, synthesis_id: Optional[int] = None) -> Dict[str, Any]:

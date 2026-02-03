@@ -431,6 +431,34 @@ Use this to brainstorm specific trade ideas.""",
                 "required": ["symbol"]
             }
         ),
+        Tool(
+            name="get_content_detail",
+            description="""Get the full content/transcript for a specific content item by ID.
+
+Use this AFTER search_research to drill into a specific piece of content.
+search_research returns IDs and short snippets; this returns the complete text.
+
+Returns:
+- Full content_text (complete transcript, no truncation)
+- content_length (character count)
+- Parsed analysis: summary, key_quotes, catalysts, falsification_criteria
+- Metadata: source, title, url, collected_at, content_type
+- Denormalized: themes, tickers, sentiment, conviction
+
+Example workflow:
+1. search_research(query="VIX") -> find item with id=42
+2. get_content_detail(content_id=42) -> read the full transcript""",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "content_id": {
+                        "type": "integer",
+                        "description": "Content ID (from search_research results)"
+                    }
+                },
+                "required": ["content_id"]
+            }
+        ),
         # PRD-044: Synthesis Quality Tool
         Tool(
             name="get_synthesis_quality",
@@ -699,6 +727,32 @@ async def call_tool(name: str, arguments: dict):
                 type="text",
                 text=json.dumps(results, indent=2)
             )]
+
+        elif name == "get_content_detail":
+            content_id = arguments.get("content_id")
+            if content_id is None:
+                return [TextContent(
+                    type="text",
+                    text="Error: content_id is required"
+                )]
+            try:
+                content_id = int(content_id)
+                detail = client.get_content_detail(content_id)
+                return [TextContent(
+                    type="text",
+                    text=json.dumps(detail, indent=2)
+                )]
+            except ValueError:
+                return [TextContent(
+                    type="text",
+                    text=f"Error: content_id must be an integer, got '{arguments.get('content_id')}'"
+                )]
+            except Exception as e:
+                logger.error(f"get_content_detail failed for id {content_id}: {e}")
+                return [TextContent(
+                    type="text",
+                    text=f"Error fetching content {content_id}: {str(e)}"
+                )]
 
         # PRD-024: Theme Tracking Tools
         # PRD-049: Added try/catch and explicit None validation
