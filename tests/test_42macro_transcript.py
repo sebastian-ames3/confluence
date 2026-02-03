@@ -73,14 +73,6 @@ class TestTranscriptHarvester42MacroSupport:
         assert "download_and_extract_audio(video_url, source, metadata)" in content, \
             "harvest should pass metadata to download_and_extract_audio"
 
-    def test_42macro_cookies_file_path_defined(self):
-        """Verify MACRO42_COOKIES_FILE constant is defined."""
-        harvester_path = Path(__file__).parent.parent / "agents" / "transcript_harvester.py"
-        content = harvester_path.read_text()
-
-        assert 'MACRO42_COOKIES_FILE = "temp/42macro_cookies.json"' in content, \
-            "MACRO42_COOKIES_FILE should be defined"
-
     def test_build_ytdlp_command_method_exists(self):
         """Verify _build_ytdlp_command method exists."""
         harvester_path = Path(__file__).parent.parent / "agents" / "transcript_harvester.py"

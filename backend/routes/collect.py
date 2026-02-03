@@ -268,46 +268,6 @@ async def _transcribe_video_with_tracking(
     return transcribe_result
 
 
-async def _transcribe_video_async(
-    raw_content_id: int,
-    video_url: str,
-    source: str,
-    title: Optional[str] = None,
-    metadata: Optional[Dict[str, Any]] = None
-):
-    """
-    Run video transcription in background thread pool (legacy, no tracking).
-
-    PRD-018: Async wrapper to avoid blocking the event loop.
-    NOTE: Prefer _transcribe_video_with_tracking for new code (PRD-045).
-
-    Args:
-        raw_content_id: ID of the RawContent record
-        video_url: URL of the video
-        source: Source name
-        title: Optional title
-        metadata: Optional metadata (embed_url for Vimeo auth, etc.)
-    """
-    loop = asyncio.get_event_loop()
-
-    try:
-        # Use functools.partial to pass all args including metadata
-        import functools
-        await loop.run_in_executor(
-            transcription_executor,
-            functools.partial(
-                _transcribe_video_sync,
-                raw_content_id,
-                video_url,
-                source,
-                title,
-                metadata
-            )
-        )
-    except Exception as e:
-        logger.error(f"Async transcription wrapper failed: {e}")
-
-
 async def _queue_transcription_with_tracking(
     db: Session,
     content_id: int,
@@ -383,6 +343,35 @@ async def _queue_transcription_with_tracking(
             "mode": "async",
             "result": None  # Will complete in background
         }
+
+
+def _reconcile_transcription_status(db: Session, content_id: int):
+    """
+    Reconcile TranscriptionStatus for a content item that has been transcribed.
+
+    If a TranscriptionStatus record exists for this content_id, mark it completed.
+    If none exists, create one with completed status for tracking consistency.
+
+    Args:
+        db: Database session
+        content_id: ID of the RawContent that was transcribed
+    """
+    status = db.query(TranscriptionStatus).filter(
+        TranscriptionStatus.content_id == content_id
+    ).first()
+
+    if status:
+        status.status = "completed"
+        status.completed_at = datetime.utcnow()
+        logger.info(f"Reconciled TranscriptionStatus {status.id} to completed for content {content_id}")
+    else:
+        status = TranscriptionStatus(
+            content_id=content_id,
+            status="completed",
+            completed_at=datetime.utcnow()
+        )
+        db.add(status)
+        logger.info(f"Created completed TranscriptionStatus for content {content_id}")
 
 
 @router.post("/discord")
@@ -1189,17 +1178,18 @@ async def retranscribe_42macro_videos(
 
         logger.info(f"Found {len(videos_to_transcribe)} videos without transcripts")
 
-        # Queue transcriptions
+        # Queue transcriptions with status tracking
         transcription_queued = 0
         for video in videos_to_transcribe:
             try:
-                asyncio.create_task(_transcribe_video_async(
-                    raw_content_id=video["raw_content_id"],
+                await _queue_transcription_with_tracking(
+                    db=db,
+                    content_id=video["raw_content_id"],
                     video_url=video["url"],
                     source="42macro",
                     title=video["title"],
                     metadata=video.get("metadata")
-                ))
+                )
                 transcription_queued += 1
             except Exception as e:
                 logger.error(f"Failed to queue transcription for {video['raw_content_id']}: {e}")
@@ -1306,39 +1296,6 @@ async def get_transcription_status(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/transcription-diagnostics")
-async def transcription_diagnostics():
-    """
-    Diagnostic endpoint to check transcription dependencies on Railway.
-    """
-    result = {
-        "youtube_transcript_api": {"installed": False, "version": None, "test": None},
-        "whisper_api_key": bool(os.getenv("WHISPER_API_KEY") or os.getenv("OPENAI_API_KEY")),
-        "assemblyai_api_key": bool(os.getenv("ASSEMBLYAI_API_KEY")),
-        "claude_api_key": bool(os.getenv("CLAUDE_API_KEY")),
-    }
-
-    # Test youtube-transcript-api
-    try:
-        from youtube_transcript_api import YouTubeTranscriptApi
-        import youtube_transcript_api
-        result["youtube_transcript_api"]["installed"] = True
-        result["youtube_transcript_api"]["version"] = getattr(youtube_transcript_api, "__version__", "unknown")
-
-        # Try a test fetch
-        try:
-            api = YouTubeTranscriptApi()
-            test_result = api.fetch("0JvmPjMPq6k")  # Test video
-            result["youtube_transcript_api"]["test"] = f"success: {len(list(test_result))} segments"
-        except Exception as e:
-            result["youtube_transcript_api"]["test"] = f"fetch failed: {str(e)[:200]}"
-
-    except ImportError as e:
-        result["youtube_transcript_api"]["error"] = f"import failed: {str(e)}"
-
-    return result
-
-
 @router.post("/update-transcript/{content_id}")
 @limiter.limit("10/minute")
 async def update_transcript(
@@ -1428,6 +1385,9 @@ async def update_transcript(
             conviction=payload.get("conviction")
         )
         db.add(analyzed_content)
+
+        # Reconcile TranscriptionStatus record
+        _reconcile_transcription_status(db, content_id)
 
         db.commit()
 
@@ -1596,6 +1556,10 @@ async def retranscribe_videos(
                             time_horizon=harvest_result.get("time_horizon")
                         )
                         db.add(analyzed_content)
+
+                        # Reconcile TranscriptionStatus record
+                        _reconcile_transcription_status(db, video["raw_content_id"])
+
                         db.commit()
 
                         video_result["status"] = "success"

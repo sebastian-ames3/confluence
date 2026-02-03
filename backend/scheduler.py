@@ -217,7 +217,7 @@ async def generate_post_collection_synthesis():
                     "tickers": analyzed.tickers_mentioned.split(",") if analyzed.tickers_mentioned else [],
                     "sentiment": analyzed.sentiment,
                     "conviction": analyzed.conviction,
-                    "content_text": raw.content_text[:50000] if raw.content_text else "",
+                    "content_text": raw.content_text or "",
                     "key_quotes": analysis_data.get("key_quotes", []),
                 })
 
@@ -252,7 +252,7 @@ async def generate_post_collection_synthesis():
                     "tickers": analyzed.tickers_mentioned.split(",") if analyzed.tickers_mentioned else [],
                     "sentiment": analyzed.sentiment,
                     "conviction": analyzed.conviction,
-                    "content_text": raw.content_text[:50000] if raw.content_text else "",
+                    "content_text": raw.content_text or "",
                     "key_quotes": analysis_data.get("key_quotes", []),
                 })
 

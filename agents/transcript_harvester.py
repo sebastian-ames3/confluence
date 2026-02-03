@@ -7,11 +7,6 @@ Uses Whisper API for transcription and Claude for analysis.
 For YouTube videos, first attempts to fetch auto-generated captions using
 youtube-transcript-api (free, fast, avoids bot detection). Falls back to
 yt-dlp + Whisper if captions aren't available.
-
-Priority Tiers:
-- Tier 1 (HIGH): Imran's Discord videos, Darius Dale's 42 Macro videos
-- Tier 2 (MEDIUM): Mel's Twitter videos
-- Tier 3 (STANDARD): YouTube long-form videos
 """
 
 import os
@@ -39,21 +34,6 @@ class TranscriptHarvesterAgent(BaseAgent):
     3. Transcribe with Whisper API
     4. Analyze with Claude
     """
-
-    # Priority tier prompts
-    TIER1_SYSTEM_PROMPT = """You are analyzing a high-priority financial market analysis video.
-This content is data-driven, high production value, and contains dense alpha.
-Extract precise details: specific levels, tickers, conviction scores, and actionable insights.
-Be thorough and technical."""
-
-    TIER2_SYSTEM_PROMPT = """You are analyzing a market analysis video.
-This content is valuable but may include off-topic commentary.
-Focus on extracting the main investment thesis and actionable insights.
-Filter out casual discussion."""
-
-    TIER3_SYSTEM_PROMPT = """You are analyzing a long-form market discussion video.
-This is background content, less time-sensitive.
-Extract high-level themes and key insights."""
 
     def __init__(
         self,
@@ -280,9 +260,6 @@ Extract high-level themes and key insights."""
         except Exception as e:
             logger.error(f"Harvest failed: {e}")
             raise
-
-    # Path to 42macro cookies file (saved by macro42_selenium.py)
-    MACRO42_COOKIES_FILE = "temp/42macro_cookies.json"
 
     async def download_and_extract_audio(
         self,

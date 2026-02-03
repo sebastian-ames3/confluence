@@ -37,8 +37,8 @@ from agents.synthesis_evaluator import SynthesisEvaluatorAgent
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-# Synthesis generation timeout (default 300s for full pipeline with source breakdowns)
-SYNTHESIS_TIMEOUT_SECONDS = int(os.getenv("SYNTHESIS_TIMEOUT", "300"))
+# Synthesis generation timeout (default 600s for per-source + merge pipeline)
+SYNTHESIS_TIMEOUT_SECONDS = int(os.getenv("SYNTHESIS_TIMEOUT", "600"))
 synthesis_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="synthesis_")
 
 # YouTube channel display names (maps collector keys to human-readable names)
@@ -345,10 +345,9 @@ async def debug_synthesis(
 
     # Step 3: Check content
     try:
-        from sqlalchemy import or_
         cutoff = datetime.utcnow() - timedelta(days=7)
         count = db.query(AnalyzedContent).filter(
-            or_(AnalyzedContent.analyzed_at >= cutoff, AnalyzedContent.analyzed_at.is_(None))
+            AnalyzedContent.analyzed_at >= cutoff
         ).count()
         debug_info["steps"].append({"step": "content_check", "analyzed_content_count": count})
     except Exception as e:
@@ -540,7 +539,7 @@ def _get_content_for_synthesis(
 
     Returns list of dicts with content info for the synthesis agent.
     """
-    from sqlalchemy import or_, and_
+    from sqlalchemy import and_
     query = db.query(AnalyzedContent, RawContent, Source).join(
         RawContent, AnalyzedContent.raw_content_id == RawContent.id
     ).join(
@@ -550,14 +549,12 @@ def _get_content_for_synthesis(
     if end_date:
         query = query.filter(
             and_(
-                or_(AnalyzedContent.analyzed_at >= cutoff, AnalyzedContent.analyzed_at.is_(None)),
-                or_(AnalyzedContent.analyzed_at < end_date, AnalyzedContent.analyzed_at.is_(None))
+                AnalyzedContent.analyzed_at >= cutoff,
+                AnalyzedContent.analyzed_at < end_date
             )
         )
     else:
-        query = query.filter(
-            or_(AnalyzedContent.analyzed_at >= cutoff, AnalyzedContent.analyzed_at.is_(None))
-        )
+        query = query.filter(AnalyzedContent.analyzed_at >= cutoff)
 
     if focus_topic:
         safe_topic = sanitize_search_query(focus_topic.lower())
@@ -600,7 +597,7 @@ def _get_content_for_synthesis(
             "tickers": analyzed.tickers_mentioned.split(",") if analyzed.tickers_mentioned else [],
             "sentiment": analyzed.sentiment,
             "conviction": analyzed.conviction,
-            "content_text": raw.content_text[:50000] if raw.content_text else "",
+            "content_text": raw.content_text or "",
             "key_quotes": analysis_data.get("key_quotes", []),
         })
 

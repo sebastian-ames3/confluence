@@ -38,13 +38,12 @@ from collectors.base_collector import BaseCollector
 logger = logging.getLogger(__name__)
 
 
-def extract_pdf_text(pdf_path: str, max_chars: int = 50000) -> str:
+def extract_pdf_text(pdf_path: str) -> str:
     """
     Extract text content from a PDF file.
 
     Args:
         pdf_path: Path to the PDF file
-        max_chars: Maximum characters to extract (to avoid huge uploads)
 
     Returns:
         Extracted text content
@@ -57,11 +56,7 @@ def extract_pdf_text(pdf_path: str, max_chars: int = 50000) -> str:
                 page_text = page.extract_text()
                 if page_text:
                     text_parts.append(page_text)
-                # Stop if we have enough
-                if sum(len(t) for t in text_parts) > max_chars:
-                    break
-        full_text = "\n\n".join(text_parts)
-        return full_text[:max_chars] if len(full_text) > max_chars else full_text
+        return "\n\n".join(text_parts)
     except Exception as e:
         logger.warning(f"Failed to extract PDF text from {pdf_path}: {e}")
         return ""
