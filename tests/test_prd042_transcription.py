@@ -36,7 +36,7 @@ class TestClaudeModelUpdate:
         agents_dir = Path(__file__).parent.parent / "agents"
 
         for agent_file in agents_dir.glob("*.py"):
-            content = agent_file.read_text()
+            content = agent_file.read_text(encoding='utf-8')
             assert "claude-sonnet-4-5-20250514" not in content, \
                 f"{agent_file.name} references invalid model claude-sonnet-4-5-20250514"
 
@@ -67,7 +67,7 @@ class TestClaudeModelUpdate:
         """Synthesis agent should use Opus 4.5 for better reasoning on high-stakes output."""
         agents_dir = Path(__file__).parent.parent / "agents"
         synthesis_path = agents_dir / "synthesis_agent.py"
-        content = synthesis_path.read_text()
+        content = synthesis_path.read_text(encoding='utf-8')
         assert "claude-opus-4-5-20251101" in content, \
             "synthesis_agent.py should use claude-opus-4-5-20251101 for better quality"
 

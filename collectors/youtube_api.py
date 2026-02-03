@@ -206,28 +206,3 @@ class YouTubeCollector(BaseCollector):
             logger.debug(f"Could not check captions for {video_id}: {e}")
             return False
 
-    def get_video_transcript(self, video_id: str) -> Optional[str]:
-        """
-        Get transcript/captions for a video.
-
-        Note: This requires additional libraries (youtube-transcript-api)
-        and may not work for all videos.
-
-        Args:
-            video_id: YouTube video ID
-
-        Returns:
-            Transcript text or None
-        """
-        try:
-            # This would require youtube-transcript-api package
-            # from youtube_transcript_api import YouTubeTranscriptApi
-            # transcript = YouTubeTranscriptApi.get_transcript(video_id)
-            # return " ".join([entry['text'] for entry in transcript])
-
-            logger.warning("Transcript fetching not implemented - use Transcript Harvester Agent")
-            return None
-
-        except Exception as e:
-            logger.error(f"Error getting transcript: {e}")
-            return None

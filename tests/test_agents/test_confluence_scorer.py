@@ -42,7 +42,7 @@ MOCK_CLAUDE_RESPONSE = {
     "falsification_criteria": ["CPI > 4%", "Fed hawkish rhetoric", "Credit spreads widen >50bps"],
     "variant_view": "Market pricing 3 cuts, thesis requires 4+",
     "p_and_l_mechanism": "Long 2Y Treasury futures for duration exposure",
-    "conviction_tier": "strong"
+    "conviction_level": "strong"
 }
 
 
@@ -171,13 +171,13 @@ def test_falsification_criteria_present(scorer):
     assert "CPI > 4%" in result["falsification_criteria"]
 
 
-def test_conviction_tier_mapping(scorer):
+def test_conviction_level_mapping(scorer):
     """Test conviction tier is present in output."""
     with patch.object(scorer, 'call_claude', return_value=MOCK_CLAUDE_RESPONSE):
         result = scorer.analyze({"content": "test"})
 
-    assert "conviction_tier" in result
-    assert result["conviction_tier"] in ["strong", "medium", "weak"]
+    assert "conviction_level" in result
+    assert result["conviction_level"] in ["strong", "medium", "weak"]
 
 
 def test_primary_thesis_present(scorer):

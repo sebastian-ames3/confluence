@@ -117,12 +117,12 @@ class TestSynthesisPromptBuilding:
             "Prompt building should reference channel_display"
 
     def test_prompt_groups_by_channel(self):
-        """Verify _build_prompt groups YouTube by channel."""
+        """Verify prompt building groups YouTube by channel."""
         agent_path = Path(__file__).parent.parent / "agents" / "synthesis_agent.py"
         content = agent_path.read_text(encoding='utf-8')
 
         # Check prompt builder exists and uses channel grouping
-        assert "def _build_prompt" in content
+        assert "def _build_source_analysis_prompt" in content or "def _build_merge_prompt" in content
         # The method should use youtube:channel_display pattern
         assert 'youtube:' in content or "youtube:" in content, \
             "Should use youtube:channel_display pattern for grouping"

@@ -307,7 +307,7 @@ Score this content across all 7 pillars (0-2 each) and provide detailed reasonin
     ],
     "variant_view": "How this view differs from market consensus or what's priced in",
     "p_and_l_mechanism": "Explicit path to profit: which instruments, structure, timeline",
-    "conviction_tier": "strong|medium|weak",
+    "conviction_level": "strong|medium|weak",
     "primary_thesis": "One sentence summary of the investment thesis"
 }}
 

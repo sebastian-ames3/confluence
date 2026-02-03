@@ -392,6 +392,8 @@ async def get_transcription_queue_status(
         status_counts = {row[0]: row[1] for row in result.all()}
 
         # Get backlog details (pending > 24h)
+        # Cross-check: if the RawContent already has a transcript (content_text > 200 chars),
+        # the TranscriptionStatus is stale — fix it in-place and exclude from backlog
         result = await db.execute(
             select(TranscriptionStatus, RawContent).join(
                 RawContent, TranscriptionStatus.content_id == RawContent.id
@@ -405,7 +407,17 @@ async def get_transcription_queue_status(
             ).order_by(TranscriptionStatus.created_at).limit(20)
         )
         backlog_items = []
+        stale_reconciled = 0
         for ts, rc in result.all():
+            # Check if video is actually already transcribed (stale status record)
+            content_text = rc.content_text or ""
+            if len(content_text) > 200:
+                # Content already has transcript — reconcile stale status
+                ts.status = "completed"
+                ts.completed_at = now
+                stale_reconciled += 1
+                continue
+
             metadata = json.loads(rc.json_metadata) if rc.json_metadata else {}
             backlog_items.append({
                 "content_id": rc.id,
@@ -415,6 +427,13 @@ async def get_transcription_queue_status(
                 "pending_since": ts.created_at.isoformat(),
                 "hours_pending": round((now - ts.created_at).total_seconds() / 3600, 1)
             })
+
+        if stale_reconciled > 0:
+            await db.commit()
+            # Adjust pending count for reconciled records
+            status_counts["pending"] = max(0, status_counts.get("pending", 0) - stale_reconciled)
+            status_counts["completed"] = status_counts.get("completed", 0) + stale_reconciled
+            logger.info(f"Reconciled {stale_reconciled} stale TranscriptionStatus records to completed")
 
         return {
             "summary": {

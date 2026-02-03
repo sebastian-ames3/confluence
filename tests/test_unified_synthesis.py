@@ -152,10 +152,10 @@ class TestContentSummaryGeneration:
         assert summaries[0]["themes"] == []
 
 
-class TestSourceBreakdownPrompt:
-    """Tests for source breakdown prompt building."""
+class TestSourceAnalysisPrompt:
+    """Tests for source analysis prompt building."""
 
-    def test_build_source_breakdown_prompt_includes_source(self):
+    def test_build_source_analysis_prompt_includes_source(self):
         """Prompt should include source name."""
         agent = SynthesisAgent()
 
@@ -163,26 +163,23 @@ class TestSourceBreakdownPrompt:
             {"source": "42macro", "title": "Report 1", "summary": "Test content"}
         ]
 
-        prompt = agent._build_source_breakdown_prompt(items, "42macro")
+        prompt = agent._build_source_analysis_prompt("42macro", items, "7d")
 
         assert "42macro" in prompt
         assert "Report 1" in prompt
 
-    def test_build_source_breakdown_prompt_limits_items(self):
-        """Prompt should limit to 10 items per source."""
+    def test_build_source_analysis_prompt_includes_content(self):
+        """Prompt should include item content."""
         agent = SynthesisAgent()
 
-        # Create 15 items
         items = [
-            {"source": "discord", "title": f"Item {i}", "summary": f"Content {i}"}
-            for i in range(15)
+            {"source": "discord", "title": "Trade Idea", "summary": "Long SPX", "content_text": "Detailed trade thesis"}
         ]
 
-        prompt = agent._build_source_breakdown_prompt(items, "discord")
+        prompt = agent._build_source_analysis_prompt("discord", items, "24h")
 
-        # Should only include first 10
-        assert "Item 0" in prompt
-        assert "Item 9" in prompt
+        assert "discord" in prompt
+        assert "Trade Idea" in prompt
 
 
 class TestYouTubeChannelGranularity:

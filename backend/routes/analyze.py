@@ -16,7 +16,7 @@ from backend.utils.rate_limiter import limiter
 from agents.content_classifier import ContentClassifierAgent
 from agents.image_intelligence import ImageIntelligenceAgent
 from agents.pdf_analyzer import PDFAnalyzerAgent
-from agents.symbol_level_extractor import SymbolLevelExtractor
+from agents.symbol_level_extractor import SymbolLevelExtractor, CompassType
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/analyze", tags=["analyze"])
@@ -121,6 +121,101 @@ def run_symbol_extraction(raw_content, db: Session) -> Dict:
     except Exception as e:
         logger.error(f"Symbol extraction failed for content {raw_content.id}: {str(e)}")
         return {"error": str(e)}
+
+
+def run_compass_extraction(raw_content, metadata: Dict, db: Session) -> Dict:
+    """
+    Run compass image classification and extraction on Discord images.
+
+    Classifies compass type (Stock/Macro/Sector) and extracts symbol positions,
+    then saves to SymbolState/SymbolLevel records.
+
+    Args:
+        raw_content: RawContent object with image content
+        metadata: Parsed metadata dict
+        db: Database session
+
+    Returns:
+        Extraction summary or skip reason
+    """
+    source_name = raw_content.source.name if raw_content.source else ""
+
+    # Only run for Discord image content
+    if source_name != "discord" or raw_content.content_type != "image":
+        return {"skipped": True, "reason": f"Not a Discord image (source={source_name}, type={raw_content.content_type})"}
+
+    # Need an image to process — try URL first (accessible from Railway), then file_path
+    image_path = None
+    temp_path = None
+
+    if raw_content.url:
+        # Download image from Discord CDN to a temp file
+        try:
+            import tempfile
+            import urllib.request
+            suffix = ".png"
+            url = raw_content.url
+            if ".jpg" in url or ".jpeg" in url:
+                suffix = ".jpg"
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+            temp_path = temp_file.name
+            temp_file.close()
+            urllib.request.urlretrieve(url, temp_path)
+            image_path = temp_path
+            logger.info(f"Downloaded compass image from URL for content {raw_content.id}")
+        except Exception as e:
+            logger.warning(f"Failed to download image from {raw_content.url}: {e}")
+
+    if not image_path and raw_content.file_path and os.path.exists(raw_content.file_path):
+        image_path = raw_content.file_path
+
+    if not image_path:
+        return {"skipped": True, "reason": "No accessible image path or URL"}
+
+    try:
+        agent = get_symbol_extractor()
+
+        # Step 1: Classify compass type
+        compass_type = agent.classify_compass_image(image_path)
+
+        if compass_type == CompassType.UNKNOWN:
+            logger.info(f"Image {raw_content.id} is not a compass chart, skipping")
+            return {"skipped": True, "reason": "Not a compass chart"}
+
+        # Step 2: Extract based on type
+        if compass_type == CompassType.STOCK_COMPASS:
+            extraction = agent.extract_from_compass_image(image_path, content_id=raw_content.id)
+        elif compass_type == CompassType.MACRO_COMPASS:
+            extraction = agent.extract_from_macro_compass(image_path, content_id=raw_content.id)
+        elif compass_type == CompassType.SECTOR_COMPASS:
+            extraction = agent.extract_from_sector_compass(image_path, content_id=raw_content.id)
+        else:
+            return {"skipped": True, "reason": f"Unhandled compass type: {compass_type}"}
+
+        # Step 3: Save to database
+        save_summary = agent.save_compass_to_db(db, extraction, content_id=raw_content.id)
+
+        logger.info(
+            f"Compass extraction for content {raw_content.id}: "
+            f"type={compass_type.value}, {save_summary['symbols_processed']} symbols"
+        )
+
+        return {
+            "compass_type": compass_type.value,
+            "extraction": extraction,
+            "save_summary": save_summary
+        }
+
+    except Exception as e:
+        logger.error(f"Compass extraction failed for content {raw_content.id}: {str(e)}")
+        return {"error": str(e)}
+    finally:
+        # Clean up temp file
+        if temp_path and os.path.exists(temp_path):
+            try:
+                os.unlink(temp_path)
+            except Exception:
+                pass
 
 
 def run_image_analysis(raw_content, metadata: Dict, db: Session) -> List[Dict]:
@@ -487,6 +582,18 @@ async def classify_batch(
                 symbol_result = run_symbol_extraction(raw_content, db)
                 symbols_extracted = symbol_result.get("save_summary", {}).get("symbols_processed", 0)
 
+                # PRD-043: Run compass image extraction for Discord images
+                compass_result = {}
+                compass_symbols = 0
+                if raw_content.content_type == "image":
+                    source_name = raw_content.source.name if raw_content.source else ""
+                    if source_name == "discord":
+                        try:
+                            compass_result = run_compass_extraction(raw_content, metadata, db)
+                            compass_symbols = compass_result.get("save_summary", {}).get("symbols_processed", 0)
+                        except Exception as compass_err:
+                            logger.warning(f"Compass extraction failed for {raw_content.id} (non-fatal): {compass_err}")
+
                 # Mark as processed
                 raw_content.processed = True
 
@@ -498,7 +605,8 @@ async def classify_batch(
                     "pdf_analyzed": "analysis" in pdf_result,
                     "images_analyzed": len([r for r in image_results if "analysis" in r]),
                     "text_analyzed": "analysis" in text_result,
-                    "symbols_extracted": symbols_extracted
+                    "symbols_extracted": symbols_extracted,
+                    "compass_symbols": compass_symbols
                 })
 
             except Exception as e:
