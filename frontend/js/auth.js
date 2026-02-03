@@ -200,12 +200,18 @@ const AuthManager = {
             this.refreshTimer = setTimeout(() => {
                 this.refreshToken().catch(err => {
                     console.error('Token refresh failed:', err);
+                    if (typeof ToastManager !== 'undefined') {
+                        ToastManager.warning('Session expiring. Please log in again.', 'Session');
+                    }
                 });
             }, msUntilRefresh);
         } else if (this.isLoggedIn()) {
             // Token is expiring soon, refresh now
             this.refreshToken().catch(err => {
                 console.error('Token refresh failed:', err);
+                if (typeof ToastManager !== 'undefined') {
+                    ToastManager.warning('Session expiring. Please log in again.', 'Session');
+                }
             });
         }
     },

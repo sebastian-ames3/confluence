@@ -17,39 +17,63 @@ const API_BASE = window.location.hostname === 'localhost'
  * PRD-036: Added Bearer token support and 401 handling.
  */
 async function apiFetch(endpoint, options = {}) {
-    try {
-        // Build headers with Bearer token if available
-        const headers = {
-            'Content-Type': 'application/json',
-            ...options.headers,
-        };
+    const maxRetries = 2;
 
-        // Add Bearer token if logged in (PRD-036)
-        if (typeof AuthManager !== 'undefined' && AuthManager.getToken()) {
-            headers['Authorization'] = `Bearer ${AuthManager.getToken()}`;
-        }
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+            // Build headers with Bearer token if available
+            const headers = {
+                'Content-Type': 'application/json',
+                ...options.headers,
+            };
 
-        const response = await fetch(`${API_BASE}${endpoint}`, {
-            ...options,
-            headers,
-        });
-
-        // Handle 401 Unauthorized - trigger login modal (PRD-036)
-        if (response.status === 401) {
-            if (typeof AuthManager !== 'undefined') {
-                AuthManager.handleAuthError(response);
+            // Add Bearer token if logged in (PRD-036)
+            if (typeof AuthManager !== 'undefined' && AuthManager.getToken()) {
+                headers['Authorization'] = `Bearer ${AuthManager.getToken()}`;
             }
-            throw new Error('Authentication required');
-        }
 
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
+            const response = await fetch(`${API_BASE}${endpoint}`, {
+                ...options,
+                headers,
+            });
 
-        return await response.json();
-    } catch (error) {
-        console.error('API Error:', error);
-        throw error;
+            // Handle 401 Unauthorized - trigger login modal (PRD-036)
+            if (response.status === 401) {
+                if (typeof AuthManager !== 'undefined') {
+                    AuthManager.handleAuthError(response);
+                }
+                throw new Error('Authentication required');
+            }
+
+            // Retry on 503 Service Unavailable
+            if (response.status === 503 && attempt < maxRetries) {
+                console.warn(`API 503 on ${endpoint}, retrying (${attempt + 1}/${maxRetries})...`);
+                await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+                continue;
+            }
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            // Retry on network errors (TypeError from fetch)
+            if (error instanceof TypeError && attempt < maxRetries) {
+                console.warn(`Network error on ${endpoint}, retrying (${attempt + 1}/${maxRetries})...`);
+                await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+                continue;
+            }
+
+            console.error('API Error:', error);
+
+            // Show toast for non-401 errors after retries exhausted
+            if (error.message !== 'Authentication required' && typeof ToastManager !== 'undefined') {
+                ToastManager.error(`Request failed: ${error.message}`, 'API Error');
+            }
+
+            throw error;
+        }
     }
 }
 
