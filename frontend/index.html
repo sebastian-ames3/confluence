@@ -182,18 +182,6 @@
                             <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-md);">
                                 <div class="section-title" style="margin-bottom: 0;">Key Takeaways</div>
                                 <div style="display: flex; align-items: center; gap: var(--spacing-md);">
-                                    <!-- PRD-041: Tier Selector -->
-                                    <div class="tier-selector" id="tier-selector" style="display: flex; gap: 2px; background: var(--glass-bg); padding: 2px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
-                                        <button type="button" class="tier-btn" data-tier="1" title="Executive summary only" style="padding: 4px 10px; font-size: var(--text-xs); border: none; background: transparent; color: var(--text-muted); border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s;">
-                                            Tier 1
-                                        </button>
-                                        <button type="button" class="tier-btn" data-tier="2" title="Summary + source breakdowns" style="padding: 4px 10px; font-size: var(--text-xs); border: none; background: transparent; color: var(--text-muted); border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s;">
-                                            Tier 2
-                                        </button>
-                                        <button type="button" class="tier-btn active" data-tier="3" title="Full detail with content items" style="padding: 4px 10px; font-size: var(--text-xs); border: none; background: var(--accent-primary); color: white; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s;">
-                                            Tier 3
-                                        </button>
-                                    </div>
                                     <span class="synthesis-meta" style="font-size: var(--text-xs); color: var(--text-muted);">
                                         <span id="synthesis-window">-</span> |
                                         <span id="synthesis-count">0</span> items
@@ -546,7 +534,6 @@
             loadStatus();
             loadLatestSynthesis();
             loadThemesSummary();  // Load theme count for KPI card
-            setupTierSelector();  // PRD-041: Tier selector buttons
         });
 
         // Utility: Escape HTML to prevent XSS attacks
@@ -632,28 +619,17 @@
             }
         }
 
-        // PRD-041: Current tier selection (1=executive, 2=+sources, 3=full)
-        let currentTier = 3;
-
         // Load latest synthesis
         async function loadLatestSynthesis() {
             try {
-                console.log('[loadLatestSynthesis] Fetching with tier:', currentTier);
-                const data = await apiFetch(`/synthesis/latest?tier=${currentTier}`);
-                console.log('[loadLatestSynthesis] API response:', {
-                    version: data.version,
-                    hasSourceBreakdowns: !!data.source_breakdowns,
-                    hasContentSummaries: !!data.content_summaries,
-                    hasConfluenceZones: !!data.confluence_zones,
-                    status: data.status
-                });
+                const data = await apiFetch('/synthesis/latest');
 
                 if (data.status === 'not_found') {
                     showEmptySynthesis();
                     return;
                 }
 
-                displaySynthesis(data, currentTier);
+                displaySynthesis(data);
 
             } catch (error) {
                 console.error('Error loading synthesis:', error);
@@ -661,114 +637,17 @@
             }
         }
 
-        // PRD-041: Setup tier selector event listeners
-        function setupTierSelector() {
-            const tierButtons = document.querySelectorAll('.tier-btn');
-            console.log('[TierSelector] Setting up tier buttons:', tierButtons.length, 'buttons found');
-
-            tierButtons.forEach(btn => {
-                btn.addEventListener('click', async (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-
-                    const tier = parseInt(btn.dataset.tier);
-                    console.log('[TierSelector] Button clicked, tier:', tier, 'currentTier:', currentTier);
-
-                    if (tier === currentTier) {
-                        console.log('[TierSelector] Same tier, skipping');
-                        return;
-                    }
-
-                    // Update button states
-                    tierButtons.forEach(b => {
-                        b.classList.remove('active');
-                        b.style.background = 'transparent';
-                        b.style.color = 'var(--text-muted)';
-                    });
-                    btn.classList.add('active');
-                    btn.style.background = 'var(--accent-primary)';
-                    btn.style.color = 'white';
-
-                    // Update tier and reload
-                    const previousTier = currentTier;
-                    currentTier = tier;
-                    console.log('[TierSelector] Tier changed from', previousTier, 'to', currentTier);
-
-                    // Show loading indicator
-                    btn.textContent = 'Loading...';
-                    btn.disabled = true;
-
-                    try {
-                        await loadLatestSynthesis();
-                        console.log('[TierSelector] Synthesis loaded successfully for tier', currentTier);
-                        // Show success toast if ToastManager is available
-                        if (typeof ToastManager !== 'undefined') {
-                            ToastManager.show(`Switched to Tier ${tier}`, 'success', 2000);
-                        }
-                    } catch (error) {
-                        console.error('[TierSelector] Error loading synthesis:', error);
-                        // Revert tier on error
-                        currentTier = previousTier;
-                        // Revert button styles
-                        btn.classList.remove('active');
-                        btn.style.background = 'transparent';
-                        btn.style.color = 'var(--text-muted)';
-                        // Re-activate previous tier button
-                        tierButtons.forEach(b => {
-                            if (parseInt(b.dataset.tier) === previousTier) {
-                                b.classList.add('active');
-                                b.style.background = 'var(--accent-primary)';
-                                b.style.color = 'white';
-                            }
-                        });
-                        // Show error toast if ToastManager is available
-                        if (typeof ToastManager !== 'undefined') {
-                            ToastManager.show('Failed to switch tier: ' + error.message, 'error');
-                        }
-                    } finally {
-                        // Restore button text
-                        btn.textContent = `Tier ${tier}`;
-                        btn.disabled = false;
-                    }
-                });
-            });
-
-            console.log('[TierSelector] Setup complete');
-        }
-
         // Store current synthesis id for feedback (PRD-038)
         let currentSynthesisId = null;
 
         // Display synthesis content
-        // PRD-041: tier parameter controls what sections are shown
-        function displaySynthesis(data, tier = 3) {
-            console.log('[displaySynthesis] Called with tier:', tier, 'data.version:', data.version);
-
+        function displaySynthesis(data) {
             document.getElementById('synthesis-empty').style.display = 'none';
             document.getElementById('takeaways-content').style.display = 'block';
             document.getElementById('synthesis-content').style.display = 'block';
 
             // Store synthesis id for feedback (PRD-038)
             currentSynthesisId = data.id;
-
-            // Check version - V4 is the tiered synthesis (PRD-041)
-            // PRD-049: Use explicit version string parsing for robustness
-            const version = String(data.version || '1.0');
-            const isV4 = version.startsWith('4');
-            const isV3 = version.startsWith('3') || version.startsWith('4');
-
-            console.log('[displaySynthesis] isV4:', isV4, 'isV3:', isV3);
-
-            console.log('[displaySynthesis] isV4:', isV4, 'isV3:', isV3);
-
-            // PRD-041: Tier-based section visibility
-            // Tier 1: executive only (hide sources, priorities, confluence, conflicts)
-            // Tier 2: executive + sources (hide content items in source cards)
-            // Tier 3: full detail (show everything)
-            const showSources = tier >= 2;
-            const showContentItems = tier >= 3;
-
-            console.log('[displaySynthesis] showSources:', showSources, 'showContentItems:', showContentItems);
 
             // Update meta info
             document.getElementById('synthesis-window').textContent = data.time_window;
@@ -786,20 +665,7 @@
                         `<li style="margin-bottom: var(--spacing-xs); line-height: var(--leading-relaxed);">${escapeHtml(t)}</li>`
                     ).join('');
                 } else {
-                    // Fallback: extract from synthesis summary
-                    const synthesisSummary = data.synthesis_summary || data.synthesis || '';
-                    // Better sentence splitting that handles abbreviations
-                    const sentences = synthesisSummary
-                        .split(/(?<=[.!?])\s+(?=[A-Z])/)
-                        .filter(s => s.trim().length > 20)
-                        .slice(0, 5);
-                    if (sentences.length > 0) {
-                        takeawaysList.innerHTML = sentences.map(s =>
-                            `<li style="margin-bottom: var(--spacing-xs); line-height: var(--leading-relaxed);">${escapeHtml(s.trim())}.</li>`
-                        ).join('');
-                    } else {
-                        takeawaysList.innerHTML = '<li style="color: var(--text-muted);">No key takeaways available.</li>';
-                    }
+                    takeawaysList.innerHTML = '<li style="color: var(--text-muted);">No key takeaways available.</li>';
                 }
             }
 
@@ -820,56 +686,19 @@
                 regimeBadge.innerHTML = `<span class="market-regime ${escapeHtml(regimeClass)}">${escapeHtml(regimeValue)}</span>`;
             }
 
-            // Synthesis text
-            const synthText = getElement('synthesis-text');
-            const synthesisContent = data.synthesis_summary || data.synthesis || '';
-            const paragraphs = synthesisContent.split('\n\n').filter(p => p.trim());
-            if (synthText) {
-                synthText.innerHTML = paragraphs.map(p => `<p style="margin-bottom: var(--spacing-sm);">${escapeHtml(p)}</p>`).join('');
-            }
+            // Show structured content sections
+            document.getElementById('v3-content').style.display = 'block';
+            document.getElementById('synthesis-text').style.display = 'none';
+            document.getElementById('theme-tags').style.display = 'none';
 
-            // Theme tags
-            const themeTags = getElement('theme-tags');
-            const themes = data.key_themes || [];
-            if (themeTags && themes.length > 0) {
-                themeTags.innerHTML = themes.map(theme =>
-                    `<span class="badge" style="background: var(--glass-bg); padding: var(--spacing-xs) var(--spacing-sm); border-radius: var(--radius-full); font-size: var(--text-xs);">${escapeHtml(theme)}</span>`
-                ).join('');
-            }
+            // Executive summary
+            displayV3ExecutiveSummary(data.executive_summary || {});
 
-            // Handle V3 content
-            if (isV3) {
-                document.getElementById('v3-content').style.display = 'block';
-                document.getElementById('synthesis-text').style.display = 'none';
-                document.getElementById('theme-tags').style.display = 'none';
-
-                // Always show executive summary (all tiers)
-                displayV3ExecutiveSummary(data.executive_summary || {});
-
-                // PRD-041: Tier 1 hides these sections
-                if (showSources) {
-                    console.log('[displaySynthesis] Showing source sections (tier 2/3)');
-                    displayV3AttentionPriorities(data.attention_priorities || []);
-                    displayV3ConfluenceZones(data.confluence_zones || []);
-                    displayV3ConflictWatch(data.conflict_watch || []);
-
-                    // PRD-041: Use V4 source breakdowns if available, otherwise V3 source stances
-                    if (isV4 && data.source_breakdowns) {
-                        console.log('[displaySynthesis] Using V4 source breakdowns');
-                        displayV4SourceBreakdowns(data.source_breakdowns, data.content_summaries || [], showContentItems);
-                    } else {
-                        console.log('[displaySynthesis] Using V3 source stances');
-                        displayV3SourceStances(data.source_stances || {});
-                    }
-                } else {
-                    // Tier 1: Hide all additional sections
-                    console.log('[displaySynthesis] Hiding all sections (tier 1)');
-                    document.getElementById('stances-section').style.display = 'none';
-                    document.getElementById('priorities-section').style.display = 'none';
-                    document.getElementById('confluence-section').style.display = 'none';
-                    document.getElementById('conflict-section').style.display = 'none';
-                }
-            }
+            // All detail sections
+            displayV3AttentionPriorities(data.attention_priorities || []);
+            displayV3ConfluenceZones(data.confluence_zones || []);
+            displayV3ConflictWatch(data.conflict_watch || []);
+            displayV4SourceBreakdowns(data.source_breakdowns || {}, data.content_summaries || [], true);
         }
 
         // PRD-041: Display V4 source breakdowns with interactive cards
@@ -925,12 +754,12 @@
                             <svg viewBox="0 0 200 48" preserveAspectRatio="none">
                                 <defs>
                                     <!-- PRD-049: Use v4 prefix to avoid ID collision with V3 sparklines -->
-                                    <linearGradient id="sparkline-gradient-v4-${index}" x1="0%" y1="0%" x2="0%" y2="100%">
+                                    <linearGradient id="sparkline-gradient-${index}" x1="0%" y1="0%" x2="0%" y2="100%">
                                         <stop offset="0%" style="stop-color: var(--card-accent, var(--primary)); stop-opacity: 0.3"/>
                                         <stop offset="100%" style="stop-color: var(--card-accent, var(--primary)); stop-opacity: 0"/>
                                     </linearGradient>
                                 </defs>
-                                <path class="sparkline-area" d="${sparklinePath} L 200 48 L 0 48 Z" fill="url(#sparkline-gradient-v4-${index})"/>
+                                <path class="sparkline-area" d="${sparklinePath} L 200 48 L 0 48 Z" fill="url(#sparkline-gradient-${index})"/>
                                 <path class="sparkline-path" d="${sparklinePath}"/>
                             </svg>
                         </div>
@@ -1156,67 +985,6 @@
                     </div>
                 </div>
             `).join('');
-        }
-
-        // V3: Display source stances with interactive cards
-        function displayV3SourceStances(stances) {
-            const container = getElement('v3-stances-list');
-            const section = getElement('stances-section');
-
-            if (!section || !container) return;
-
-            if (!stances || Object.keys(stances).length === 0) {
-                section.style.display = 'none';
-                return;
-            }
-            section.style.display = 'block';
-
-            container.innerHTML = Object.entries(stances).map(([name, data], index) => {
-                const bias = data.overall_bias || 'neutral';
-                const biasLabel = bias === 'bullish' ? 'Bullish Trend' : bias === 'bearish' ? 'Bearish' : 'Mixed Signal';
-                const sourceKey = getSourceKey(name);
-                const sourceIcon = getSourceIcon(sourceKey);
-                const sparklinePath = generateSparklinePath(bias, index);
-                const summary = data.current_stance_narrative || data.summary || '';
-
-                return `
-                    <div class="source-perspective-card" data-source="${escapeHtml(sourceKey)}" onclick="toggleSourcePerspective(this)">
-                        <div class="source-perspective-header">
-                            <div class="source-perspective-identity">
-                                <div class="source-perspective-icon">${escapeHtml(sourceIcon)}</div>
-                                <span class="source-perspective-name">${escapeHtml(name)}</span>
-                            </div>
-                            <span class="source-perspective-bias ${escapeHtml(bias)}">${escapeHtml(biasLabel)}</span>
-                        </div>
-
-                        <div class="source-perspective-sparkline">
-                            <svg viewBox="0 0 200 48" preserveAspectRatio="none">
-                                <defs>
-                                    <linearGradient id="sparkline-gradient-v3-${index}" x1="0%" y1="0%" x2="0%" y2="100%">
-                                        <stop offset="0%" style="stop-color: var(--card-accent, var(--primary)); stop-opacity: 0.3"/>
-                                        <stop offset="100%" style="stop-color: var(--card-accent, var(--primary)); stop-opacity: 0"/>
-                                    </linearGradient>
-                                </defs>
-                                <path class="sparkline-area" d="${sparklinePath} L 200 48 L 0 48 Z" fill="url(#sparkline-gradient-v3-${index})"/>
-                                <path class="sparkline-path" d="${sparklinePath}"/>
-                            </svg>
-                        </div>
-
-                        <div class="source-perspective-summary">${escapeHtml(summary)}</div>
-
-                        <div class="source-perspective-expand">
-                            <span class="source-perspective-expand-icon">↓</span>
-                            <span>Click to Expand</span>
-                        </div>
-
-                        <div class="source-perspective-details">
-                            <div class="source-perspective-details-inner">
-                                <div class="source-perspective-full-summary">${escapeHtml(summary)}</div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
         }
 
         // Show empty synthesis state

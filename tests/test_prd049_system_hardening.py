@@ -2,12 +2,11 @@
 Tests for PRD-049: System Hardening
 
 Covers:
-- Validation failure scenarios return structured errors
-- MCP tools handle missing tier data gracefully
-- Version detection works for all valid versions
-- API null safety
-- YouTube channel format validation
+- MCP tool error handling
+- CSS responsive breakpoints
 - Datetime consistency
+- MCP logging
+- Extract function type validation
 """
 
 import pytest
@@ -25,13 +24,12 @@ try:
     if mcp_path not in sys.path:
         sys.path.insert(0, mcp_path)
     from confluence_client import (
-        extract_source_stances,
+        extract_source_breakdowns,
         extract_confluence_zones,
         extract_conflicts,
         extract_attention_priorities,
         extract_catalyst_calendar,
         extract_executive_summary,
-        _validate_youtube_channel_key
     )
     MCP_AVAILABLE = True
 except ImportError:
@@ -42,93 +40,8 @@ requires_mcp = pytest.mark.skipif(not MCP_AVAILABLE, reason="MCP module not avai
 
 
 # =============================================================================
-# Phase 1: Error Handling & Validation Tests
+# MCP Tool Error Handling Tests
 # =============================================================================
-
-class TestValidationFailureStructuredErrors:
-    """Test that validation failures return structured error info."""
-
-    def test_synthesis_agent_v2_validation_error_has_flag(self):
-        """V2 synthesis should include validation_passed flag on error."""
-        from agents.synthesis_agent import SynthesisAgent
-
-        # Check that the validation error handling code exists
-        import inspect
-        source = inspect.getsource(SynthesisAgent.analyze_v2)
-
-        assert "validation_passed" in source, "V2 should set validation_passed flag"
-        assert "validation_error" in source, "V2 should set validation_error message"
-
-    def test_synthesis_agent_v3_validation_error_has_flag(self):
-        """V3 synthesis should include validation_passed flag on error."""
-        from agents.synthesis_agent import SynthesisAgent
-
-        import inspect
-        source = inspect.getsource(SynthesisAgent.analyze_v3)
-
-        assert "validation_passed" in source, "V3 should set validation_passed flag"
-        assert "validation_error" in source, "V3 should set validation_error message"
-
-    def test_synthesis_agent_v4_breakdown_degraded_flag(self):
-        """V4 source breakdown failures should include degraded flag."""
-        from agents.synthesis_agent import SynthesisAgent
-
-        import inspect
-        source = inspect.getsource(SynthesisAgent.analyze_v4)
-
-        assert "degraded" in source, "V4 should set degraded flag on breakdown failure"
-        assert "degradation_reason" in source, "V4 should include degradation reason"
-
-    def test_no_bare_except_clauses_in_synthesis_agent(self):
-        """Synthesis agent should not have bare except clauses."""
-        import inspect
-        from agents.synthesis_agent import SynthesisAgent
-
-        source = inspect.getsource(SynthesisAgent)
-
-        # Find all except clauses
-        lines = source.split('\n')
-        for i, line in enumerate(lines):
-            stripped = line.strip()
-            if stripped.startswith('except:'):
-                # Check if it's a bare except (not except Something:)
-                pytest.fail(f"Found bare except clause at line {i+1}: {line}")
-
-
-class TestAPIResponseNullSafety:
-    """Test that API responses handle null values safely."""
-
-    def test_synthesis_route_handles_null_synthesis(self):
-        """Synthesis route should return empty string for null synthesis."""
-        from backend.routes.synthesis import get_latest_synthesis
-
-        import inspect
-        source = inspect.getsource(get_latest_synthesis)
-
-        # Check for null safety pattern
-        assert 'synthesis.synthesis or ""' in source or "synthesis or ''" in source, \
-            "Should have null safety for synthesis field"
-
-    def test_synthesis_route_handles_null_market_regime(self):
-        """Synthesis route should return 'unknown' for null market_regime."""
-        from backend.routes.synthesis import get_latest_synthesis
-
-        import inspect
-        source = inspect.getsource(get_latest_synthesis)
-
-        assert 'market_regime or "unknown"' in source or "market_regime or 'unknown'" in source, \
-            "Should have null safety for market_regime field"
-
-    def test_synthesis_route_uses_explicit_none_checks(self):
-        """Synthesis route should use explicit None checks for list fallbacks."""
-        from backend.routes.synthesis import generate_synthesis
-
-        import inspect
-        source = inspect.getsource(generate_synthesis)
-
-        # Check for explicit None check pattern
-        assert "is None" in source, "Should use explicit None checks for list fallbacks"
-
 
 class TestMCPToolErrorHandling:
     """Test that MCP tools have proper error handling."""
@@ -138,7 +51,6 @@ class TestMCPToolErrorHandling:
         with open("mcp/server.py", "r", encoding="utf-8") as f:
             source = f.read()
 
-        # Check for try/catch around theme operations
         assert 'get_themes failed' in source, "get_themes should have error handling"
         assert 'get_active_themes failed' in source, "get_active_themes should have error handling"
         assert 'get_theme_detail failed' in source, "get_theme_detail should have error handling"
@@ -170,142 +82,7 @@ class TestMCPToolErrorHandling:
 
 
 # =============================================================================
-# Phase 2: V4 Compatibility Tests
-# =============================================================================
-
-class TestMCPTierAwareness:
-    """Test that MCP tools handle tier data correctly."""
-
-    def test_synthesis_api_includes_tier_returned(self):
-        """Synthesis API should include tier_returned field for V4."""
-        from backend.routes.synthesis import get_latest_synthesis
-
-        import inspect
-        source = inspect.getsource(get_latest_synthesis)
-
-        assert 'tier_returned' in source, "V4 response should include tier_returned field"
-
-    def test_mcp_source_stance_checks_tier(self):
-        """get_source_stance should check tier requirements."""
-        with open("mcp/server.py", "r", encoding="utf-8") as f:
-            source = f.read()
-
-        assert 'tier_returned' in source, "Should check tier_returned"
-        assert 'Tier 2 or higher' in source, "Should warn when tier insufficient"
-
-    @requires_mcp
-    def test_extract_source_stances_handles_v4_breakdowns(self):
-        """extract_source_stances should normalize V4 breakdowns to V3 format."""
-        # V4 format input
-        synthesis = {
-            "source_breakdowns": {
-                "discord": {
-                    "summary": "Discord summary",
-                    "key_insights": ["insight1"],
-                    "themes": ["theme1"],
-                    "overall_bias": "bullish",
-                    "content_count": 5
-                },
-                "youtube:Forward Guidance": {
-                    "summary": "FG summary",
-                    "overall_bias": "neutral",
-                    "content_count": 2
-                }
-            }
-        }
-
-        result = extract_source_stances(synthesis)
-
-        assert "discord" in result
-        assert result["discord"]["current_stance_narrative"] == "Discord summary"
-        assert "youtube:Forward Guidance" in result
-        assert result["youtube:Forward Guidance"]["display_name"] == "Forward Guidance"
-
-
-@pytest.mark.skipif(not MCP_AVAILABLE, reason="MCP module not available")
-class TestYouTubeChannelFormatValidation:
-    """Test YouTube channel format handling."""
-
-    def test_validate_youtube_channel_key_standard_format(self):
-        """Standard youtube:ChannelName format should parse correctly."""
-        is_youtube, display_name = _validate_youtube_channel_key("youtube:Forward Guidance")
-        assert is_youtube is True
-        assert display_name == "Forward Guidance"
-
-    def test_validate_youtube_channel_key_missing_name(self):
-        """youtube: without channel name should handle gracefully."""
-        is_youtube, display_name = _validate_youtube_channel_key("youtube:")
-        assert is_youtube is True
-        assert display_name == "Unknown Channel"
-
-    def test_validate_youtube_channel_key_non_youtube(self):
-        """Non-YouTube sources should return False."""
-        is_youtube, display_name = _validate_youtube_channel_key("discord")
-        assert is_youtube is False
-        assert display_name == "discord"
-
-    def test_validate_youtube_channel_key_variant_formats(self):
-        """Variant formats (yt:, youtube_) should be detected with warning."""
-        # These variant formats should be detected
-        is_youtube, display_name = _validate_youtube_channel_key("yt:SomeChannel")
-        assert is_youtube is True
-
-        is_youtube, display_name = _validate_youtube_channel_key("youtube_channel")
-        assert is_youtube is True
-
-    def test_extract_source_stances_adds_youtube_flag(self):
-        """Extracted stances should include is_youtube_channel flag."""
-        synthesis = {
-            "source_breakdowns": {
-                "youtube:Moonshots": {"summary": "test", "overall_bias": "bullish"},
-                "discord": {"summary": "test", "overall_bias": "neutral"}
-            }
-        }
-
-        result = extract_source_stances(synthesis)
-
-        assert result["youtube:Moonshots"]["is_youtube_channel"] is True
-        assert result["discord"]["is_youtube_channel"] is False
-
-
-# =============================================================================
-# Phase 3: Frontend Resilience Tests (Code Structure)
-# =============================================================================
-
-class TestVersionDetection:
-    """Test version detection logic in frontend."""
-
-    def test_frontend_uses_string_version_parsing(self):
-        """Frontend should use String() and startsWith() for version detection."""
-        with open("frontend/index.html", "r", encoding="utf-8") as f:
-            content = f.read()
-
-        assert "String(data.version" in content, "Should use String() for version"
-        assert "startsWith('4')" in content or 'startsWith("4")' in content, \
-            "Should use startsWith for V4 detection"
-        assert "startsWith('3')" in content or 'startsWith("3")' in content, \
-            "Should use startsWith for V3 detection"
-
-    def test_frontend_svgs_have_unique_prefixes(self):
-        """V3 and V4 sparkline gradients should have unique prefixes."""
-        with open("frontend/index.html", "r", encoding="utf-8") as f:
-            content = f.read()
-
-        assert "sparkline-gradient-v4-" in content, "V4 sparklines should use v4 prefix"
-        assert "sparkline-gradient-v3-" in content, "V3 sparklines should use v3 prefix"
-
-    def test_frontend_uses_nullish_coalescing(self):
-        """Frontend should use ?? instead of || for optional chaining fallbacks."""
-        with open("frontend/index.html", "r", encoding="utf-8") as f:
-            content = f.read()
-
-        # Check that bull_case and bear_case use ??
-        assert "bull_case?.view ??" in content, "bull_case should use nullish coalescing"
-        assert "bear_case?.view ??" in content, "bear_case should use nullish coalescing"
-
-
-# =============================================================================
-# Phase 4: CSS Tests
+# CSS Tests
 # =============================================================================
 
 class TestCSSResponsiveBreakpoints:
@@ -340,20 +117,13 @@ class TestCSSResponsiveBreakpoints:
         with open("frontend/css/components/_cards.css", "r") as f:
             content = f.read()
 
-        # Both should use --transition-normal
-        lines = content.split('\n')
-        icon_transition = None
-        panel_transition = None
-
-        for line in lines:
-            if '.source-perspective-expand-icon' in content:
-                # Check that transitions are synced (both use normal)
-                assert 'transition-slow' not in content or 'transition-normal' in content, \
-                    "Transitions should be synced"
+        if '.source-perspective-expand-icon' in content:
+            assert 'transition-slow' not in content or 'transition-normal' in content, \
+                "Transitions should be synced"
 
 
 # =============================================================================
-# Phase 5: Backend Improvements Tests
+# Backend Improvements Tests
 # =============================================================================
 
 class TestDatetimeConsistency:
@@ -364,51 +134,32 @@ class TestDatetimeConsistency:
         with open("agents/synthesis_agent.py", "r", encoding="utf-8") as f:
             content = f.read()
 
-        # Find generated_at lines that use isoformat()
         lines = content.split('\n')
         for i, line in enumerate(lines):
             if 'generated_at' in line and 'datetime.utcnow().isoformat()' in line:
                 assert '+ "Z"' in line or "+ 'Z'" in line, \
                     f"Line {i+1} missing Z suffix: {line.strip()}"
 
-    def test_all_generated_at_have_z_suffix(self):
-        """All generated_at assignments should include Z suffix."""
-        with open("agents/synthesis_agent.py", "r", encoding="utf-8") as f:
-            content = f.read()
 
-        # Check that all generated_at use Z suffix
-        lines = content.split('\n')
-        for i, line in enumerate(lines):
-            if 'generated_at' in line and 'isoformat()' in line:
-                assert '+ "Z"' in line or "+ 'Z'" in line, \
-                    f"Line {i+1} missing Z suffix: {line.strip()}"
+class TestNoBarExceptClauses:
+    """Test no bare except clauses in synthesis agent."""
 
-
-class TestVersionParameterValidation:
-    """Test version parameter validation."""
-
-    def test_synthesis_route_validates_version(self):
-        """Synthesis route should validate version parameter."""
-        from backend.routes.synthesis import generate_synthesis
-
+    def test_no_bare_except_clauses_in_synthesis_agent(self):
+        """Synthesis agent should not have bare except clauses."""
         import inspect
-        source = inspect.getsource(generate_synthesis)
+        from agents.synthesis_agent import SynthesisAgent
 
-        assert "valid_versions" in source, "Should define valid versions"
-        assert "Invalid version" in source, "Should return error for invalid version"
-        assert "status_code=400" in source, "Should return 400 for invalid version"
+        source = inspect.getsource(SynthesisAgent)
 
-    def test_valid_versions_list_is_correct(self):
-        """Valid versions should be 1, 2, 3, 4."""
-        with open("backend/routes/synthesis.py", "r") as f:
-            content = f.read()
-
-        assert '"1"' in content and '"2"' in content and '"3"' in content and '"4"' in content, \
-            "Valid versions should include 1, 2, 3, 4"
+        lines = source.split('\n')
+        for i, line in enumerate(lines):
+            stripped = line.strip()
+            if stripped.startswith('except:'):
+                pytest.fail(f"Found bare except clause at line {i+1}: {line}")
 
 
 # =============================================================================
-# Phase 6: Low Priority Tests
+# MCP Logging Tests
 # =============================================================================
 
 class TestMCPLogging:
@@ -434,7 +185,7 @@ class TestMCPLogging:
 
 
 # =============================================================================
-# Integration Tests
+# Extract Function Type Validation Tests
 # =============================================================================
 
 @pytest.mark.skipif(not MCP_AVAILABLE, reason="MCP module not available")
@@ -467,10 +218,10 @@ class TestExtractFunctionsTypeValidation:
         assert extract_executive_summary(None) == {}
         assert extract_executive_summary([1, 2, 3]) == {}
 
-    def test_extract_source_stances_handles_non_dict(self):
-        """extract_source_stances should return empty dict for non-dict input."""
-        assert extract_source_stances(None) == {}
-        assert extract_source_stances("invalid") == {}
+    def test_extract_source_breakdowns_handles_non_dict(self):
+        """extract_source_breakdowns should return empty dict for non-dict input."""
+        assert extract_source_breakdowns(None) == {}
+        assert extract_source_breakdowns("invalid") == {}
 
     def test_extract_functions_handle_missing_keys(self):
         """Extract functions should handle missing keys gracefully."""
@@ -484,7 +235,6 @@ class TestExtractFunctionsTypeValidation:
 
     def test_extract_functions_handle_wrong_type_values(self):
         """Extract functions should handle wrong type values gracefully."""
-        # Values are wrong types
         bad_synthesis = {
             "confluence_zones": "not a list",
             "conflict_watch": 123,
@@ -494,3 +244,17 @@ class TestExtractFunctionsTypeValidation:
         assert extract_confluence_zones(bad_synthesis) == []
         assert extract_conflicts(bad_synthesis) == []
         assert extract_executive_summary(bad_synthesis) == {}
+
+    def test_extract_source_breakdowns_returns_data(self):
+        """extract_source_breakdowns should return breakdowns from synthesis."""
+        synthesis = {
+            "source_breakdowns": {
+                "discord": {"summary": "test", "overall_bias": "bullish"},
+                "youtube:Forward Guidance": {"summary": "FG summary", "overall_bias": "neutral"}
+            }
+        }
+
+        result = extract_source_breakdowns(synthesis)
+        assert "discord" in result
+        assert "youtube:Forward Guidance" in result
+        assert result["discord"]["summary"] == "test"

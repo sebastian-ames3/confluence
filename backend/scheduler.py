@@ -168,8 +168,14 @@ async def generate_post_collection_synthesis():
     logger.info("=" * 80)
 
     try:
-        from backend.models import SessionLocal, AnalyzedContent, RawContent, Source, Synthesis
+        from backend.models import (
+            SessionLocal, AnalyzedContent, RawContent, Source, Synthesis,
+            SymbolState, SynthesisQualityScore
+        )
         from agents.synthesis_agent import SynthesisAgent
+        from agents.synthesis_evaluator import SynthesisEvaluatorAgent
+        from agents.theme_extractor import extract_and_track_themes
+        from backend.utils.data_helpers import safe_get_analysis_result, safe_get_analysis_preview
         from datetime import timedelta
 
         db = SessionLocal()
@@ -193,7 +199,6 @@ async def generate_post_collection_synthesis():
             # Build content items for synthesis
             content_items = []
             for analyzed, raw, source in results:
-                # PRD-047: Use safe helpers for analysis_result parsing
                 analysis_data = safe_get_analysis_result(analyzed)
 
                 try:
@@ -218,18 +223,84 @@ async def generate_post_collection_synthesis():
 
             logger.info(f"Generating synthesis from {len(content_items)} content items...")
 
+            # Get older content for re-review recommendations
+            older_cutoff = datetime.utcnow() - timedelta(days=30)
+            older_results = db.query(AnalyzedContent, RawContent, Source).join(
+                RawContent, AnalyzedContent.raw_content_id == RawContent.id
+            ).join(
+                Source, RawContent.source_id == Source.id
+            ).filter(
+                AnalyzedContent.analyzed_at >= older_cutoff,
+                AnalyzedContent.analyzed_at < cutoff
+            ).all()
+
+            older_content = []
+            for analyzed, raw, source in older_results:
+                analysis_data = safe_get_analysis_result(analyzed)
+                try:
+                    metadata = json.loads(raw.json_metadata) if raw.json_metadata else {}
+                except json.JSONDecodeError:
+                    metadata = {}
+                older_content.append({
+                    "id": raw.id,
+                    "source": source.name,
+                    "type": raw.content_type,
+                    "title": metadata.get("title", f"{source.name} content"),
+                    "timestamp": raw.collected_at.isoformat() if raw.collected_at else None,
+                    "summary": analysis_data.get("summary", safe_get_analysis_preview(analyzed, 500)),
+                    "themes": analyzed.key_themes.split(",") if analyzed.key_themes else [],
+                    "tickers": analyzed.tickers_mentioned.split(",") if analyzed.tickers_mentioned else [],
+                    "sentiment": analyzed.sentiment,
+                    "conviction": analyzed.conviction,
+                    "content_text": raw.content_text[:50000] if raw.content_text else "",
+                    "key_quotes": analysis_data.get("key_quotes", []),
+                })
+
+            # Get KT symbol data
+            kt_symbol_data = []
+            try:
+                symbols = db.query(SymbolState).filter(
+                    SymbolState.kt_wave_count.isnot(None)
+                ).all()
+                kt_symbol_data = [
+                    {
+                        "symbol": s.symbol,
+                        "wave_count": s.kt_wave_count,
+                        "bias": s.kt_bias,
+                        "updated_at": s.kt_updated_at.isoformat() if s.kt_updated_at else None
+                    }
+                    for s in symbols
+                ]
+            except Exception as e:
+                logger.warning(f"Failed to get KT symbol data: {e}")
+
             # Generate synthesis
             agent = SynthesisAgent()
-            result = agent.analyze(content_items=content_items, time_window="24h")
+            result = agent.analyze(
+                content_items=content_items,
+                older_content=older_content,
+                time_window="24h",
+                kt_symbol_data=kt_symbol_data
+            )
+
+            # Extract summary for flat columns
+            exec_summary = result.get("executive_summary", {})
+            synthesis_text = ""
+            market_regime_str = "unclear"
+            if isinstance(exec_summary, dict):
+                synthesis_text = exec_summary.get("synthesis_narrative", exec_summary.get("narrative", ""))
+                market_regime_str = exec_summary.get("overall_tone", "unclear")
 
             # Save to database
             synthesis = Synthesis(
-                synthesis=result.get("synthesis", ""),
-                key_themes=json.dumps(result.get("key_themes", [])),
-                high_conviction_ideas=json.dumps(result.get("high_conviction_ideas", [])),
-                contradictions=json.dumps(result.get("contradictions", [])),
-                market_regime=result.get("market_regime"),
-                catalysts=json.dumps(result.get("catalysts", [])),
+                schema_version="5.0",
+                synthesis=synthesis_text,
+                key_themes=json.dumps([t.get("theme", "") for t in result.get("confluence_zones", [])]),
+                high_conviction_ideas=json.dumps(result.get("attention_priorities", [])),
+                contradictions=json.dumps(result.get("conflict_watch", [])),
+                market_regime=market_regime_str,
+                catalysts=json.dumps(result.get("catalyst_calendar", [])),
+                synthesis_json=json.dumps(result),
                 time_window="24h",
                 content_count=len(content_items),
                 sources_included=json.dumps(result.get("sources_included", [])),
@@ -239,8 +310,40 @@ async def generate_post_collection_synthesis():
             db.commit()
 
             logger.info(f"Synthesis generated and saved (ID: {synthesis.id})")
-            logger.info(f"Key themes: {result.get('key_themes', [])}")
-            logger.info(f"Market regime: {result.get('market_regime', 'unclear')}")
+
+            # Run quality evaluation
+            if os.getenv("ENABLE_QUALITY_EVALUATION", "true").lower() == "true":
+                try:
+                    evaluator = SynthesisEvaluatorAgent()
+                    quality_result = evaluator.evaluate(
+                        synthesis_output=result,
+                        original_content=content_items
+                    )
+                    quality_score = SynthesisQualityScore(
+                        synthesis_id=synthesis.id,
+                        quality_score=quality_result["quality_score"],
+                        grade=quality_result["grade"],
+                        confluence_detection=quality_result["confluence_detection"],
+                        evidence_preservation=quality_result["evidence_preservation"],
+                        source_attribution=quality_result["source_attribution"],
+                        youtube_channel_granularity=quality_result["youtube_channel_granularity"],
+                        nuance_retention=quality_result["nuance_retention"],
+                        actionability=quality_result["actionability"],
+                        theme_continuity=quality_result["theme_continuity"],
+                        flags=json.dumps(quality_result.get("flags", [])),
+                        prompt_suggestions=json.dumps(quality_result.get("prompt_suggestions", []))
+                    )
+                    db.add(quality_score)
+                    db.commit()
+                    logger.info(f"Quality: {quality_result['grade']} ({quality_result['quality_score']}/100)")
+                except Exception as qe:
+                    logger.warning(f"Quality evaluation failed (non-fatal): {qe}")
+
+            # Extract and track themes
+            try:
+                extract_and_track_themes(result, db)
+            except Exception as te:
+                logger.warning(f"Theme extraction failed (non-fatal): {te}")
 
         finally:
             db.close()

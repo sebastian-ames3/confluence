@@ -2,7 +2,6 @@
 Tests for SynthesisAgent.
 
 Uses mocked Claude responses to test synthesis logic.
-PRD-017: Basic agent tests with mocked Claude responses.
 """
 
 import pytest
@@ -14,34 +13,51 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 
-# Sample Claude response for testing
+# Sample Claude response for testing (matches new unified schema)
 MOCK_SYNTHESIS_RESPONSE = {
-    "synthesis": "Markets are showing clear risk-on sentiment with multiple sources highlighting the Fed pivot narrative. 42 Macro's latest research emphasizes improving growth indicators while Options Insight notes increasing call skew in equities. The confluence across macro data, positioning, and technicals suggests a favorable setup for risk assets.",
-    "key_themes": ["Fed pivot", "Tech rotation", "Improving growth", "Supportive liquidity"],
-    "high_conviction_ideas": [
+    "executive_summary": {
+        "macro_context": "Risk-on environment with improving growth indicators.",
+        "synthesis_narrative": "Markets are showing clear risk-on sentiment with multiple sources highlighting the Fed pivot narrative.",
+        "key_takeaways": [
+            "42 Macro emphasizes improving growth indicators",
+            "Options Insight notes increasing call skew in equities",
+            "Confluence across macro data, positioning, and technicals"
+        ],
+        "overall_tone": "constructive",
+        "dominant_theme": "Fed pivot"
+    },
+    "confluence_zones": [
         {
-            "idea": "Long gold on real rate decline",
-            "sources": ["42macro", "substack"],
-            "confidence": "high",
-            "rationale": "Multiple sources cite declining real rates as supportive"
-        },
-        {
-            "idea": "Overweight tech vs value",
-            "sources": ["kt_technical", "discord"],
-            "confidence": "medium",
-            "rationale": "Technical breakout aligns with options positioning"
+            "theme": "Fed pivot",
+            "confluence_strength": 0.85,
+            "sources_aligned": [
+                {"source": "42macro", "view": "Rate cuts incoming"},
+                {"source": "youtube:Forward Guidance", "view": "Dovish shift confirmed"}
+            ]
         }
     ],
-    "contradictions": [
+    "conflict_watch": [
         {
             "topic": "Duration positioning",
-            "views": ["42macro bullish long end", "discord cautious on rates"],
-            "resolution": "Time horizon difference - short-term vol vs medium-term trend"
+            "bull_case": {"view": "Bullish long end", "sources": ["42macro"]},
+            "bear_case": {"view": "Cautious on rates", "sources": ["discord"]},
+            "resolution_trigger": "Next CPI print"
         }
     ],
-    "market_regime": "risk-on",
-    "catalysts": ["FOMC meeting Dec 18", "CPI release Dec 11", "Earnings season Jan"],
-    "risks": ["Inflation reacceleration", "Geopolitical escalation"]
+    "attention_priorities": [
+        {
+            "rank": 1,
+            "focus_area": "Gold setup",
+            "why": "Multiple sources cite declining real rates",
+            "time_sensitivity": "high"
+        }
+    ],
+    "catalyst_calendar": [
+        {"date": "Dec 18", "event": "FOMC meeting", "impact": "high"},
+        {"date": "Dec 11", "event": "CPI release", "impact": "high"}
+    ],
+    "re_review_recommendations": [],
+    "market_regime": "risk-on"
 }
 
 
@@ -73,7 +89,7 @@ def test_system_prompt_exists(agent):
     """Test that system prompt is defined."""
     assert hasattr(agent, 'SYSTEM_PROMPT')
     assert len(agent.SYSTEM_PROMPT) > 100
-    assert "macro analyst" in agent.SYSTEM_PROMPT.lower()
+    assert "research assistant" in agent.SYSTEM_PROMPT.lower()
 
 
 def test_synthesis_generation(agent):
@@ -86,8 +102,9 @@ def test_synthesis_generation(agent):
     with patch.object(agent, 'call_claude', return_value=MOCK_SYNTHESIS_RESPONSE):
         result = agent.analyze(content_items, time_window="24h")
 
-    assert "synthesis" in result
-    assert "key_themes" in result
+    assert "executive_summary" in result
+    assert "confluence_zones" in result
+    assert "conflict_watch" in result
     assert result["time_window"] == "24h"
 
 
@@ -96,39 +113,37 @@ def test_empty_content_handling(agent):
     result = agent.analyze([], time_window="24h")
 
     assert result["content_count"] == 0
-    assert "synthesis" in result
-    # Should indicate no content available
-    assert "no content" in result["synthesis"].lower() or result["synthesis"] == ""
+    assert "executive_summary" in result
 
 
-def test_high_conviction_ideas_structure(agent):
-    """Test high conviction ideas have proper structure."""
+def test_confluence_zones_structure(agent):
+    """Test confluence zones have proper structure."""
     content_items = [{"source": "42macro", "summary": "test"}]
 
     with patch.object(agent, 'call_claude', return_value=MOCK_SYNTHESIS_RESPONSE):
         result = agent.analyze(content_items, time_window="24h")
 
-    assert "high_conviction_ideas" in result
-    if result["high_conviction_ideas"]:
-        idea = result["high_conviction_ideas"][0]
-        assert "idea" in idea
-        assert "sources" in idea
-        assert "confidence" in idea
+    assert "confluence_zones" in result
+    if result["confluence_zones"]:
+        zone = result["confluence_zones"][0]
+        assert "theme" in zone
+        assert "confluence_strength" in zone
+        assert "sources_aligned" in zone
 
 
-def test_market_regime_classification(agent):
-    """Test market regime is classified."""
+def test_executive_summary_tone(agent):
+    """Test that executive summary includes overall tone."""
     content_items = [{"source": "42macro", "summary": "test"}]
 
     with patch.object(agent, 'call_claude', return_value=MOCK_SYNTHESIS_RESPONSE):
         result = agent.analyze(content_items, time_window="24h")
 
-    assert "market_regime" in result
-    assert result["market_regime"] in ["risk-on", "risk-off", "transitioning", "unclear", None]
+    assert "executive_summary" in result
+    assert "overall_tone" in result["executive_summary"]
 
 
-def test_contradictions_detected(agent):
-    """Test contradictions are surfaced."""
+def test_conflict_watch_detected(agent):
+    """Test conflicts are surfaced."""
     content_items = [
         {"source": "42macro", "summary": "Bullish bonds"},
         {"source": "discord", "summary": "Bearish bonds"}
@@ -137,19 +152,7 @@ def test_contradictions_detected(agent):
     with patch.object(agent, 'call_claude', return_value=MOCK_SYNTHESIS_RESPONSE):
         result = agent.analyze(content_items, time_window="24h")
 
-    assert "contradictions" in result
-
-
-def test_key_themes_extraction(agent):
-    """Test key themes are extracted."""
-    content_items = [{"source": "42macro", "summary": "Fed pivot narrative"}]
-
-    with patch.object(agent, 'call_claude', return_value=MOCK_SYNTHESIS_RESPONSE):
-        result = agent.analyze(content_items, time_window="24h")
-
-    assert "key_themes" in result
-    assert isinstance(result["key_themes"], list)
-    assert len(result["key_themes"]) > 0
+    assert "conflict_watch" in result
 
 
 def test_time_window_options(agent):
@@ -169,16 +172,37 @@ def test_focus_topic_parameter(agent):
     with patch.object(agent, 'call_claude', return_value=MOCK_SYNTHESIS_RESPONSE):
         result = agent.analyze(content_items, time_window="24h", focus_topic="gold")
 
-    # Should complete without error
-    assert "synthesis" in result
+    assert "executive_summary" in result
 
 
-def test_catalysts_included(agent):
-    """Test catalysts are included in output."""
+def test_catalyst_calendar_included(agent):
+    """Test catalyst calendar is included in output."""
     content_items = [{"source": "42macro", "summary": "FOMC upcoming"}]
 
     with patch.object(agent, 'call_claude', return_value=MOCK_SYNTHESIS_RESPONSE):
         result = agent.analyze(content_items, time_window="24h")
 
-    assert "catalysts" in result
-    assert isinstance(result["catalysts"], list)
+    assert "catalyst_calendar" in result
+    assert isinstance(result["catalyst_calendar"], list)
+
+
+def test_source_breakdowns_included(agent):
+    """Test source breakdowns are in the output."""
+    content_items = [{"source": "42macro", "summary": "test"}]
+
+    with patch.object(agent, 'call_claude', return_value=MOCK_SYNTHESIS_RESPONSE):
+        result = agent.analyze(content_items, time_window="24h")
+
+    assert "source_breakdowns" in result
+    assert isinstance(result["source_breakdowns"], dict)
+
+
+def test_content_summaries_included(agent):
+    """Test content summaries are in the output."""
+    content_items = [{"source": "42macro", "summary": "test"}]
+
+    with patch.object(agent, 'call_claude', return_value=MOCK_SYNTHESIS_RESPONSE):
+        result = agent.analyze(content_items, time_window="24h")
+
+    assert "content_summaries" in result
+    assert isinstance(result["content_summaries"], list)

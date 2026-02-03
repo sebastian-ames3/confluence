@@ -40,14 +40,8 @@ class ConfluenceClient:
             return response.json()
 
     def get_latest_synthesis(self) -> Dict[str, Any]:
-        """Get the latest research synthesis with full detail (tier=3).
-
-        PRD-041: Always request tier=3 to get all V4 data including:
-        - Executive summary (tier 1)
-        - Source breakdowns with YouTube channel granularity (tier 2)
-        - Per-content summaries (tier 3)
-        """
-        return self._request("GET", "/api/synthesis/latest?tier=3")
+        """Get the latest research synthesis with full detail."""
+        return self._request("GET", "/api/synthesis/latest")
 
     def get_synthesis_history(self, limit: int = 5) -> List[Dict[str, Any]]:
         """Get recent synthesis history."""
@@ -300,89 +294,14 @@ def extract_attention_priorities(synthesis: Dict[str, Any]) -> List[Dict[str, An
     return priorities
 
 
-def _validate_youtube_channel_key(source_name: str) -> tuple:
-    """Validate and parse YouTube channel key format.
-
-    PRD-049: YouTube channels should use format 'youtube:ChannelName'.
-    This function handles edge cases and logs warnings for unexpected formats.
-
-    Args:
-        source_name: The source key to validate
-
-    Returns:
-        Tuple of (is_youtube: bool, display_name: str)
-    """
-    if not isinstance(source_name, str):
-        logger.warning(f"Non-string source name encountered: {type(source_name)}")
-        return False, str(source_name)
-
-    # Check for expected YouTube channel format
-    if source_name.startswith("youtube:"):
-        parts = source_name.split(":", 1)
-        if len(parts) == 2 and parts[1].strip():
-            return True, parts[1].strip()
-        else:
-            # Malformed youtube: prefix (missing channel name)
-            logger.warning(f"Malformed YouTube channel key (missing channel name): '{source_name}'")
-            return True, "Unknown Channel"
-
-    # Check for alternative YouTube formats that might appear
-    youtube_variants = ["youtube_", "yt:", "yt_"]
-    for variant in youtube_variants:
-        if source_name.lower().startswith(variant):
-            logger.warning(f"Unexpected YouTube channel format detected: '{source_name}'. Expected 'youtube:ChannelName'")
-            # Extract channel name from variant format
-            channel = source_name[len(variant):].strip()
-            return True, channel if channel else "Unknown Channel"
-
-    # Not a YouTube channel
-    return False, source_name
-
-
-def extract_source_stances(synthesis: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
-    """Extract source stances from synthesis.
-
-    PRD-041: V4 synthesis uses source_breakdowns instead of source_stances.
-    This function falls back to source_breakdowns when source_stances is empty,
-    normalizing the data structure for consistent MCP tool output.
-
-    PRD-049: Added type validation and YouTube channel format validation.
-    """
+def extract_source_breakdowns(synthesis: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+    """Extract source breakdowns from synthesis."""
     if not isinstance(synthesis, dict):
         return {}
-
-    # First try V3 source_stances
-    stances = synthesis.get("source_stances")
-    if isinstance(stances, dict) and stances:
-        return stances
-
-    # Fall back to V4 source_breakdowns
     breakdowns = synthesis.get("source_breakdowns")
-    if not isinstance(breakdowns, dict) or not breakdowns:
+    if not isinstance(breakdowns, dict):
         return {}
-
-    # Normalize V4 breakdowns to match V3 stance structure
-    normalized = {}
-    for source_name, data in breakdowns.items():
-        if not isinstance(data, dict):
-            logger.warning(f"Non-dict breakdown data for source '{source_name}', skipping")
-            continue
-
-        # PRD-049: Validate YouTube channel format
-        is_youtube, display_name = _validate_youtube_channel_key(source_name)
-
-        normalized[source_name] = {
-            "current_stance_narrative": data.get("summary", ""),
-            "summary": data.get("summary", ""),
-            "key_insights": data.get("key_insights", []),
-            "themes": data.get("themes", []),
-            "overall_bias": data.get("overall_bias", "neutral"),
-            "content_count": data.get("content_count", 0),
-            "display_name": display_name,
-            "is_youtube_channel": is_youtube  # PRD-049: Flag for YouTube channels
-        }
-
-    return normalized
+    return breakdowns
 
 
 def extract_catalyst_calendar(synthesis: Dict[str, Any]) -> List[Dict[str, Any]]:
