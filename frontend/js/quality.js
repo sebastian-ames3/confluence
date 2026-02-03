@@ -26,6 +26,9 @@ const QualityManager = {
      * Load and display latest quality score
      */
     async loadLatestQuality() {
+        // Show spinner while loading
+        this.showQualityLoading();
+
         try {
             const data = await apiFetch('/quality/latest');
 
@@ -38,8 +41,51 @@ const QualityManager = {
             this.renderQualityWidget(data);
         } catch (error) {
             console.error('Failed to load quality data:', error);
-            this.hideQualityWidget();
+            this.showQualityError();
         }
+    },
+
+    /**
+     * Show loading state in quality widget
+     */
+    showQualityLoading() {
+        let widget = document.getElementById('quality-widget');
+        if (!widget) {
+            const container = document.querySelector('.dashboard-grid') ||
+                              document.querySelector('.overview-container');
+            if (!container) return;
+
+            widget = document.createElement('div');
+            widget.id = 'quality-widget';
+            widget.className = 'quality-widget glass-card';
+            container.appendChild(widget);
+        }
+
+        widget.style.display = 'block';
+        widget.innerHTML = `
+            <div class="quality-header">
+                <h3 class="quality-title">Synthesis Quality</h3>
+            </div>
+            <div class="loading"><div class="loading-spinner"></div><p>Loading quality data...</p></div>
+        `;
+    },
+
+    /**
+     * Show error state in quality widget
+     */
+    showQualityError() {
+        let widget = document.getElementById('quality-widget');
+        if (!widget) return;
+
+        widget.style.display = 'block';
+        widget.innerHTML = `
+            <div class="quality-header">
+                <h3 class="quality-title">Synthesis Quality</h3>
+            </div>
+            <div class="alert alert-error">
+                <p>Unable to load quality data</p>
+            </div>
+        `;
     },
 
     /**

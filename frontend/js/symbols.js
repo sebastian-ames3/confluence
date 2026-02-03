@@ -52,6 +52,11 @@ class SymbolsManager {
      * Load all tracked symbols from API
      */
     async loadSymbols() {
+        const container = document.getElementById('symbols-list');
+        if (container) {
+            container.innerHTML = '<div class="loading"><div class="loading-spinner"></div><p>Loading symbols...</p></div>';
+        }
+
         try {
             console.log('[SymbolsManager] Loading symbols...');
 
@@ -191,6 +196,11 @@ class SymbolsManager {
      * Show detailed view for a symbol
      */
     async showSymbolDetail(symbolTicker) {
+        const content = document.getElementById('symbol-detail-content');
+        if (content) {
+            content.innerHTML = '<div class="loading"><div class="loading-spinner"></div><p>Loading details...</p></div>';
+        }
+
         try {
             console.log(`[SymbolsManager] Loading detail for ${symbolTicker}`);
 
