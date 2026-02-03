@@ -25,32 +25,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.get("/{synthesis_id}")
-@limiter.limit(RATE_LIMITS["default"])
-async def get_quality_score(
-    request: Request,
-    synthesis_id: int,
-    db: Session = Depends(get_db),
-    user: str = Depends(verify_jwt_or_basic)
-):
-    """
-    Get quality score for a specific synthesis.
-
-    Returns full quality evaluation including criterion scores, flags, and suggestions.
-    """
-    quality = db.query(SynthesisQualityScore).filter(
-        SynthesisQualityScore.synthesis_id == synthesis_id
-    ).first()
-
-    if not quality:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Quality score not found for synthesis {synthesis_id}"
-        )
-
-    return _format_quality_response(quality)
-
-
 @router.get("/latest")
 @limiter.limit(RATE_LIMITS["default"])
 async def get_latest_quality(
@@ -252,6 +226,32 @@ async def get_quality_trends(
         "trend": trend,
         "trend_delta": trend_delta
     }
+
+
+@router.get("/{synthesis_id}")
+@limiter.limit(RATE_LIMITS["default"])
+async def get_quality_score(
+    request: Request,
+    synthesis_id: int,
+    db: Session = Depends(get_db),
+    user: str = Depends(verify_jwt_or_basic)
+):
+    """
+    Get quality score for a specific synthesis.
+
+    Returns full quality evaluation including criterion scores, flags, and suggestions.
+    """
+    quality = db.query(SynthesisQualityScore).filter(
+        SynthesisQualityScore.synthesis_id == synthesis_id
+    ).first()
+
+    if not quality:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Quality score not found for synthesis {synthesis_id}"
+        )
+
+    return _format_quality_response(quality)
 
 
 def _format_quality_response(quality: SynthesisQualityScore) -> dict:
