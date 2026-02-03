@@ -308,7 +308,12 @@ def extract_and_track_themes(
         new_theme_data = match.get("new_theme", {})
 
         if action == "create":
-            # Create new theme
+            # Create new theme (or update if name already exists)
+            theme_name = new_theme_data.get("name", "").strip()
+            if not theme_name:
+                logger.warning("Skipping theme with empty name")
+                continue
+
             source_evidence = {}
             for source, view in new_theme_data.get("sources", {}).items():
                 source_evidence[source] = [{
@@ -317,20 +322,36 @@ def extract_and_track_themes(
                     "strength": "moderate"
                 }]
 
-            theme = Theme(
-                name=new_theme_data.get("name", "Untitled Theme"),
-                description=new_theme_data.get("description"),
-                source_evidence=json.dumps(source_evidence),
-                catalysts=json.dumps(new_theme_data.get("catalysts", [])),
-                first_source=list(new_theme_data.get("sources", {}).keys())[0] if new_theme_data.get("sources") else None,
-                status=new_theme_data.get("status", "emerging"),
-                first_mentioned_at=now,
-                last_updated_at=now,
-                current_conviction=0.5,
-                evidence_count=len(source_evidence)
-            )
-            db_session.add(theme)
-            created += 1
+            # Check if theme with this name already exists
+            existing = db_session.query(Theme).filter(Theme.name == theme_name).first()
+            if existing:
+                # Update existing theme with new evidence
+                evidence = json.loads(existing.source_evidence) if existing.source_evidence else {}
+                for src, entries in source_evidence.items():
+                    if src not in evidence:
+                        evidence[src] = []
+                    evidence[src].extend(entries)
+                existing.source_evidence = json.dumps(evidence)
+                existing.last_updated_at = now
+                existing.evidence_count = sum(len(v) for v in evidence.values())
+                if existing.status == "emerging" and len(evidence) >= 2:
+                    existing.status = "active"
+                updated += 1
+            else:
+                theme = Theme(
+                    name=theme_name,
+                    description=new_theme_data.get("description"),
+                    source_evidence=json.dumps(source_evidence),
+                    catalysts=json.dumps(new_theme_data.get("catalysts", [])),
+                    first_source=list(new_theme_data.get("sources", {}).keys())[0] if new_theme_data.get("sources") else None,
+                    status=new_theme_data.get("status", "emerging"),
+                    first_mentioned_at=now,
+                    last_updated_at=now,
+                    current_conviction=0.5,
+                    evidence_count=len(source_evidence)
+                )
+                db_session.add(theme)
+                created += 1
 
         elif action == "update" and match_id:
             # Update existing theme with new evidence
@@ -362,7 +383,12 @@ def extract_and_track_themes(
                 updated += 1
 
         elif action == "evolve" and match.get("evolved_from_id"):
-            # Create evolved theme
+            # Create evolved theme (or update if name already exists)
+            theme_name = new_theme_data.get("name", "").strip()
+            if not theme_name:
+                logger.warning("Skipping evolved theme with empty name")
+                continue
+
             source_evidence = {}
             for source, view in new_theme_data.get("sources", {}).items():
                 source_evidence[source] = [{
@@ -371,20 +397,33 @@ def extract_and_track_themes(
                     "strength": "moderate"
                 }]
 
-            theme = Theme(
-                name=new_theme_data.get("name", "Evolved Theme"),
-                description=new_theme_data.get("description"),
-                evolved_from_theme_id=match.get("evolved_from_id"),
-                source_evidence=json.dumps(source_evidence),
-                catalysts=json.dumps(new_theme_data.get("catalysts", [])),
-                first_source=list(new_theme_data.get("sources", {}).keys())[0] if new_theme_data.get("sources") else None,
-                status="active",
-                first_mentioned_at=now,
-                last_updated_at=now,
-                current_conviction=0.5,
-                evidence_count=len(source_evidence)
-            )
-            db_session.add(theme)
+            # Check if theme with this name already exists
+            existing = db_session.query(Theme).filter(Theme.name == theme_name).first()
+            if existing:
+                evidence = json.loads(existing.source_evidence) if existing.source_evidence else {}
+                for src, entries in source_evidence.items():
+                    if src not in evidence:
+                        evidence[src] = []
+                    evidence[src].extend(entries)
+                existing.source_evidence = json.dumps(evidence)
+                existing.last_updated_at = now
+                existing.evidence_count = sum(len(v) for v in evidence.values())
+                updated += 1
+            else:
+                theme = Theme(
+                    name=theme_name,
+                    description=new_theme_data.get("description"),
+                    evolved_from_theme_id=match.get("evolved_from_id"),
+                    source_evidence=json.dumps(source_evidence),
+                    catalysts=json.dumps(new_theme_data.get("catalysts", [])),
+                    first_source=list(new_theme_data.get("sources", {}).keys())[0] if new_theme_data.get("sources") else None,
+                    status="active",
+                    first_mentioned_at=now,
+                    last_updated_at=now,
+                    current_conviction=0.5,
+                    evidence_count=len(source_evidence)
+                )
+                db_session.add(theme)
 
             # Mark parent as evolved
             parent = db_session.query(Theme).filter(Theme.id == match.get("evolved_from_id")).first()
