@@ -119,8 +119,9 @@ async def search_content(
     # Format results
     formatted_results = []
     for raw, analyzed, src in results:
-        # Parse metadata for title
+        # Parse metadata for title and url
         title = f"{src.name} content"
+        metadata = {}
         if raw.json_metadata:
             try:
                 metadata = json.loads(raw.json_metadata)
@@ -131,17 +132,28 @@ async def search_content(
         # Get snippet
         snippet = ""
         if raw.content_text:
-            snippet = raw.content_text[:300]
-            if len(raw.content_text) > 300:
+            snippet = raw.content_text[:2000]
+            if len(raw.content_text) > 2000:
                 snippet += "..."
+
+        # Parse analysis for summary
+        analysis_summary = None
+        if analyzed and analyzed.analysis_result:
+            try:
+                analysis = json.loads(analyzed.analysis_result)
+                analysis_summary = analysis.get("summary")
+            except json.JSONDecodeError:
+                pass
 
         formatted_results.append({
             "id": raw.id,
             "title": title,
             "source": src.name,
+            "url": metadata.get("url") or metadata.get("video_url"),
             "date": raw.collected_at.strftime("%Y-%m-%d") if raw.collected_at else None,
             "type": raw.content_type,
             "snippet": snippet,
+            "analysis_summary": analysis_summary,
             "themes": analyzed.key_themes.split(",") if analyzed and analyzed.key_themes else [],
             "sentiment": analyzed.sentiment if analyzed else None,
             "conviction": analyzed.conviction if analyzed else None
@@ -535,8 +547,8 @@ async def get_recent_from_source(
                 pass
 
         if not summary and raw.content_text:
-            summary = raw.content_text[:200]
-            if len(raw.content_text) > 200:
+            summary = raw.content_text[:1500]
+            if len(raw.content_text) > 1500:
                 summary += "..."
 
         items.append({

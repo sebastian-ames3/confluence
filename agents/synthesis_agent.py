@@ -588,11 +588,12 @@ Respond with valid JSON only."""
                 reliability = self.SOURCE_WEIGHTS.get(source_key, "medium")
                 content_section += f"\n### {source_key.upper()} (Weight: {weight}x, {reliability})\n"
 
-            for item in items[:15]:  # Limit items per source
+            for item in items:
                 title = item.get("title", "Untitled")
                 content_type = item.get("type", item.get("content_type", "unknown"))
                 timestamp = item.get("timestamp", item.get("collected_at", ""))
-                summary = str(item.get("summary", item.get("content_text", "")))[:600]
+                summary = str(item.get("summary", ""))
+                content_text_raw = str(item.get("content_text", ""))
                 themes = item.get("themes", [])
                 sentiment = item.get("sentiment", "")
                 tickers = item.get("tickers", [])
@@ -607,7 +608,9 @@ Respond with valid JSON only."""
                 if tickers:
                     content_section += f"Tickers: {', '.join(tickers[:10])}\n"
                 if summary:
-                    content_section += f"Content: {summary}\n"
+                    content_section += f"Summary: {summary}\n"
+                if content_text_raw:
+                    content_section += f"Transcript/Content:\n{content_text_raw}\n"
 
         # Extract specific levels to include in prompt
         extracted = self._extract_levels_from_content(content_items)
@@ -873,13 +876,15 @@ RESPOND WITH VALID JSON ONLY. Be SPECIFIC with all levels, dates, and numbers.""
                 weight = self.SOURCE_WEIGHTS_V2.get(source_key, 1.0)
                 content_section += f"\n### {source_key.upper()} (Weight: {weight}x)\n"
 
-            for item in items[:15]:
+            for item in items:
                 title = item.get("title", "Untitled")
                 content_type = item.get("type", item.get("content_type", "unknown"))
                 timestamp = item.get("timestamp", item.get("collected_at", ""))
-                summary = str(item.get("summary", item.get("content_text", "")))[:600]
+                summary = str(item.get("summary", ""))
+                content_text_raw = str(item.get("content_text", ""))
                 themes = item.get("themes", [])
                 sentiment = item.get("sentiment", "")
+                key_quotes = item.get("key_quotes", [])
 
                 content_section += f"\n**{title}** ({content_type})\n"
                 if timestamp:
@@ -889,7 +894,22 @@ RESPOND WITH VALID JSON ONLY. Be SPECIFIC with all levels, dates, and numbers.""
                 if sentiment:
                     content_section += f"Sentiment: {sentiment}\n"
                 if summary:
-                    content_section += f"Content: {summary}\n"
+                    content_section += f"Summary: {summary}\n"
+                if key_quotes:
+                    content_section += "Key Quotes:\n"
+                    for quote in key_quotes[:5]:
+                        if isinstance(quote, dict):
+                            speaker = quote.get("speaker", "")
+                            text = quote.get("text", quote.get("quote", ""))
+                            ts = quote.get("timestamp", "")
+                            prefix = f"[{speaker}]" if speaker else ""
+                            if ts:
+                                prefix = f"[{ts}] {prefix}" if prefix else f"[{ts}]"
+                            content_section += f"  - {prefix} \"{text}\"\n"
+                        elif isinstance(quote, str):
+                            content_section += f"  - \"{quote}\"\n"
+                if content_text_raw:
+                    content_section += f"Transcript/Content:\n{content_text_raw}\n"
 
         # Build older content section for re-review recommendations
         older_section = ""
@@ -915,12 +935,12 @@ RESPOND WITH VALID JSON ONLY. Be SPECIFIC with all levels, dates, and numbers.""
                     older_section += f"\n### YOUTUBE - {channel_name} (older)\n"
                 else:
                     older_section += f"\n### {source_key.upper()} (older)\n"
-                for item in items[:10]:
+                for item in items:
                     title = item.get("title", "Untitled")
                     timestamp = item.get("timestamp", item.get("collected_at", ""))
                     themes = item.get("themes", [])
-                    summary = str(item.get("summary", ""))[:300]
-                    older_section += f"- **{title}** ({timestamp}): {', '.join(themes[:3])}. {summary[:150]}...\n"
+                    summary = str(item.get("summary", ""))
+                    older_section += f"- **{title}** ({timestamp}): {', '.join(themes[:3])}. {summary}\n"
 
         # Extract levels for reference
         extracted = self._extract_levels_from_content(content_items)
@@ -1169,12 +1189,11 @@ RESPOND WITH VALID JSON ONLY."""
         )
 
         # Call Claude with v3 system prompt
-        # Increased max_tokens for enhanced executive summary (PRD-025)
-        # Further increased to 8000 to prevent JSON truncation with large source_stances
+        # max_tokens increased to 16000 to accommodate richer synthesis from full transcripts
         response = self.call_claude(
             prompt=prompt,
             system_prompt=self.SYSTEM_PROMPT_V3,
-            max_tokens=8000,
+            max_tokens=16000,
             temperature=0.25,
             expect_json=True
         )
@@ -1227,13 +1246,15 @@ RESPOND WITH VALID JSON ONLY."""
         items = [item for item in content_items if self._get_source_key(item) == source_key]
 
         content_text = ""
-        for item in items[:10]:  # Limit to 10 items per source
+        for item in items:
             title = item.get("title", "Untitled")
             content_type = item.get("type", item.get("content_type", "unknown"))
             timestamp = item.get("timestamp", item.get("collected_at", ""))
-            summary = str(item.get("summary", item.get("content_text", "")))[:800]
+            summary = str(item.get("summary", ""))
+            content_text_raw = str(item.get("content_text", ""))
             themes = item.get("themes", [])
             sentiment = item.get("sentiment", "")
+            key_quotes = item.get("key_quotes", [])
 
             content_text += f"\n### {title} ({content_type})\n"
             if timestamp:
@@ -1243,7 +1264,22 @@ RESPOND WITH VALID JSON ONLY."""
             if sentiment:
                 content_text += f"Sentiment: {sentiment}\n"
             if summary:
-                content_text += f"Content: {summary}\n"
+                content_text += f"Summary: {summary}\n"
+            if key_quotes:
+                content_text += "Key Quotes:\n"
+                for quote in key_quotes[:5]:
+                    if isinstance(quote, dict):
+                        speaker = quote.get("speaker", "")
+                        text = quote.get("text", quote.get("quote", ""))
+                        ts = quote.get("timestamp", "")
+                        prefix = f"[{speaker}]" if speaker else ""
+                        if ts:
+                            prefix = f"[{ts}] {prefix}" if prefix else f"[{ts}]"
+                        content_text += f"  - {prefix} \"{text}\"\n"
+                    elif isinstance(quote, str):
+                        content_text += f"  - \"{quote}\"\n"
+            if content_text_raw:
+                content_text += f"Transcript/Content:\n{content_text_raw}\n"
 
         return f"""Generate a detailed breakdown for content from {source_key}.
 
@@ -1308,7 +1344,7 @@ Respond with valid JSON only."""
                 "title": item.get("title", "Untitled"),
                 "collected_at": item.get("collected_at", item.get("timestamp", "")),
                 "content_type": item.get("type", item.get("content_type", "unknown")),
-                "summary": content_summary.get("summary") or item.get("summary", "")[:300],
+                "summary": content_summary.get("summary") or item.get("summary", ""),
                 "themes": content_summary.get("themes") or item.get("themes", []),
                 "key_points": content_summary.get("key_points", []),
                 "tickers_mentioned": item.get("tickers", []),
@@ -1412,8 +1448,8 @@ Respond with valid JSON only."""
                 prompt = self._build_source_breakdown_prompt(content_items, source_key)
                 breakdown = self.call_claude(
                     prompt=prompt,
-                    system_prompt="You are summarizing research content from a specific source. Be specific and include key data points.",
-                    max_tokens=1500,
+                    system_prompt="You are summarizing research content from a specific source. Be specific and include key data points, levels, and quotes.",
+                    max_tokens=4000,
                     temperature=0.2,
                     expect_json=True
                 )
