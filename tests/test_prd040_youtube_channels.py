@@ -319,14 +319,14 @@ class TestUICompatibility:
             assert 'youtube' not in stances_func.lower() or '${' in stances_func, \
                 "Source stances should not hardcode 'youtube' source name"
 
-    def test_v3_executive_summary_handles_youtube_channels(self):
-        """Verify executive summary can handle YouTube channel names in source_highlights."""
+    def test_narrative_display_handles_youtube_channels(self):
+        """Verify narrative display can handle YouTube channel data via synthesis_narrative."""
         index_path = Path(__file__).parent.parent / "frontend" / "index.html"
         content = index_path.read_text(encoding='utf-8')
 
-        # The executive summary should handle source_highlights dynamically
-        assert "source_highlights" in content, \
-            "Executive summary should handle source_highlights"
+        # The narrative display should handle synthesis_narrative dynamically
+        assert "synthesis_narrative" in content, \
+            "Narrative display should handle synthesis_narrative"
 
 
 class TestContentItemStructure:

@@ -831,6 +831,276 @@
   color: white;
 }
 
+/* ----- Synthesis Panel Redesign ----- */
+.synthesis-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-md);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--bg-surface);
+  margin: calc(-1 * var(--spacing-lg));
+  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+}
+
+.synthesis-section {
+  scroll-margin-top: 80px;
+  margin-bottom: var(--spacing-xl);
+}
+
+.synthesis-section:last-child {
+  margin-bottom: 0;
+}
+
+.synthesis-section-title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--primary);
+  margin-bottom: var(--spacing-md);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+/* Narrative styles */
+.narrative-macro-context {
+  font-size: var(--text-lg);
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-lg);
+  line-height: var(--leading-relaxed);
+}
+
+.narrative-paragraphs {
+  border-left: 3px solid var(--primary);
+  padding-left: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.narrative-paragraph {
+  /* individual paragraph block */
+}
+
+.narrative-paragraph-label {
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--primary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.narrative-paragraph-text {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: var(--leading-relaxed);
+}
+
+.narrative-metadata-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  align-items: center;
+  margin-top: var(--spacing-lg);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--border-subtle);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.narrative-metadata-bar .badge {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  color: white;
+}
+
+/* Catalyst timeline styles */
+.catalyst-timeline {
+  position: relative;
+  padding-left: var(--spacing-xl);
+}
+
+.catalyst-timeline::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--border-subtle);
+}
+
+.catalyst-timeline-item {
+  position: relative;
+  margin-bottom: var(--spacing-lg);
+}
+
+.catalyst-timeline-item:last-child {
+  margin-bottom: 0;
+}
+
+.catalyst-date-node {
+  position: absolute;
+  left: calc(-1 * var(--spacing-xl) + 2px);
+  top: 4px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--bg-surface);
+  box-shadow: 0 0 0 2px var(--border-subtle);
+}
+
+.catalyst-date-node.impact-high {
+  background: var(--danger);
+  box-shadow: 0 0 0 2px var(--danger);
+}
+
+.catalyst-date-node.impact-medium {
+  background: var(--warning);
+  box-shadow: 0 0 0 2px var(--warning);
+}
+
+.catalyst-date-node.impact-low {
+  background: var(--info);
+  box-shadow: 0 0 0 2px var(--info);
+}
+
+.catalyst-date-label {
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  color: var(--text-muted);
+  margin-bottom: var(--spacing-xs);
+}
+
+.catalyst-event-card {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md);
+  transition: all var(--transition-fast);
+}
+
+.catalyst-event-card:hover {
+  border-color: var(--primary);
+  box-shadow: var(--shadow-md);
+}
+
+.catalyst-event-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-sm);
+  gap: var(--spacing-sm);
+}
+
+.catalyst-event-name {
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+}
+
+.catalyst-impact-badge {
+  font-size: var(--text-xs);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-weight: var(--font-medium);
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.catalyst-impact-badge.impact-high {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.catalyst-impact-badge.impact-medium {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+.catalyst-impact-badge.impact-low {
+  background: var(--info-bg);
+  color: var(--info);
+}
+
+.catalyst-perspective-row {
+  display: flex;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs) 0;
+  font-size: var(--text-sm);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.catalyst-perspective-row:last-child {
+  border-bottom: none;
+}
+
+.catalyst-perspective-source {
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+  min-width: 80px;
+  flex-shrink: 0;
+}
+
+.catalyst-perspective-view {
+  color: var(--text-secondary);
+}
+
+.catalyst-themes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-sm);
+}
+
+.catalyst-themes .theme-tag {
+  font-size: var(--text-xs);
+  padding: 2px 6px;
+}
+
+/* Empty states for catalyst and revisit */
+.catalyst-empty-state,
+.revisit-empty-state {
+  text-align: center;
+  padding: var(--spacing-lg);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  background: var(--glass-bg);
+  border-radius: var(--radius-lg);
+  border: 1px dashed var(--border-subtle);
+}
+
+/* Re-review trigger color variants */
+.re-review-trigger.trigger-catalyst_approaching {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+.re-review-trigger.trigger-level_being_tested {
+  background: var(--info-bg);
+  color: var(--info);
+}
+
+.re-review-trigger.trigger-scenario_playing_out {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.re-review-trigger.trigger-conflict_resolving {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
 /* ----- Responsive ----- */
 @media (max-width: 768px) {
   .themes-stats {
