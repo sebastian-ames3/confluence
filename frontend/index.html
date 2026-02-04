@@ -213,6 +213,48 @@
                             </div>
                         </div>
 
+                        <!-- Full Synthesis Panel (collapsible, hidden by default) -->
+                        <div class="sidebar-card full-width-section" id="synthesis-panel" style="display: none;">
+                            <div class="synthesis-panel-header">
+                                <div style="display: flex; align-items: center; gap: var(--spacing-md); flex-wrap: wrap;">
+                                    <div class="section-title" style="margin-bottom: 0;">Full Research Synthesis</div>
+                                    <div class="synthesis-meta" style="font-size: var(--text-xs); color: var(--text-muted);">
+                                        <span id="synthesis-time">-</span>
+                                    </div>
+                                    <div class="tier-selector" id="synthesis-pill-nav">
+                                        <button class="tier-btn active" data-section="synthesis-section-narrative" onclick="scrollToSynthesisSection(this)">Narrative</button>
+                                        <button class="tier-btn" data-section="synthesis-section-catalysts" onclick="scrollToSynthesisSection(this)">Catalysts</button>
+                                        <button class="tier-btn" data-section="synthesis-section-revisit" onclick="scrollToSynthesisSection(this)">Revisit</button>
+                                    </div>
+                                </div>
+                                <button class="fab-btn fab-btn-ghost" style="padding: var(--spacing-xs) var(--spacing-sm); flex-shrink: 0;" onclick="toggleFullSynthesis()">
+                                    <span>Collapse</span>
+                                </button>
+                            </div>
+
+                            <!-- Synthesis Content -->
+                            <div id="synthesis-content">
+                                <!-- Section 1: Narrative -->
+                                <div class="synthesis-section" id="synthesis-section-narrative">
+                                    <div id="narrative-macro-context" class="narrative-macro-context"></div>
+                                    <div id="narrative-paragraphs" class="narrative-paragraphs"></div>
+                                    <div id="narrative-metadata" class="narrative-metadata-bar"></div>
+                                </div>
+
+                                <!-- Section 2: Catalyst Calendar -->
+                                <div class="synthesis-section" id="synthesis-section-catalysts">
+                                    <div class="synthesis-section-title">Catalyst Calendar</div>
+                                    <div id="catalyst-timeline"></div>
+                                </div>
+
+                                <!-- Section 3: Worth Revisiting -->
+                                <div class="synthesis-section" id="synthesis-section-revisit">
+                                    <div class="synthesis-section-title">Worth Revisiting</div>
+                                    <div id="revisit-list"></div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Major Source Perspectives (Full-Width, directly after Key Takeaways) -->
                         <section class="source-perspectives-section" id="stances-section" style="display: none;">
                             <div class="section-header">
@@ -241,31 +283,6 @@
                             <div id="v3-conflict-list"></div>
                         </div>
 
-                        <!-- Full Synthesis Panel (collapsible, hidden by default) -->
-                        <div class="sidebar-card full-width-section" id="synthesis-panel" style="display: none;">
-                            <div class="synthesis-header" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--spacing-md); padding-bottom: var(--spacing-md); border-bottom: 1px solid var(--border-subtle);">
-                                <div>
-                                    <div class="section-title" style="margin-bottom: var(--spacing-xs);">Full Research Synthesis</div>
-                                    <div class="synthesis-meta" style="font-size: var(--text-sm); color: var(--text-muted);">
-                                        <span id="synthesis-time">-</span>
-                                    </div>
-                                </div>
-                                <button class="fab-btn fab-btn-ghost" style="padding: var(--spacing-xs) var(--spacing-sm);" onclick="toggleFullSynthesis()">
-                                    <span>Collapse</span>
-                                </button>
-                            </div>
-
-                            <!-- Synthesis Content -->
-                            <div id="synthesis-content">
-                                <div class="synthesis-text" id="synthesis-text"></div>
-                                <div class="theme-tags" id="theme-tags" style="display: flex; flex-wrap: wrap; gap: var(--spacing-sm); margin-top: var(--spacing-md);"></div>
-
-                                <!-- V3 Content -->
-                                <div id="v3-content" style="display: none;">
-                                    <div id="v3-executive-section" class="v3-executive-summary"></div>
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 </div>
 
@@ -686,13 +703,10 @@
                 regimeBadge.innerHTML = `<span class="market-regime ${escapeHtml(regimeClass)}">${escapeHtml(regimeValue)}</span>`;
             }
 
-            // Show structured content sections
-            document.getElementById('v3-content').style.display = 'block';
-            document.getElementById('synthesis-text').style.display = 'none';
-            document.getElementById('theme-tags').style.display = 'none';
-
-            // Executive summary
-            displayV3ExecutiveSummary(data.executive_summary || {});
+            // Narrative, catalyst calendar, re-review recommendations
+            displayNarrative(data.executive_summary || {}, data.content_count, data.sources_included);
+            displayCatalystCalendar(data.catalyst_calendar || []);
+            displayReReviewRecommendations(data.re_review_recommendations || []);
 
             // All detail sections
             displayV3AttentionPriorities(data.attention_priorities || []);
@@ -870,42 +884,183 @@
             }
         }
 
-        // V3: Display executive summary
-        function displayV3ExecutiveSummary(summary) {
-            const container = document.getElementById('v3-executive-section');
-            if (!summary || (!summary.narrative && !summary.synthesis_narrative)) {
-                container.style.display = 'none';
+        // Display narrative section (replaces displayV3ExecutiveSummary)
+        function displayNarrative(summary, contentCount, sourcesIncluded) {
+            const macroCtx = document.getElementById('narrative-macro-context');
+            const paraContainer = document.getElementById('narrative-paragraphs');
+            const metaBar = document.getElementById('narrative-metadata');
+
+            if (!macroCtx || !paraContainer || !metaBar) return;
+
+            // Macro context lead-in
+            const macroContext = summary.macro_context || '';
+            macroCtx.innerHTML = macroContext ? escapeHtml(macroContext) : '';
+
+            // Split synthesis_narrative into labeled paragraphs
+            const narrative = summary.synthesis_narrative || summary.narrative || '';
+            const paragraphs = narrative.split('\n\n').filter(p => p.trim());
+            const labels = ['Where Sources Align', 'Where They Diverge', 'What Deserves Attention'];
+
+            if (paragraphs.length > 0) {
+                paraContainer.innerHTML = paragraphs.slice(0, 3).map((p, i) => `
+                    <div class="narrative-paragraph">
+                        <div class="narrative-paragraph-label">${escapeHtml(labels[i] || '')}</div>
+                        <div class="narrative-paragraph-text">${escapeHtml(p.trim())}</div>
+                    </div>
+                `).join('');
+            } else {
+                paraContainer.innerHTML = '<div class="narrative-paragraph-text" style="color: var(--text-muted);">No narrative available.</div>';
+            }
+
+            // Metadata bar: tone + quality grade + sources + content count
+            const tone = summary.overall_tone || 'uncertain';
+            const toneColor = tone === 'bullish' ? 'success' : tone === 'bearish' ? 'danger' : 'warning';
+
+            let qualityHtml = '';
+            if (typeof QualityManager !== 'undefined' && QualityManager.latestScore) {
+                const grade = QualityManager.latestScore.letter_grade || '';
+                if (grade) {
+                    qualityHtml = `<span style="color: var(--text-secondary);">Quality: <strong>${escapeHtml(grade)}</strong></span>`;
+                }
+            }
+
+            const sourceCount = Array.isArray(sourcesIncluded) ? sourcesIncluded.length : 0;
+            metaBar.innerHTML = `
+                <span class="badge" style="background: var(--${toneColor});">${escapeHtml(tone)}</span>
+                ${qualityHtml}
+                ${sourceCount > 0 ? `<span>${sourceCount} sources</span>` : ''}
+                ${contentCount ? `<span>${escapeHtml(String(contentCount))} items analyzed</span>` : ''}
+            `;
+        }
+
+        // Display catalyst calendar as a timeline
+        function displayCatalystCalendar(catalysts) {
+            const container = document.getElementById('catalyst-timeline');
+            if (!container) return;
+
+            if (!catalysts || catalysts.length === 0) {
+                container.innerHTML = '<div class="catalyst-empty-state">No upcoming catalysts identified in this synthesis window.</div>';
+                container.className = '';
                 return;
             }
-            container.style.display = 'block';
 
-            const tone = summary.overall_tone || 'uncertain';
-            const isEnhanced = summary.source_highlights || summary.synthesis_narrative;
+            container.className = 'catalyst-timeline';
+            container.innerHTML = catalysts.map(c => {
+                const impact = (c.impact || 'medium').toLowerCase();
+                const impactClass = impact === 'high' ? 'impact-high' : impact === 'low' ? 'impact-low' : 'impact-medium';
 
-            if (isEnhanced) {
-                const macroContext = summary.macro_context || '';
-                const synthesisNarrative = summary.synthesis_narrative || '';
-                const keyTakeaways = summary.key_takeaways || [];
+                // Parse date safely (append T00:00:00 to avoid timezone shift)
+                let dateLabel = c.date || 'TBD';
+                if (c.date && /^\d{4}-\d{2}-\d{2}$/.test(c.date)) {
+                    const d = new Date(c.date + 'T00:00:00');
+                    dateLabel = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                }
 
-                container.innerHTML = `
-                    ${macroContext ? `<div style="font-size: var(--text-lg); margin-bottom: var(--spacing-md); color: var(--text-primary);">${macroContext}</div>` : ''}
-                    ${synthesisNarrative ? `<div style="color: var(--text-secondary); line-height: var(--leading-relaxed);">${synthesisNarrative}</div>` : ''}
-                    ${keyTakeaways.length > 0 ? `
-                        <div style="margin-top: var(--spacing-md); padding: var(--spacing-md); background: var(--glass-bg-light); border-radius: var(--radius-lg);">
-                            <div style="font-weight: var(--font-semibold); margin-bottom: var(--spacing-sm);">Key Takeaways</div>
-                            <ol style="margin: 0; padding-left: var(--spacing-lg);">
-                                ${keyTakeaways.map(t => `<li style="margin-bottom: var(--spacing-xs);">${t}</li>`).join('')}
-                            </ol>
+                // Source perspectives
+                const perspectives = c.source_perspectives || c.perspectives || [];
+                const perspectivesHtml = perspectives.map(p => `
+                    <div class="catalyst-perspective-row">
+                        <span class="catalyst-perspective-source">${escapeHtml(p.source || '')}</span>
+                        <span class="catalyst-perspective-view">${escapeHtml(p.view || p.perspective || '')}</span>
+                    </div>
+                `).join('');
+
+                // Related themes
+                const themes = c.related_themes || c.themes || [];
+                const themesHtml = themes.length > 0 ? `
+                    <div class="catalyst-themes">
+                        ${themes.map(t => `<span class="theme-tag">${escapeHtml(t)}</span>`).join('')}
+                    </div>
+                ` : '';
+
+                return `
+                    <div class="catalyst-timeline-item">
+                        <div class="catalyst-date-node ${impactClass}"></div>
+                        <div class="catalyst-date-label">${escapeHtml(dateLabel)}</div>
+                        <div class="catalyst-event-card">
+                            <div class="catalyst-event-header">
+                                <span class="catalyst-event-name">${escapeHtml(c.event || c.name || 'Unknown Event')}</span>
+                                <span class="catalyst-impact-badge ${impactClass}">${escapeHtml(impact)}</span>
+                            </div>
+                            ${perspectivesHtml}
+                            ${themesHtml}
                         </div>
-                    ` : ''}
-                    <div style="margin-top: var(--spacing-md);">
-                        <span class="badge" style="background: var(--${tone === 'bullish' ? 'success' : tone === 'bearish' ? 'danger' : 'warning'}); color: white; padding: var(--spacing-xs) var(--spacing-sm); border-radius: var(--radius-full); font-size: var(--text-xs);">${tone}</span>
                     </div>
                 `;
-            } else {
-                container.innerHTML = `<div style="color: var(--text-secondary);">${summary.narrative}</div>`;
-            }
+            }).join('');
         }
+
+        // Display re-review recommendations
+        function displayReReviewRecommendations(recommendations) {
+            const container = document.getElementById('revisit-list');
+            if (!container) return;
+
+            if (!recommendations || recommendations.length === 0) {
+                container.innerHTML = '<div class="revisit-empty-state">No re-review recommendations at this time.</div>';
+                return;
+            }
+
+            container.innerHTML = recommendations.map(r => {
+                const trigger = r.trigger || '';
+                const triggerClass = trigger ? `trigger-${trigger}` : '';
+                const triggerText = trigger.replace(/_/g, ' ');
+
+                return `
+                    <div class="re-review-item">
+                        <div class="re-review-header">
+                            <span class="re-review-title">${escapeHtml(r.title || r.topic || 'Untitled')}</span>
+                            <span class="re-review-source">${escapeHtml(r.original_source || r.source || '')}</span>
+                        </div>
+                        <div class="re-review-why">${escapeHtml(r.why || r.reason || '')}</div>
+                        ${trigger ? `<span class="re-review-trigger ${escapeHtml(triggerClass)}">${escapeHtml(triggerText)}</span>` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Scroll to synthesis section and update active pill
+        function scrollToSynthesisSection(btn) {
+            const sectionId = btn.getAttribute('data-section');
+            const section = document.getElementById(sectionId);
+            if (!section) return;
+
+            // Update active pill
+            document.querySelectorAll('#synthesis-pill-nav .tier-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        // IntersectionObserver: track which synthesis section is in view and update pill
+        (function initSynthesisSectionObserver() {
+            const sectionIds = ['synthesis-section-narrative', 'synthesis-section-catalysts', 'synthesis-section-revisit'];
+
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const id = entry.target.id;
+                        document.querySelectorAll('#synthesis-pill-nav .tier-btn').forEach(b => {
+                            b.classList.toggle('active', b.getAttribute('data-section') === id);
+                        });
+                    }
+                });
+            }, { threshold: 0.3 });
+
+            // Observe after DOM is ready
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', () => {
+                    sectionIds.forEach(id => {
+                        const el = document.getElementById(id);
+                        if (el) observer.observe(el);
+                    });
+                });
+            } else {
+                sectionIds.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) observer.observe(el);
+                });
+            }
+        })();
 
         // V3: Display attention priorities
         function displayV3AttentionPriorities(priorities) {
@@ -1017,9 +1172,15 @@
                     : '<span class="icon">📄</span><span>View Full Synthesis</span>';
             }
 
-            // Scroll to panel when opening
             if (isHidden) {
+                // Scroll to panel when opening
                 panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } else {
+                // Scroll back to takeaways when collapsing
+                const takeaways = document.getElementById('takeaways-section');
+                if (takeaways) {
+                    takeaways.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
             }
         }
 
