@@ -226,8 +226,8 @@ class WebSocketClient {
         toast.id = 'ws-toast';
         toast.className = 'toast';
         toast.innerHTML = `
-            <div style="font-weight: 600; margin-bottom: 4px;">${title}</div>
-            <div style="font-size: 13px; color: var(--text-secondary);">${message}</div>
+            <div style="font-weight: 600; margin-bottom: 4px;">${sanitizeHTML(title)}</div>
+            <div style="font-size: 13px; color: var(--text-secondary);">${sanitizeHTML(message)}</div>
         `;
 
         // Add type styling

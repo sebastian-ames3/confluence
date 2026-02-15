@@ -158,7 +158,7 @@ const QualityManager = {
 
             <div class="quality-summary">
                 <div class="quality-grade-container">
-                    <span class="quality-grade ${gradeClass}">${data.grade}</span>
+                    <span class="quality-grade ${gradeClass}">${sanitizeHTML(data.grade)}</span>
                     <span class="quality-score">${data.quality_score}/100</span>
                 </div>
                 ${this.renderFlagsIndicator(data.flags)}
@@ -230,9 +230,9 @@ const QualityManager = {
 
         const flagsHtml = flags.map(flag => `
             <div class="quality-flag-item">
-                <span class="flag-criterion">${flag.criterion}</span>
-                <span class="flag-score">Score: ${flag.score}/3</span>
-                <p class="flag-detail">${flag.detail}</p>
+                <span class="flag-criterion">${sanitizeHTML(flag.criterion)}</span>
+                <span class="flag-score">Score: ${sanitizeHTML(flag.score)}/3</span>
+                <p class="flag-detail">${sanitizeHTML(flag.detail)}</p>
             </div>
         `).join('');
 
@@ -253,7 +253,7 @@ const QualityManager = {
         }
 
         const suggestionsHtml = suggestions.map(s => `
-            <li class="quality-suggestion-item">${s}</li>
+            <li class="quality-suggestion-item">${sanitizeHTML(s)}</li>
         `).join('');
 
         return `
@@ -336,7 +336,7 @@ const QualityManager = {
         return `
             <div class="synthesis-quality-inline">
                 <span class="quality-badge ${this.getGradeClass(quality.grade)}">
-                    ${quality.grade} (${quality.quality_score}/100)
+                    ${sanitizeHTML(quality.grade)} (${sanitizeHTML(quality.quality_score)}/100)
                 </span>
                 ${quality.flags?.length > 0 ?
                     `<span class="quality-flags-count">${quality.flags.length} issues</span>` : ''}

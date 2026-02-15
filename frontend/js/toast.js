@@ -60,8 +60,8 @@ const ToastManager = {
     const actionsHtml = actions.length ? `
       <div class="toast-actions">
         ${actions.map(action => `
-          <button class="toast-action toast-action-${action.type || 'secondary'}" data-action="${action.id || ''}">
-            ${action.label}
+          <button class="toast-action toast-action-${sanitizeHTML(action.type || 'secondary')}" data-action="${sanitizeHTML(action.id || '')}">
+            ${sanitizeHTML(action.label)}
           </button>
         `).join('')}
       </div>
@@ -70,8 +70,8 @@ const ToastManager = {
     toast.innerHTML = `
       ${iconHtml}
       <div class="toast-content">
-        ${title ? `<div class="toast-title">${title}</div>` : ''}
-        ${message ? `<div class="toast-message">${message}</div>` : ''}
+        ${title ? `<div class="toast-title">${sanitizeHTML(title)}</div>` : ''}
+        ${message ? `<div class="toast-message">${sanitizeHTML(message)}</div>` : ''}
         ${actionsHtml}
       </div>
       ${closeHtml}

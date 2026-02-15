@@ -534,7 +534,8 @@
     <!-- Toast Container -->
     <div class="toast-container" id="toast-container"></div>
 
-    <!-- Auth & API (PRD-036) - Must load before other scripts -->
+    <!-- Utilities & Auth (must load before other scripts) -->
+    <script src="js/utils.js"></script>
     <script src="js/api.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/health.js"></script>  <!-- PRD-045: Health monitoring widget -->
@@ -1849,7 +1850,7 @@
     <script src="js/toast.js"></script>
 
     <!-- Chart.js CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" integrity="sha384-9nhczxUqK87bcKHh20fSQcTGD4qq5GhayNYSYWqwBkINBhOfQLg/P5HG5lF1urn4" crossorigin="anonymous"></script>
 
     <!-- Chart Component Scripts -->
     <script src="js/charts/chartConfig.js"></script>
