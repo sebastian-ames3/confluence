@@ -22,7 +22,7 @@ import random
 import atexit
 import signal
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -30,6 +30,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
+from selenium.common.exceptions import NoSuchElementException, TimeoutException, StaleElementReferenceException
 from webdriver_manager.chrome import ChromeDriverManager
 import PyPDF2
 
@@ -198,7 +199,7 @@ class Macro42Collector(BaseCollector):
             if self.driver:
                 try:
                     self.driver.quit()
-                except:
+                except Exception:
                     pass
             raise Exception(f"Collection timed out after {TIMEOUT_SECONDS} seconds")
 
@@ -290,7 +291,7 @@ class Macro42Collector(BaseCollector):
                 email_field = wait.until(
                     EC.presence_of_element_located((By.ID, "email"))
                 )
-            except:
+            except (NoSuchElementException, TimeoutException, StaleElementReferenceException):
                 # Try alternative selectors
                 email_field = wait.until(
                     EC.presence_of_element_located((By.NAME, "email"))
@@ -302,7 +303,7 @@ class Macro42Collector(BaseCollector):
             # Find and fill password field
             try:
                 password_field = self.driver.find_element(By.ID, "password")
-            except:
+            except (NoSuchElementException, TimeoutException, StaleElementReferenceException):
                 password_field = self.driver.find_element(By.NAME, "password")
 
             password_field.clear()
@@ -311,7 +312,7 @@ class Macro42Collector(BaseCollector):
             # Find and click login button
             try:
                 login_button = self.driver.find_element(By.CSS_SELECTOR, "button[type='submit']")
-            except:
+            except (NoSuchElementException, TimeoutException, StaleElementReferenceException):
                 login_button = self.driver.find_element(By.XPATH, "//button[contains(text(), 'Log')]")
 
             login_button.click()
@@ -433,7 +434,7 @@ class Macro42Collector(BaseCollector):
                 wait.until(EC.presence_of_element_located(
                     (By.CSS_SELECTOR, ".cursor-pointer.bg-card")
                 ))
-            except:
+            except (NoSuchElementException, TimeoutException, StaleElementReferenceException):
                 logger.warning("Research cards not found - page may not have loaded")
                 return pdfs
 
@@ -460,7 +461,7 @@ class Macro42Collector(BaseCollector):
                     try:
                         card.find_element(By.CSS_SELECTOR, "svg.text-white.absolute")
                         is_locked = True
-                    except:
+                    except (NoSuchElementException, TimeoutException, StaleElementReferenceException):
                         pass
 
                     # Skip locked content
@@ -528,7 +529,7 @@ class Macro42Collector(BaseCollector):
                             "file_path": str(new_path),  # Keep for local reference
                             "url": research_url,
                             "content_text": content_text,  # Full extracted text for Railway
-                            "collected_at": datetime.utcnow().isoformat(),
+                            "collected_at": datetime.now(timezone.utc).isoformat(),
                             "metadata": {
                                 "title": title,
                                 "report_type": report_type,
@@ -598,7 +599,7 @@ class Macro42Collector(BaseCollector):
             try:
                 date_elem = self.driver.find_element(By.CSS_SELECTOR, ".text-select.font-bold")
                 current_date = date_elem.text.strip()
-            except:
+            except (NoSuchElementException, TimeoutException, StaleElementReferenceException):
                 pass
 
             for iframe in vimeo_iframes:
@@ -613,7 +614,7 @@ class Macro42Collector(BaseCollector):
                                 "content_type": "video",
                                 "url": f"https://vimeo.com/{video_id}",
                                 "content_text": f"Around The Horn - {current_date}" if current_date else "Around The Horn",
-                                "collected_at": datetime.utcnow().isoformat(),
+                                "collected_at": datetime.now(timezone.utc).isoformat(),
                                 "metadata": {
                                     "title": f"Around The Horn - {current_date}" if current_date else "Around The Horn",
                                     "platform": "vimeo",
@@ -699,14 +700,14 @@ class Macro42Collector(BaseCollector):
                                     try:
                                         date_elem = self.driver.find_element(By.CSS_SELECTOR, ".text-select.font-bold")
                                         full_date = date_elem.text.strip()
-                                    except:
+                                    except (NoSuchElementException, TimeoutException, StaleElementReferenceException):
                                         pass
 
                                     videos.append({
                                         "content_type": "video",
                                         "url": f"https://vimeo.com/{video_id}",
                                         "content_text": f"Around The Horn - {full_date}",
-                                        "collected_at": datetime.utcnow().isoformat(),
+                                        "collected_at": datetime.now(timezone.utc).isoformat(),
                                         "metadata": {
                                             "title": f"Around The Horn - {full_date}",
                                             "platform": "vimeo",

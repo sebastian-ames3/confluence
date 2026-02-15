@@ -8,9 +8,10 @@ Simple session-based authentication with blog post scraping.
 import os
 import re
 import logging
+import pickle
 import requests
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
 from bs4 import BeautifulSoup
 
@@ -32,6 +33,7 @@ class KTTechnicalCollector(BaseCollector):
     BASE_URL = "https://kttechnicalanalysis.com"
     LOGIN_URL = f"{BASE_URL}/login"
     BLOG_URL = f"{BASE_URL}/blog-feed/"
+    COOKIE_FILE = os.path.join("config", "kt_cookies.pkl")
 
     def __init__(self, email: Optional[str] = None, password: Optional[str] = None):
         """
@@ -66,6 +68,28 @@ class KTTechnicalCollector(BaseCollector):
 
     def __exit__(self, *args):
         self.close()
+
+    def save_cookies(self):
+        """Save session cookies for reuse."""
+        try:
+            os.makedirs(os.path.dirname(self.COOKIE_FILE), exist_ok=True)
+            with open(self.COOKIE_FILE, 'wb') as f:
+                pickle.dump(self.session.cookies, f)
+            logger.debug("Saved session cookies")
+        except Exception as e:
+            logger.debug(f"Could not save cookies: {e}")
+
+    def load_cookies(self):
+        """Load previously saved cookies."""
+        try:
+            if os.path.exists(self.COOKIE_FILE):
+                with open(self.COOKIE_FILE, 'rb') as f:
+                    self.session.cookies.update(pickle.load(f))
+                    logger.debug("Loaded saved cookies")
+                    return True
+        except Exception as e:
+            logger.debug(f"Could not load cookies: {e}")
+        return False
 
     async def collect(self) -> List[Dict[str, Any]]:
         """
@@ -102,6 +126,9 @@ class KTTechnicalCollector(BaseCollector):
             True if login successful
         """
         try:
+            # Try loading saved cookies first
+            self.load_cookies()
+
             logger.info("Logging in to KT Technical...")
 
             # Get login page first (to get CSRF token if needed)
@@ -143,12 +170,22 @@ class KTTechnicalCollector(BaseCollector):
             )
 
             # Check if login was successful
-            # Common indicators: redirect to different page, presence of "logout" link
+            # Proper AND logic: must be redirected away from login AND have logout link
             if response.status_code == 200:
-                # Check if we're still on login page (failed) or redirected (success)
-                if 'login' not in response.url.lower() or 'logout' in response.text.lower():
-                    logger.info("Login successful")
+                redirected_away_from_login = 'login' not in response.url.lower()
+                has_logout_link = bool(re.search(r'<a[^>]*href=["\'][^"\']*logout[^"\']*["\']', response.text, re.I))
+
+                if redirected_away_from_login and has_logout_link:
+                    logger.info("Login successful - redirected from login page and logout link found")
+                    self.save_cookies()
                     return True
+                elif redirected_away_from_login:
+                    logger.warning("Login may have succeeded - redirected from login but no logout link found")
+                    self.save_cookies()
+                    return True  # Still proceed but with warning
+                else:
+                    logger.error("Login failed - still on login page")
+                    return False
 
             logger.error(f"Login may have failed (status: {response.status_code}, url: {response.url})")
             return False
@@ -247,7 +284,7 @@ class KTTechnicalCollector(BaseCollector):
                 "content_type": "blog_post",
                 "url": post_url,
                 "content_text": f"{title}\n\n{full_content}",
-                "collected_at": datetime.utcnow().isoformat(),
+                "collected_at": datetime.now(timezone.utc).isoformat(),
                 "metadata": {
                     "title": title,
                     "published_date": date_text,
