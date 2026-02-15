@@ -89,14 +89,14 @@
                 <button class="mobile-nav-close" id="mobile-nav-close">✕</button>
             </div>
             <ul class="mobile-nav-links">
-                <li><a href="#overview" class="mobile-nav-link active" data-tab="overview">Overview</a></li>
-                <li><a href="#themes" class="mobile-nav-link" data-tab="themes">Themes</a></li>
-                <li><a href="#symbols" class="mobile-nav-link" data-tab="symbols">Symbols</a></li>
-                <li><a href="#sources" class="mobile-nav-link" data-tab="sources">Sources</a></li>
-                <li><a href="#history" class="mobile-nav-link" data-tab="history">History</a></li>
+                <li><a href="#overview" class="mobile-nav-link active" data-tab="overview" tabindex="-1">Overview</a></li>
+                <li><a href="#themes" class="mobile-nav-link" data-tab="themes" tabindex="-1">Themes</a></li>
+                <li><a href="#symbols" class="mobile-nav-link" data-tab="symbols" tabindex="-1">Symbols</a></li>
+                <li><a href="#sources" class="mobile-nav-link" data-tab="sources" tabindex="-1">Sources</a></li>
+                <li><a href="#history" class="mobile-nav-link" data-tab="history" tabindex="-1">History</a></li>
             </ul>
             <div class="mobile-nav-actions">
-                <button class="fab-btn fab-btn-primary w-full" onclick="generateSynthesis('24h')">Generate Synthesis</button>
+                <button class="fab-btn fab-btn-primary w-full" onclick="generateSynthesis('24h')" tabindex="-1">Generate Synthesis</button>
             </div>
         </div>
     </nav>
@@ -162,7 +162,7 @@
                     </div>
 
                     <div class="tabs-filter">
-                        <select class="time-filter" id="time-filter">
+                        <select class="time-filter" id="time-filter" aria-label="Time period filter">
                             <option value="24h">Last 24 hours</option>
                             <option value="7d" selected>Last 7 days</option>
                             <option value="30d">Last 30 days</option>
