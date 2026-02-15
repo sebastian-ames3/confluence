@@ -9,12 +9,22 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      # Test environment variables - prevent accidental API calls
+      CLAUDE_API_KEY: "test-dummy-key"
+      AUTH_USERNAME: "testuser"
+      AUTH_PASSWORD: "testpassword"
+      JWT_SECRET: "test-jwt-secret-not-for-production"
+      RAILWAY_ENV: "testing"
+      DATABASE_URL: "sqlite:///test.db"
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.11'
 
@@ -22,12 +32,14 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
+        pip install pytest-timeout
 
     - name: Run tests
       run: |
-        pytest tests/ --cov=. --cov-report=html
+        pytest tests/ -v --tb=short --timeout=30 --cov=. --cov-report=html --cov-report=xml --cov-fail-under=40
 
     - name: Upload coverage
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v4
       with:
         files: ./coverage.xml
+      if: always()
