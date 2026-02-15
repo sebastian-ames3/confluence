@@ -187,11 +187,11 @@ const HealthManager = {
                     <div class="health-source-header">
                         <span class="health-source-icon">${statusIcon}</span>
                         <span class="health-source-name">${this.formatSourceName(name)}</span>
-                        <span class="health-source-status-badge ${statusClass}">${info.status}</span>
+                        <span class="health-source-status-badge ${statusClass}">${sanitizeHTML(info.status)}</span>
                     </div>
                     <div class="health-source-details">
                         ${detailsHtml}
-                        ${info.message ? `<div class="health-source-message">${info.message}</div>` : ''}
+                        ${info.message ? `<div class="health-source-message">${sanitizeHTML(info.message)}</div>` : ''}
                     </div>
                 </div>
             `;
@@ -203,14 +203,14 @@ const HealthManager = {
      */
     renderAlertsList(alerts) {
         return alerts.map(alert => `
-            <div class="health-alert-item health-alert-${alert.severity}">
+            <div class="health-alert-item health-alert-${sanitizeHTML(alert.severity)}">
                 <div class="health-alert-header">
-                    <span class="health-alert-severity">${alert.severity.toUpperCase()}</span>
-                    <span class="health-alert-source">${alert.source || 'System'}</span>
+                    <span class="health-alert-severity">${sanitizeHTML(alert.severity.toUpperCase())}</span>
+                    <span class="health-alert-source">${sanitizeHTML(alert.source || 'System')}</span>
                 </div>
-                <div class="health-alert-message">${alert.message}</div>
+                <div class="health-alert-message">${sanitizeHTML(alert.message)}</div>
                 <div class="health-alert-actions">
-                    <button class="health-alert-ack-btn" onclick="HealthManager.acknowledgeAlert(${alert.id})">
+                    <button class="health-alert-ack-btn" onclick="HealthManager.acknowledgeAlert(${parseInt(alert.id, 10)})">
                         Acknowledge
                     </button>
                 </div>

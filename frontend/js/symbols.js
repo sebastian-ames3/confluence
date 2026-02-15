@@ -140,7 +140,7 @@ class SymbolsManager {
 
         // PRD-048: Build staleness warning if present
         const stalenessWarning = symbol.staleness_message
-            ? `<div class="staleness-warning">${symbol.staleness_message}</div>`
+            ? `<div class="staleness-warning">${sanitizeHTML(symbol.staleness_message)}</div>`
             : '';
 
         return `
@@ -155,19 +155,19 @@ class SymbolsManager {
                     <div class="view-column">
                         <div class="view-label">KT Technical</div>
                         <div class="view-value">
-                            ${ktStatus} ${symbol.kt_view?.wave_position || 'N/A'}
+                            ${ktStatus} ${sanitizeHTML(symbol.kt_view?.wave_position || 'N/A')}
                             ${ktStale ? '<span class="stale-indicator" title="Data is stale">⚠️</span>' : ''}
                         </div>
-                        ${symbol.kt_view?.wave_phase ? `<div class="view-meta">${symbol.kt_view.wave_phase}</div>` : ''}
+                        ${symbol.kt_view?.wave_phase ? `<div class="view-meta">${sanitizeHTML(symbol.kt_view.wave_phase)}</div>` : ''}
                     </div>
 
                     <div class="view-column">
                         <div class="view-label">Discord</div>
                         <div class="view-value">
-                            ${discordStatus} ${symbol.discord_view?.quadrant || 'N/A'}
+                            ${discordStatus} ${sanitizeHTML(symbol.discord_view?.quadrant || 'N/A')}
                             ${discordStale ? '<span class="stale-indicator" title="Data is stale">⚠️</span>' : ''}
                         </div>
-                        ${symbol.discord_view?.iv_regime ? `<div class="view-meta">IV: ${symbol.discord_view.iv_regime}</div>` : ''}
+                        ${symbol.discord_view?.iv_regime ? `<div class="view-meta">IV: ${sanitizeHTML(symbol.discord_view.iv_regime)}</div>` : ''}
                     </div>
                 </div>
 
@@ -238,7 +238,7 @@ class SymbolsManager {
 
         // PRD-048: Build overall staleness banner if data is stale
         const overallStalenessWarning = symbol.staleness_message
-            ? `<div class="alert alert-warning staleness-banner">⚠️ ${symbol.staleness_message}</div>`
+            ? `<div class="alert alert-warning staleness-banner">⚠️ ${sanitizeHTML(symbol.staleness_message)}</div>`
             : '';
 
         content.innerHTML = `
@@ -249,15 +249,15 @@ class SymbolsManager {
                 <div class="detail-section">
                     <h3>KT Technical</h3>
                     <div class="detail-content">
-                        ${kt.stale_warning ? `<div class="alert alert-warning">⚠️ ${kt.stale_warning}</div>` : ''}
-                        ${kt.wave_position ? `<p><strong>Wave:</strong> ${kt.wave_position} (${kt.wave_direction || 'N/A'})</p>` : ''}
-                        ${kt.wave_phase ? `<p><strong>Phase:</strong> ${kt.wave_phase}</p>` : ''}
-                        ${kt.wave_degree ? `<p><strong>Degree:</strong> ${kt.wave_degree}</p>` : ''}
-                        ${kt.bias ? `<p><strong>Bias:</strong> <span class="bias-${kt.bias}">${kt.bias}</span></p>` : ''}
-                        ${kt.primary_target ? `<p><strong>Target:</strong> ${kt.primary_target}</p>` : ''}
-                        ${kt.primary_support ? `<p><strong>Support:</strong> ${kt.primary_support}</p>` : ''}
-                        ${kt.invalidation ? `<p><strong>Invalidation:</strong> ${kt.invalidation}</p>` : ''}
-                        ${kt.notes ? `<p class="notes">${kt.notes}</p>` : ''}
+                        ${kt.stale_warning ? `<div class="alert alert-warning">⚠️ ${sanitizeHTML(kt.stale_warning)}</div>` : ''}
+                        ${kt.wave_position ? `<p><strong>Wave:</strong> ${sanitizeHTML(kt.wave_position)} (${sanitizeHTML(kt.wave_direction || 'N/A')})</p>` : ''}
+                        ${kt.wave_phase ? `<p><strong>Phase:</strong> ${sanitizeHTML(kt.wave_phase)}</p>` : ''}
+                        ${kt.wave_degree ? `<p><strong>Degree:</strong> ${sanitizeHTML(kt.wave_degree)}</p>` : ''}
+                        ${kt.bias ? `<p><strong>Bias:</strong> <span class="bias-${sanitizeHTML(kt.bias)}">${sanitizeHTML(kt.bias)}</span></p>` : ''}
+                        ${kt.primary_target ? `<p><strong>Target:</strong> ${sanitizeHTML(kt.primary_target)}</p>` : ''}
+                        ${kt.primary_support ? `<p><strong>Support:</strong> ${sanitizeHTML(kt.primary_support)}</p>` : ''}
+                        ${kt.invalidation ? `<p><strong>Invalidation:</strong> ${sanitizeHTML(kt.invalidation)}</p>` : ''}
+                        ${kt.notes ? `<p class="notes">${sanitizeHTML(kt.notes)}</p>` : ''}
                         ${kt.last_updated ? `<p class="text-muted"><small>Updated: ${this.formatDate(kt.last_updated)}${kt.hours_since_update ? ` (${kt.hours_since_update}h ago)` : ''}</small></p>` : ''}
                     </div>
                 </div>
@@ -265,11 +265,11 @@ class SymbolsManager {
                 <div class="detail-section">
                     <h3>Discord Options</h3>
                     <div class="detail-content">
-                        ${discord.stale_warning ? `<div class="alert alert-warning">⚠️ ${discord.stale_warning}</div>` : ''}
-                        ${discord.quadrant ? `<p><strong>Quadrant:</strong> ${discord.quadrant}</p>` : ''}
-                        ${discord.iv_regime ? `<p><strong>IV Regime:</strong> ${discord.iv_regime}</p>` : ''}
-                        ${discord.strategy_rec ? `<p><strong>Strategy:</strong> ${discord.strategy_rec}</p>` : ''}
-                        ${discord.notes ? `<p class="notes">${discord.notes}</p>` : ''}
+                        ${discord.stale_warning ? `<div class="alert alert-warning">⚠️ ${sanitizeHTML(discord.stale_warning)}</div>` : ''}
+                        ${discord.quadrant ? `<p><strong>Quadrant:</strong> ${sanitizeHTML(discord.quadrant)}</p>` : ''}
+                        ${discord.iv_regime ? `<p><strong>IV Regime:</strong> ${sanitizeHTML(discord.iv_regime)}</p>` : ''}
+                        ${discord.strategy_rec ? `<p><strong>Strategy:</strong> ${sanitizeHTML(discord.strategy_rec)}</p>` : ''}
+                        ${discord.notes ? `<p class="notes">${sanitizeHTML(discord.notes)}</p>` : ''}
                         ${discord.last_updated ? `<p class="text-muted"><small>Updated: ${this.formatDate(discord.last_updated)}</small></p>` : ''}
                     </div>
                 </div>
@@ -283,11 +283,11 @@ class SymbolsManager {
                     ${confluence.score !== null && confluence.score !== undefined
                         ? `<p><strong>Score:</strong> ${(confluence.score * 100).toFixed(0)}% ${confluence.aligned ? '✅ Aligned' : '⚠️ Not Aligned'}</p>`
                         : ''}
-                    ${confluence.summary ? `<p>${confluence.summary}</p>` : ''}
+                    ${confluence.summary ? `<p>${sanitizeHTML(confluence.summary)}</p>` : ''}
                     ${confluence.trade_setup ? `
                         <div class="trade-setup">
                             <h4>Suggested Setup</h4>
-                            <p>${confluence.trade_setup}</p>
+                            <p>${sanitizeHTML(confluence.trade_setup)}</p>
                         </div>
                     ` : ''}
                 </div>
@@ -323,12 +323,12 @@ class SymbolsManager {
                             <tr class="${level.is_stale ? 'level-stale' : ''}" ${level.confidence < 0.7 ? 'data-low-confidence="true"' : ''}>
                                 <td class="level-price">
                                     ${level.price}${level.price_upper ? `-${level.price_upper}` : ''}
-                                    ${level.fib_level ? `<span class="fib-label">${level.fib_level}</span>` : ''}
+                                    ${level.fib_level ? `<span class="fib-label">${sanitizeHTML(level.fib_level)}</span>` : ''}
                                 </td>
-                                <td><span class="level-type level-type-${level.type}">${level.type}</span></td>
-                                <td><span class="direction-${level.direction}">${level.direction || 'N/A'}</span></td>
-                                <td>${level.source}</td>
-                                <td class="context-snippet" title="${level.context_snippet || ''}">${level.context_snippet || 'N/A'}</td>
+                                <td><span class="level-type level-type-${sanitizeHTML(level.type)}">${sanitizeHTML(level.type)}</span></td>
+                                <td><span class="direction-${sanitizeHTML(level.direction)}">${sanitizeHTML(level.direction || 'N/A')}</span></td>
+                                <td>${sanitizeHTML(level.source)}</td>
+                                <td class="context-snippet" title="${sanitizeHTML(level.context_snippet || '')}">${sanitizeHTML(level.context_snippet || 'N/A')}</td>
                                 <td>
                                     ${level.confidence !== null && level.confidence !== undefined
                                         ? `${(level.confidence * 100).toFixed(0)}%${level.confidence < 0.7 ? ' ⚠️' : ''}`
