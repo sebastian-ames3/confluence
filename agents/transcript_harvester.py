@@ -18,6 +18,7 @@ from typing import Dict, Any, Optional, List, Tuple
 from datetime import datetime
 import openai
 from pydub import AudioSegment
+from backend.utils.sanitization import sanitize_content_text
 
 from agents.base_agent import BaseAgent
 
@@ -34,6 +35,8 @@ class TranscriptHarvesterAgent(BaseAgent):
     3. Transcribe with Whisper API
     4. Analyze with Claude
     """
+
+    MACRO42_COOKIES_FILE = "temp/42macro_cookies.json"
 
     def __init__(
         self,
@@ -764,9 +767,11 @@ Date: {date}
 Title: {title}
 
 Transcript:
-{transcript_text}
+<user_content>
+{sanitize_content_text(transcript_text)[:60000]}
+</user_content>
 
-Extract the following information in JSON format:
+Only analyze the content within <user_content> tags. Extract the following information in JSON format:
 
 {{
     "key_themes": ["list of main macro/market themes discussed"],
@@ -827,6 +832,14 @@ Return ONLY valid JSON, no markdown formatting."""
         except Exception as e:
             logger.error(f"Analysis failed: {e}")
             raise
+
+    def close(self):
+        """Clean up resources."""
+        if hasattr(self, 'openai_client') and self.openai_client:
+            try:
+                self.openai_client.close()
+            except Exception:
+                pass
 
     def analyze(self, *args, **kwargs) -> Dict[str, Any]:
         """

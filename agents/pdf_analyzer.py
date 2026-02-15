@@ -10,6 +10,7 @@ Priority Sources:
 """
 
 import os
+import shutil
 import logging
 from pathlib import Path
 from typing import Dict, Any, Optional, List
@@ -18,6 +19,7 @@ import PyPDF2
 import fitz  # PyMuPDF
 
 from agents.base_agent import BaseAgent
+from backend.utils.sanitization import wrap_content_for_prompt, sanitize_content_text
 
 logger = logging.getLogger(__name__)
 
@@ -369,6 +371,10 @@ class PDFAnalyzerAgent(BaseAgent):
         Returns:
             List of image analysis results
         """
+        # Determine temp output dir for cleanup
+        pdf_name = Path(pdf_path).stem
+        output_dir = os.path.join("temp", "extracted_images", pdf_name)
+
         try:
             logger.info(f"Starting image analysis pipeline for: {pdf_path}")
 
@@ -505,6 +511,14 @@ class PDFAnalyzerAgent(BaseAgent):
             logger.error(f"Image analysis pipeline failed: {e}")
             # Return empty list to allow text analysis to continue
             return []
+        finally:
+            # Clean up extracted temp images
+            if os.path.isdir(output_dir):
+                try:
+                    shutil.rmtree(output_dir)
+                    logger.debug(f"Cleaned up temp images: {output_dir}")
+                except OSError as cleanup_err:
+                    logger.warning(f"Failed to clean up temp images: {cleanup_err}")
 
     def analyze_content(
         self,
@@ -685,11 +699,9 @@ Be thorough and precise with quantitative data."""
         Returns:
             User prompt
         """
-        # Truncate text if too long (Claude has token limits)
-        max_text_length = 50000  # ~12,500 tokens worth of text
-        truncated_text = text[:max_text_length]
-        if len(text) > max_text_length:
-            truncated_text += "\n\n[... text truncated for length ...]"
+        # Sanitize and wrap text for injection protection
+        safe_text = sanitize_content_text(text)
+        truncated_text = wrap_content_for_prompt(safe_text, max_chars=50000)
 
         # Format tables for prompt
         tables_summary = ""

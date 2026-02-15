@@ -118,28 +118,25 @@ class TestMacroCompassMapping:
     def extractor(self):
         return SymbolLevelExtractor(api_key="test-api-key")
 
-    def test_equities_maps_to_spx_qqq(self, extractor):
-        """Test 'equities' asset class maps to SPX and QQQ."""
+    def test_equities_maps_to_spx(self, extractor):
+        """Test 'equities' asset class maps to SPX only."""
         macro_data = [
             {"asset_class": "equities", "quadrant": "buy_call", "iv_regime": "cheap", "position_description": "bottom-left"}
         ]
         result = extractor._map_macro_to_symbols(macro_data)
 
-        symbols = [item["symbol"] for item in result]
-        assert "SPX" in symbols
-        assert "QQQ" in symbols
-        assert len(result) == 2
+        assert len(result) == 1
+        assert result[0]["symbol"] == "SPX"
 
-    def test_stocks_maps_to_spx_qqq(self, extractor):
-        """Test 'stocks' asset class maps to SPX and QQQ."""
+    def test_stocks_maps_to_spx(self, extractor):
+        """Test 'stocks' asset class maps to SPX only."""
         macro_data = [
             {"asset_class": "stocks", "quadrant": "buy_call", "iv_regime": "cheap", "position_description": "bottom-left"}
         ]
         result = extractor._map_macro_to_symbols(macro_data)
 
-        symbols = [item["symbol"] for item in result]
-        assert "SPX" in symbols
-        assert "QQQ" in symbols
+        assert len(result) == 1
+        assert result[0]["symbol"] == "SPX"
 
     def test_crypto_maps_to_btc(self, extractor):
         """Test 'crypto' asset class maps to BTC."""
@@ -244,9 +241,8 @@ class TestMacroCompassMapping:
 
         symbols = [item["symbol"] for item in result]
         assert "SPX" in symbols
-        assert "QQQ" in symbols
         assert "BTC" in symbols
-        assert len(result) == 3  # 2 for equities + 1 for crypto
+        assert len(result) == 2  # 1 for equities + 1 for crypto
 
 
 class TestSectorCompassMapping:
@@ -384,7 +380,6 @@ class TestMacroCompassExtraction:
 
         symbols = [item["symbol"] for item in result["compass_data"]]
         assert "SPX" in symbols
-        assert "QQQ" in symbols
         assert "BTC" in symbols
 
 
