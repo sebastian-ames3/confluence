@@ -5,7 +5,7 @@ Collects videos and metadata from specified channels using YouTube Data API v3.
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any, Optional
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -47,8 +47,16 @@ class YouTubeCollector(BaseCollector):
         self.api_key = api_key
         self.channels = channels or self.CHANNELS
         self.youtube = build('youtube', 'v3', developerKey=api_key)
+        self._quota_used = 0
+        self.DAILY_QUOTA_LIMIT = 9000  # Leave buffer from 10K limit
 
         logger.info(f"Initialized YouTubeCollector with {len(self.channels)} channels")
+
+    def _track_quota(self, units: int):
+        """Track YouTube API quota usage and warn when approaching limit."""
+        self._quota_used += units
+        if self._quota_used > self.DAILY_QUOTA_LIMIT:
+            logger.warning(f"YouTube API quota nearing limit: {self._quota_used} units used")
 
     async def collect(self) -> List[Dict[str, Any]]:
         """
@@ -100,6 +108,7 @@ class YouTubeCollector(BaseCollector):
                 part='contentDetails',
                 id=channel_id
             ).execute()
+            self._track_quota(1)  # channels().list = 1 unit
 
             if not channels_response.get('items'):
                 logger.warning(f"Channel not found: {channel_id}")
@@ -114,6 +123,7 @@ class YouTubeCollector(BaseCollector):
                 playlistId=uploads_playlist_id,
                 maxResults=max_results
             ).execute()
+            self._track_quota(1)  # playlistItems().list = 1 unit
 
             # Process each video
             for item in playlist_response.get('items', []):
@@ -128,7 +138,7 @@ class YouTubeCollector(BaseCollector):
                     "content_type": "video",
                     "url": f"https://www.youtube.com/watch?v={video_id}",
                     "content_text": snippet.get('title', ''),
-                    "collected_at": datetime.utcnow().isoformat(),
+                    "collected_at": datetime.now(timezone.utc).isoformat(),
                     "metadata": {
                         "video_id": video_id,
                         "channel_name": channel_name,
@@ -166,6 +176,7 @@ class YouTubeCollector(BaseCollector):
                 part='contentDetails,statistics',
                 id=video_id
             ).execute()
+            self._track_quota(1)  # videos().list = 1 unit
 
             if response.get('items'):
                 item = response['items'][0]
@@ -181,28 +192,18 @@ class YouTubeCollector(BaseCollector):
 
         return {}
 
-    def _check_transcript_available(self, video_id: str) -> bool:
+    def _check_transcript_available(self, video_id: str) -> Optional[bool]:
         """
-        Check if automatic captions are available for a video.
+        Check if transcript is available.
+
+        Returns None since the Captions API requires OAuth2 (video owner auth).
+        The actual transcript availability is determined at transcription time.
 
         Args:
             video_id: YouTube video ID
 
         Returns:
-            True if captions/transcript available
+            None - Captions API requires OAuth, not API key
         """
-        try:
-            response = self.youtube.captions().list(
-                part='snippet',
-                videoId=video_id
-            ).execute()
-
-            return len(response.get('items', [])) > 0
-
-        except HttpError:
-            # Captions API may not be accessible with basic API key
-            return False
-        except Exception as e:
-            logger.debug(f"Could not check captions for {video_id}: {e}")
-            return False
+        return None  # Unknown - Captions API requires OAuth, not API key
 

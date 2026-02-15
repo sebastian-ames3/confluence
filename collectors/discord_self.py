@@ -21,7 +21,7 @@ import os
 import subprocess
 import tempfile
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any, Optional
 
 from collectors.base_collector import BaseCollector
@@ -201,6 +201,14 @@ class DiscordSelfCollector(BaseCollector):
                 if thread_messages:
                     logger.info(f"  └─ Collected {len(thread_messages)} messages from threads")
 
+        except discord.HTTPException as e:
+            if e.status == 429:
+                retry_after = e.retry_after if hasattr(e, 'retry_after') else 30
+                logger.warning(f"Rate limited on #{channel_config['name']}. Waiting {retry_after}s...")
+                await asyncio.sleep(retry_after)
+                # Retry the channel by recursing once
+                return await self._collect_channel(channel_config)
+            raise
         except discord.Forbidden:
             logger.error(f"No permission to access #{channel_config['name']}")
         except Exception as e:
@@ -541,8 +549,19 @@ class DiscordSelfCollector(BaseCollector):
 
         async with aiohttp.ClientSession() as session:
             async with session.get(attachment.url) as response:
+                if response.status != 200:
+                    logger.warning(f"Failed to download {attachment.filename}: HTTP {response.status}")
+                    return None
+                content_type = response.content_type or ""
+                if not content_type.startswith(("image/", "application/pdf")):
+                    logger.warning(f"Unexpected content type for {attachment.filename}: {content_type}")
+                    return None
+                data = await response.read()
+                if len(data) < 100:  # Minimum reasonable file size
+                    logger.warning(f"Downloaded file too small ({len(data)} bytes): {attachment.filename}")
+                    return None
                 with open(file_path, 'wb') as f:
-                    f.write(await response.read())
+                    f.write(data)
 
         logger.info(f"Downloaded {attachment.filename} to {file_path}")
         return file_path
@@ -646,7 +665,7 @@ class DiscordSelfCollector(BaseCollector):
             if transcript_result:
                 transcript_result["platform"] = platform
                 transcript_result["url"] = video_url
-                transcript_result["transcribed_at"] = datetime.utcnow().isoformat()
+                transcript_result["transcribed_at"] = datetime.now(timezone.utc).isoformat()
 
             # Delete audio file after transcription (success or failure)
             if audio_path.exists():
@@ -899,7 +918,7 @@ class DiscordSelfCollector(BaseCollector):
         # Fall back to configured lookback days for first run
         lookback_days = self.channel_config["collection_settings"]["lookback_days_first_run"]
         logger.info(f"Using configured lookback: {lookback_days} days")
-        return datetime.utcnow() - timedelta(days=lookback_days)
+        return datetime.now(timezone.utc) - timedelta(days=lookback_days)
 
     async def upload_to_railway(self, collected_data: List[Dict[str, Any]]) -> bool:
         """
@@ -951,7 +970,7 @@ class DiscordSelfCollector(BaseCollector):
                     "collected": 0,
                     "saved": 0,
                     "elapsed_seconds": (datetime.now() - start_time).total_seconds(),
-                    "timestamp": datetime.utcnow().isoformat()
+                    "timestamp": datetime.now(timezone.utc).isoformat()
                 }
 
             # Save data (local DB or Railway API)
@@ -970,7 +989,7 @@ class DiscordSelfCollector(BaseCollector):
                 "collected": len(content_items),
                 "saved": saved_count,
                 "elapsed_seconds": round(elapsed_time, 2),
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }
 
             logger.info(
@@ -989,7 +1008,7 @@ class DiscordSelfCollector(BaseCollector):
                 "status": "error",
                 "error": str(e),
                 "elapsed_seconds": round(elapsed_time, 2),
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }
 
     async def _send_heartbeat(self):
@@ -1002,8 +1021,16 @@ class DiscordSelfCollector(BaseCollector):
         railway_url = f"{get_railway_api_url()}/api/heartbeat/discord"
 
         try:
+            auth_user = os.getenv("AUTH_USERNAME", "")
+            auth_pass = os.getenv("AUTH_PASSWORD", "")
+            headers = {}
+            if auth_user and auth_pass:
+                import base64
+                credentials = base64.b64encode(f"{auth_user}:{auth_pass}".encode()).decode()
+                headers["Authorization"] = f"Basic {credentials}"
+
             async with aiohttp.ClientSession() as session:
-                async with session.post(railway_url) as response:
+                async with session.post(railway_url, headers=headers) as response:
                     if response.status == 200:
                         logger.info("✓ Heartbeat sent to Railway")
                     else:
@@ -1209,7 +1236,7 @@ class DiscordSelfCollector(BaseCollector):
 
             # Update last_collected_at
             if saved_count > 0:
-                source.last_collected_at = datetime.utcnow()
+                source.last_collected_at = datetime.now(timezone.utc)
 
             db.commit()
             logger.info(f"Saved {saved_count} items to database")
