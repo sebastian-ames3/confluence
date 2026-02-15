@@ -56,6 +56,17 @@ class KTTechnicalCollector(BaseCollector):
 
         logger.info("Initialized KTTechnicalCollector")
 
+    def close(self):
+        """Clean up session resources."""
+        if hasattr(self, 'session'):
+            self.session.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
     async def collect(self) -> List[Dict[str, Any]]:
         """
         Collect blog posts from KT Technical Analysis.

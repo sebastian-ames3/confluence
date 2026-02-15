@@ -43,6 +43,8 @@ class UsageLimiter:
     COST_PER_VISION = 0.035    # ~1,500 image tokens + analysis
     COST_PER_TRANSCRIPT = 0.02 # YouTube API is FREE, only text analysis cost
     COST_PER_TEXT = 0.025      # ~4,000 input + 800 output tokens
+    COST_PER_SYNTHESIS = 1.70   # Full synthesis run (5 source analyses + merge on Opus)
+    COST_PER_EVALUATION = 0.02  # Quality evaluation (Sonnet)
 
     def __init__(self):
         self.db = get_db()
@@ -248,10 +250,13 @@ class UsageLimiter:
         transcript_pct = (usage["transcript_analyses"] / self.MAX_TRANSCRIPT_DAILY) * 100
         text_pct = (usage["text_analyses"] / self.MAX_TEXT_DAILY) * 100
 
+        # Budget includes analysis costs + 2 synthesis runs/day + 2 evaluations/day
         max_daily_budget = (
             self.MAX_VISION_DAILY * self.COST_PER_VISION +
             self.MAX_TRANSCRIPT_DAILY * self.COST_PER_TRANSCRIPT +
-            self.MAX_TEXT_DAILY * self.COST_PER_TEXT
+            self.MAX_TEXT_DAILY * self.COST_PER_TEXT +
+            2 * self.COST_PER_SYNTHESIS +
+            2 * self.COST_PER_EVALUATION
         )
 
         return {
