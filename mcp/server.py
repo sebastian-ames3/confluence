@@ -46,13 +46,16 @@ server = Server("confluence-research")
 
 # Global client (initialized on first use)
 _client: Optional[ConfluenceClient] = None
+_client_lock = asyncio.Lock()
 
 
-def get_client() -> ConfluenceClient:
-    """Get or create the Confluence client."""
+async def get_client() -> ConfluenceClient:
+    """Get or create the Confluence client (thread-safe with double-checked locking)."""
     global _client
     if _client is None:
-        _client = ConfluenceClient()
+        async with _client_lock:
+            if _client is None:  # Double-check after acquiring lock
+                _client = ConfluenceClient()
     return _client
 
 
@@ -421,34 +424,6 @@ Use this to brainstorm specific trade ideas.""",
                 "required": ["symbol"]
             }
         ),
-        Tool(
-            name="get_content_detail",
-            description="""Get the full content/transcript for a specific content item by ID.
-
-Use this AFTER search_research to drill into a specific piece of content.
-search_research returns IDs and short snippets; this returns the complete text.
-
-Returns:
-- Full content_text (complete transcript, no truncation)
-- content_length (character count)
-- Parsed analysis: summary, key_quotes, catalysts, falsification_criteria
-- Metadata: source, title, url, collected_at, content_type
-- Denormalized: themes, tickers, sentiment, conviction
-
-Example workflow:
-1. search_research(query="VIX") -> find item with id=42
-2. get_content_detail(content_id=42) -> read the full transcript""",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "content_id": {
-                        "type": "integer",
-                        "description": "Content ID (from search_research results)"
-                    }
-                },
-                "required": ["content_id"]
-            }
-        ),
         # PRD-044: Synthesis Quality Tool
         Tool(
             name="get_synthesis_quality",
@@ -722,13 +697,16 @@ async def call_tool(name: str, arguments: dict):
     logger.info(f"[MCP] Tool '{name}' called with args: {arguments}")
 
     try:
-        client = get_client()
+        client = await get_client()
 
         if name == "get_latest_synthesis":
             synthesis = client.get_latest_synthesis()
+            text = json.dumps(synthesis, indent=2)
+            if len(text) > 50000:
+                text = text[:50000] + "\n\n[Response truncated. Use targeted tools like get_confluence_zones or get_executive_summary for specific sections.]"
             return [TextContent(
                 type="text",
-                text=json.dumps(synthesis, indent=2)
+                text=text
             )]
 
         elif name == "get_executive_summary":
@@ -779,23 +757,34 @@ async def call_tool(name: str, arguments: dict):
                 )]
 
             # Find matching source (case-insensitive, supports partial matching)
-            matched_data = None
-            matched_key = None
+            # Prefer exact match, then unique partial match
+            source_name = arguments.get("source", "")
+            exact_match = None
+            partial_matches = []
 
             for key, value in breakdowns.items():
                 if not isinstance(value, dict):
                     continue
                 key_lower = key.lower() if isinstance(key, str) else ""
-                # Exact match
                 if key_lower == source:
-                    matched_data = value
-                    matched_key = key
+                    exact_match = (key, value)
                     break
-                # Partial match (e.g., "forward" matches "youtube:Forward Guidance")
-                if source in key_lower:
-                    matched_data = value
-                    matched_key = key
-                    break
+                elif source in key_lower:
+                    partial_matches.append((key, value))
+
+            if exact_match:
+                matched_key, matched_data = exact_match
+            elif len(partial_matches) == 1:
+                matched_key, matched_data = partial_matches[0]
+            elif len(partial_matches) > 1:
+                match_names = [m[0] for m in partial_matches]
+                return [TextContent(
+                    type="text",
+                    text=f"Ambiguous source '{source_name}'. Did you mean one of: {', '.join(match_names)}?"
+                )]
+            else:
+                matched_key = None
+                matched_data = None
 
             if matched_data:
                 display_name = matched_key.split(":", 1)[1] if ":" in matched_key else matched_key
@@ -1064,7 +1053,7 @@ async def call_tool(name: str, arguments: dict):
                 source = arguments.get("source")
                 content_type = arguments.get("content_type")
                 days = arguments.get("days", 7)
-                limit = arguments.get("limit", 20)
+                limit = min(int(arguments.get("limit", 20)), 100)
 
                 result = client.list_recent_content(
                     source=source,
@@ -1086,10 +1075,8 @@ async def call_tool(name: str, arguments: dict):
         # New tools: synthesis history, quality, health, theme evolution
         elif name == "get_synthesis_history":
             try:
-                limit = arguments.get("limit", 10)
-                offset = arguments.get("offset", 0)
-                limit = int(limit)
-                offset = int(offset)
+                limit = min(int(arguments.get("limit", 10)), 50)
+                offset = max(int(arguments.get("offset", 0)), 0)
                 result = client.get_synthesis_history(limit=limit, offset=offset)
                 return [TextContent(
                     type="text",
@@ -1135,8 +1122,7 @@ async def call_tool(name: str, arguments: dict):
 
         elif name == "get_quality_trends":
             try:
-                days = arguments.get("days", 30)
-                days = int(days)
+                days = min(max(int(arguments.get("days", 30)), 1), 90)
                 result = client.get_quality_trends(days=days)
                 return [TextContent(
                     type="text",
@@ -1156,8 +1142,7 @@ async def call_tool(name: str, arguments: dict):
 
         elif name == "get_quality_flagged":
             try:
-                limit = arguments.get("limit", 10)
-                limit = int(limit)
+                limit = min(int(arguments.get("limit", 10)), 50)
                 result = client.get_quality_flagged(limit=limit)
                 return [TextContent(
                     type="text",
@@ -1286,7 +1271,7 @@ async def run_sse():
 
     # Create Starlette app
     app = Starlette(
-        debug=True,
+        debug=False,
         routes=[
             Route("/sse", endpoint=handle_sse),
             Route("/messages", endpoint=handle_messages, methods=["POST"]),
@@ -1301,7 +1286,7 @@ async def run_sse():
     print(f"Add this URL to Claude Desktop Settings > Integrations")
     print(f"{'='*60}\n")
 
-    config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="info")
+    config = uvicorn.Config(app, host="127.0.0.1", port=port, log_level="info")
     server_instance = uvicorn.Server(config)
     await server_instance.serve()
 
