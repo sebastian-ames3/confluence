@@ -12,6 +12,7 @@ import json
 import os
 
 from backend.models import get_db, RawContent, AnalyzedContent, Source
+from backend.utils.auth import verify_jwt_or_basic
 from backend.utils.rate_limiter import limiter
 from agents.content_classifier import ContentClassifierAgent
 from agents.image_intelligence import ImageIntelligenceAgent
@@ -425,7 +426,7 @@ def run_pdf_analysis(raw_content, metadata: Dict, db: Session) -> Dict:
 
 @router.post("/classify/{raw_content_id}")
 @limiter.limit("10/minute")
-async def classify_content(request: Request, raw_content_id: int, db: Session = Depends(get_db)):
+async def classify_content(request: Request, raw_content_id: int, db: Session = Depends(get_db), user: str = Depends(verify_jwt_or_basic)):
     """
     Classify a single piece of raw content.
 
@@ -500,7 +501,8 @@ async def classify_batch(
     request: Request,
     limit: int = 10,
     only_unprocessed: bool = True,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: str = Depends(verify_jwt_or_basic)
 ):
     """
     Classify multiple raw content items in batch.
@@ -638,7 +640,8 @@ async def reclassify_source(
     request: Request,
     source_name: str,
     limit: int = 50,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: str = Depends(verify_jwt_or_basic)
 ):
     """
     Re-classify all content from a specific source.
@@ -743,7 +746,7 @@ async def reclassify_source(
 
 
 @router.get("/pending")
-async def get_pending_analysis(db: Session = Depends(get_db)):
+async def get_pending_analysis(db: Session = Depends(get_db), user: str = Depends(verify_jwt_or_basic)):
     """
     Get count of content pending analysis.
 
@@ -773,7 +776,7 @@ async def get_pending_analysis(db: Session = Depends(get_db)):
 
 
 @router.get("/stats")
-async def get_analysis_stats(db: Session = Depends(get_db)):
+async def get_analysis_stats(db: Session = Depends(get_db), user: str = Depends(verify_jwt_or_basic)):
     """
     Get statistics about analyzed content.
 

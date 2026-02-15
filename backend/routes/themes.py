@@ -14,6 +14,7 @@ import logging
 import json
 
 from backend.models import get_db, Theme
+from backend.utils.auth import verify_jwt_or_basic
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/themes", tags=["themes"])
@@ -88,7 +89,7 @@ class ThemeCreate(BaseModel):
 # ============================================================================
 
 @router.post("/migrate")
-async def migrate_themes_schema(db: Session = Depends(get_db)) -> Dict[str, Any]:
+async def migrate_themes_schema(db: Session = Depends(get_db), user: str = Depends(verify_jwt_or_basic)) -> Dict[str, Any]:
     """
     Migrate themes table to add missing columns (PRD-024).
     Adds aliases, source_evidence, catalysts, first_source columns if missing.
@@ -128,7 +129,7 @@ async def migrate_themes_schema(db: Session = Depends(get_db)) -> Dict[str, Any]
 
 
 @router.post("/migrate-constraints")
-async def migrate_themes_constraints(db: Session = Depends(get_db)) -> Dict[str, Any]:
+async def migrate_themes_constraints(db: Session = Depends(get_db), user: str = Depends(verify_jwt_or_basic)) -> Dict[str, Any]:
     """
     Rebuild themes table to fix CHECK constraints for PRD-024 status values.
     SQLite doesn't support ALTER CONSTRAINT, so we rebuild the table.
@@ -199,7 +200,8 @@ async def list_themes(
     source: Optional[str] = Query(None, description="Filter by source discussing the theme"),
     since: Optional[str] = Query(None, description="Filter by first_mentioned_at >= this date"),
     limit: int = Query(50, ge=1, le=100),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: str = Depends(verify_jwt_or_basic)
 ) -> Dict[str, Any]:
     """
     List all themes with optional filters.
@@ -292,7 +294,7 @@ async def list_themes(
 
 
 @router.get("/summary")
-async def get_theme_summary(db: Session = Depends(get_db)) -> Dict[str, Any]:
+async def get_theme_summary(db: Session = Depends(get_db), user: str = Depends(verify_jwt_or_basic)) -> Dict[str, Any]:
     """
     Get summary statistics about themes.
     """
@@ -317,7 +319,7 @@ async def get_theme_summary(db: Session = Depends(get_db)) -> Dict[str, Any]:
 
 
 @router.get("/{theme_id}")
-async def get_theme(theme_id: int, db: Session = Depends(get_db)) -> Dict[str, Any]:
+async def get_theme(theme_id: int, db: Session = Depends(get_db), user: str = Depends(verify_jwt_or_basic)) -> Dict[str, Any]:
     """
     Get full theme detail with all evidence.
     """
@@ -386,7 +388,7 @@ async def get_theme(theme_id: int, db: Session = Depends(get_db)) -> Dict[str, A
 
 
 @router.post("")
-async def create_theme(request: ThemeCreate, db: Session = Depends(get_db)) -> Dict[str, Any]:
+async def create_theme(request: ThemeCreate, db: Session = Depends(get_db), user: str = Depends(verify_jwt_or_basic)) -> Dict[str, Any]:
     """
     Create a new theme.
     """
@@ -436,7 +438,8 @@ async def create_theme(request: ThemeCreate, db: Session = Depends(get_db)) -> D
 async def merge_themes(
     theme_id: int,
     request: ThemeMergeRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: str = Depends(verify_jwt_or_basic)
 ) -> Dict[str, Any]:
     """
     Merge another theme into this one.
@@ -522,7 +525,8 @@ async def merge_themes(
 async def update_theme_status(
     theme_id: int,
     request: ThemeStatusUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: str = Depends(verify_jwt_or_basic)
 ) -> Dict[str, Any]:
     """
     Update theme lifecycle status.
@@ -567,7 +571,8 @@ async def add_evidence(
     summary: str,
     strength: str = "moderate",
     raw_content_id: Optional[int] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: str = Depends(verify_jwt_or_basic)
 ) -> Dict[str, Any]:
     """
     Add evidence to a theme from a specific source.

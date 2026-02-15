@@ -29,10 +29,21 @@ AUTH_USERNAME = os.getenv("AUTH_USERNAME", "admin")
 AUTH_PASSWORD = os.getenv("AUTH_PASSWORD")  # Required in production
 
 # JWT Configuration (PRD-036)
-JWT_SECRET = os.getenv("JWT_SECRET") or AUTH_PASSWORD or "dev-secret-key-change-in-production"
+_jwt_secret_env = os.getenv("JWT_SECRET")
+JWT_SECRET = _jwt_secret_env or AUTH_PASSWORD or "dev-secret-key-change-in-production"
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 24
 JWT_REFRESH_THRESHOLD_MINUTES = 60  # Refresh if expires within 60 minutes
+
+# Fail hard in production if critical auth vars are missing
+import logging as _auth_logging
+_is_production = os.getenv("RAILWAY_ENV") == "production"
+if _is_production and not AUTH_PASSWORD:
+    raise RuntimeError("AUTH_PASSWORD must be set in production")
+if _is_production and not _jwt_secret_env and AUTH_PASSWORD:
+    _auth_logging.getLogger(__name__).warning(
+        "JWT_SECRET not set - falling back to AUTH_PASSWORD. Set a separate JWT_SECRET for better security."
+    )
 
 
 def verify_credentials(
