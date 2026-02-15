@@ -576,14 +576,12 @@ You must respond with valid JSON only."""
 
             # Map asset classes to symbols
             if asset_class in ["equities", "stocks", "equity"]:
-                # Apply to both SPX and QQQ
-                for symbol in ["SPX", "QQQ"]:
-                    symbol_data.append({
-                        "symbol": symbol,
-                        "quadrant": quadrant,
-                        "iv_regime": iv_regime,
-                        "position_description": f"From macro ({asset_class}): {position_desc}"
-                    })
+                symbol_data.append({
+                    "symbol": "SPX",
+                    "quadrant": quadrant,
+                    "iv_regime": iv_regime,
+                    "position_description": f"From macro ({asset_class}): {position_desc}"
+                })
             elif asset_class in ["crypto", "bitcoin", "btc", "cryptocurrency"]:
                 symbol_data.append({
                     "symbol": "BTC",
@@ -696,9 +694,9 @@ For each level, you MUST also extract:
 - invalidation_price: At what price does THIS LEVEL become invalid? (e.g., "support at 313 invalid if we lose 308")
 
 **Content to analyze:**
-<content>
+<user_content>
 {transcript}
-</content>
+</user_content>
 
 Return JSON in this format:
 {{

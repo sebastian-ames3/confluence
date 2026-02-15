@@ -27,6 +27,7 @@ from datetime import datetime, timedelta
 from collections import defaultdict
 
 from agents.base_agent import BaseAgent
+from backend.utils.sanitization import wrap_content_for_prompt, sanitize_content_text
 
 logger = logging.getLogger(__name__)
 
@@ -257,10 +258,13 @@ Be smart about semantic similarity."""
                 f"{i+1}. [{theme['source']}] {theme['theme']} (score: {theme['core_score']}/10)"
                 for i, theme in enumerate(themes)
             ])
+            wrapped_themes = wrap_content_for_prompt(
+                sanitize_content_text(themes_text), max_chars=30000
+            )
 
             user_prompt = f"""Cluster these investment themes by similarity:
 
-{themes_text}
+{wrapped_themes}
 
 Return a JSON array of clusters, where each cluster contains theme indices that are similar:
 

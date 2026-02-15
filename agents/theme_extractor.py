@@ -12,6 +12,7 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime
 
 from agents.base_agent import BaseAgent
+from backend.utils.sanitization import wrap_content_for_prompt, sanitize_content_text
 
 logger = logging.getLogger(__name__)
 
@@ -86,22 +87,21 @@ OUTPUT FORMAT: JSON only, no explanation."""
         attention_priorities = synthesis_data.get("attention_priorities", [])
         source_stances = synthesis_data.get("source_stances", {})
 
+        # Build synthesis text and wrap for injection protection
+        synthesis_text = (
+            f"## Executive Summary\n{json.dumps(exec_summary, indent=2)}\n\n"
+            f"## Confluence Zones\n{json.dumps(confluence_zones, indent=2)}\n\n"
+            f"## Conflicts\n{json.dumps(conflict_watch, indent=2)}\n\n"
+            f"## Attention Priorities\n{json.dumps(attention_priorities, indent=2)}\n\n"
+            f"## Source Stances\n{json.dumps(source_stances, indent=2)}"
+        )
+        wrapped_synthesis = wrap_content_for_prompt(
+            sanitize_content_text(synthesis_text), max_chars=30000
+        )
+
         prompt = f"""Extract the key investment themes from this synthesis:
 
-## Executive Summary
-{json.dumps(exec_summary, indent=2)}
-
-## Confluence Zones (where sources align)
-{json.dumps(confluence_zones, indent=2)}
-
-## Conflicts (where sources disagree)
-{json.dumps(conflict_watch, indent=2)}
-
-## Attention Priorities
-{json.dumps(attention_priorities, indent=2)}
-
-## Source Stances
-{json.dumps(source_stances, indent=2)}
+{wrapped_synthesis}
 
 ---
 
@@ -203,13 +203,18 @@ Respond with JSON:
                 "description": theme.get("description")
             })
 
+        # Wrap theme data for injection protection
+        themes_data = (
+            f"## Existing Themes\n{json.dumps(existing_formatted, indent=2)}\n\n"
+            f"## New Themes to Match\n{json.dumps(new_themes, indent=2)}"
+        )
+        wrapped_themes = wrap_content_for_prompt(
+            sanitize_content_text(themes_data), max_chars=30000
+        )
+
         prompt = f"""Match new themes against existing themes.
 
-## Existing Themes
-{json.dumps(existing_formatted, indent=2)}
-
-## New Themes to Match
-{json.dumps(new_themes, indent=2)}
+{wrapped_themes}
 
 ---
 
