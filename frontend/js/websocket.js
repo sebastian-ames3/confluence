@@ -31,7 +31,17 @@ class WebSocketClient {
         try {
             this.ws = new WebSocket(wsUrl);
 
+            // 10 second connection timeout
+            this.connectTimeout = setTimeout(() => {
+                if (this.ws && this.ws.readyState !== WebSocket.OPEN) {
+                    console.warn('WebSocket connection timeout, retrying...');
+                    this.ws.close();
+                    this.attemptReconnect();
+                }
+            }, 10000);
+
             this.ws.onopen = () => {
+                clearTimeout(this.connectTimeout);
                 console.log('WebSocket connected');
                 this.connectionStatus = 'connected';
                 this.reconnectAttempts = 0;
@@ -73,6 +83,7 @@ class WebSocketClient {
      * Disconnect from WebSocket
      */
     disconnect() {
+        clearTimeout(this.connectTimeout);
         if (this.ws) {
             this.ws.close();
             this.ws = null;
