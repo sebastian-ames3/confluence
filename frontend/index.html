@@ -1333,6 +1333,10 @@
 
         function displayThemes(themes) {
             const container = document.getElementById('themes-list');
+            // Filter out themes with no title or placeholder names
+            if (themes) {
+                themes = themes.filter(t => t.name && t.name.trim() !== '' && t.name !== 'Untitled Theme');
+            }
             if (!themes || themes.length === 0) {
                 container.innerHTML = `
                     <div class="sidebar-card" style="text-align: center; padding: var(--spacing-xl);">
@@ -1436,7 +1440,7 @@
                                         <div style="color: var(--text-muted);">Total Items</div>
                                         <div style="font-weight: var(--font-semibold);">${source.total_items || 0}</div>
                                     </div>
-                                    <div>
+                                    <div title="Includes re-analyses. May exceed total items.">
                                         <div style="color: var(--text-muted);">Analyzed</div>
                                         <div style="font-weight: var(--font-semibold);">${source.analyzed_items || 0}</div>
                                     </div>

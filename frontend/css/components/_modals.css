@@ -515,6 +515,12 @@
   border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
+/* Ensure login button text is centered */
+.login-form .fab-btn {
+  justify-content: center;
+  text-align: center;
+}
+
 /* Modal active state using .modal.active */
 .modal.active {
   pointer-events: auto;
