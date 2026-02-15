@@ -3,6 +3,7 @@ Pytest configuration and fixtures.
 """
 import os
 import pytest
+import pytest_asyncio
 import sys
 from pathlib import Path
 from unittest.mock import patch
@@ -44,11 +45,18 @@ def test_app():
     return app
 
 
-@pytest.fixture(scope="function")
-def client(test_app):
-    """Create a FastAPI test client."""
-    from fastapi.testclient import TestClient
-    return TestClient(test_app)
+@pytest_asyncio.fixture(scope="function")
+async def client(test_app):
+    """Create an async httpx test client for FastAPI.
+
+    Uses httpx.AsyncClient with ASGITransport for compatibility
+    with httpx 0.28+ and starlette 0.35.
+    """
+    import httpx
+
+    transport = httpx.ASGITransport(app=test_app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as c:
+        yield c
 
 
 @pytest.fixture
