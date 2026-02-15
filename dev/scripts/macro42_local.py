@@ -170,9 +170,12 @@ async def upload_to_railway(collected_data: list, source: str = "42macro") -> bo
     """Upload collected data to Railway API."""
     import aiohttp
 
-    railway_url = os.getenv("RAILWAY_API_URL", "https://confluence-production-a32e.up.railway.app")
-    auth_user = os.getenv("AUTH_USERNAME", "sames3")
-    auth_pass = os.getenv("AUTH_PASSWORD", "Spotswood1")
+    railway_url = os.getenv("RAILWAY_API_URL")
+    auth_user = os.getenv("AUTH_USERNAME")
+    auth_pass = os.getenv("AUTH_PASSWORD")
+    if not all([railway_url, auth_user, auth_pass]):
+        logger.error("Set RAILWAY_API_URL, AUTH_USERNAME, AUTH_PASSWORD environment variables")
+        return False
 
     endpoint = f"{railway_url}/api/collect/{source}"
 

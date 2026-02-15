@@ -36,7 +36,7 @@ Add the MCP server configuration:
       "args": ["C:\\Users\\14102\\Documents\\Sebastian Ames\\Projects\\Confluence\\mcp\\server.py"],
       "env": {
         "CONFLUENCE_API_URL": "https://confluence-production-a32e.up.railway.app",
-        "CONFLUENCE_USERNAME": "sames3",
+        "CONFLUENCE_USERNAME": "YOUR_USERNAME_HERE",
         "CONFLUENCE_PASSWORD": "YOUR_PASSWORD_HERE"
       }
     }

@@ -10,9 +10,9 @@ Personal investment research aggregation system. Collects from 5 sources, applie
 
 ### Generate Synthesis
 ```bash
-curl -X POST -u sames3:Spotswood1 -H "Content-Type: application/json" \
+curl -X POST -u $AUTH_USERNAME:$AUTH_PASSWORD -H "Content-Type: application/json" \
   -d '{"time_window": "7d"}' \
-  https://confluence-production-a32e.up.railway.app/api/synthesis/generate
+  $RAILWAY_API_URL/api/synthesis/generate
 ```
 
 ### Run Discord Collection (local)
@@ -28,8 +28,8 @@ python dev/scripts/macro42_local.py --railway-api
 
 ### Trigger Analysis Pipeline
 ```bash
-curl -X POST -u sames3:Spotswood1 \
-  https://confluence-production-a32e.up.railway.app/api/analyze/classify-batch
+curl -X POST -u $AUTH_USERNAME:$AUTH_PASSWORD \
+  $RAILWAY_API_URL/api/analyze/classify-batch
 ```
 
 ---
@@ -143,7 +143,7 @@ Source weights: 42macro=1.5, discord=1.5, kt_technical=1.2, substack=1.0, youtub
 ## Environment
 
 - **Production**: Railway (https://confluence-production-a32e.up.railway.app)
-- **Auth**: HTTP Basic (`sames3` / `Spotswood1`)
+- **Auth**: HTTP Basic (credentials in env vars `AUTH_USERNAME` / `AUTH_PASSWORD`)
 - **Database**: SQLite on Railway volume
 - **AI**: Claude Opus 4.5 (synthesis), Claude Sonnet 4 (other agents), AssemblyAI (transcription, Whisper fallback)
 

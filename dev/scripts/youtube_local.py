@@ -64,9 +64,11 @@ async def fetch_videos_needing_transcription(source: str = "youtube") -> List[Di
     """
     import aiohttp
 
-    railway_url = os.getenv("RAILWAY_API_URL", "https://confluence-production-a32e.up.railway.app")
-    auth_user = os.getenv("AUTH_USERNAME", "sames3")
-    auth_pass = os.getenv("AUTH_PASSWORD", "Spotswood1")
+    railway_url = os.getenv("RAILWAY_API_URL")
+    auth_user = os.getenv("AUTH_USERNAME")
+    auth_pass = os.getenv("AUTH_PASSWORD")
+    if not all([railway_url, auth_user, auth_pass]):
+        raise RuntimeError("Set RAILWAY_API_URL, AUTH_USERNAME, AUTH_PASSWORD environment variables")
 
     endpoint = f"{railway_url}/api/collect/transcription-status"
 
@@ -112,9 +114,11 @@ async def upload_transcript_to_railway(
     """
     import aiohttp
 
-    railway_url = os.getenv("RAILWAY_API_URL", "https://confluence-production-a32e.up.railway.app")
-    auth_user = os.getenv("AUTH_USERNAME", "sames3")
-    auth_pass = os.getenv("AUTH_PASSWORD", "Spotswood1")
+    railway_url = os.getenv("RAILWAY_API_URL")
+    auth_user = os.getenv("AUTH_USERNAME")
+    auth_pass = os.getenv("AUTH_PASSWORD")
+    if not all([railway_url, auth_user, auth_pass]):
+        raise RuntimeError("Set RAILWAY_API_URL, AUTH_USERNAME, AUTH_PASSWORD environment variables")
 
     # Use the update-transcript endpoint
     endpoint = f"{railway_url}/api/collect/update-transcript/{content_id}"
