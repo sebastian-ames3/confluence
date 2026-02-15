@@ -5,8 +5,11 @@
 
 const { test, expect } = require('@playwright/test');
 
-const BASE_URL = process.env.TEST_URL || 'https://confluence-production-a32e.up.railway.app';
-const AUTH = { username: 'sames3', password: 'Spotswood1' };
+const BASE_URL = process.env.TEST_URL || 'http://localhost:8000';
+const AUTH = {
+  username: process.env.AUTH_USERNAME || 'admin',
+  password: process.env.AUTH_PASSWORD || 'test'
+};
 
 test.describe('UI Modernization - Design System (PRD-027)', () => {
   test.beforeEach(async ({ page }) => {
