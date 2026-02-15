@@ -29,6 +29,7 @@ from backend.models import (
     get_db, get_async_db, RawContent, Source, SessionLocal,
     AnalyzedContent, TranscriptionStatus, AsyncSessionLocal
 )
+from backend.utils.auth import verify_jwt_or_basic
 from backend.utils.deduplication import check_duplicate
 from backend.utils.sanitization import sanitize_content_text, sanitize_url
 from backend.utils.rate_limiter import limiter, RATE_LIMITS
@@ -379,7 +380,8 @@ def _reconcile_transcription_status(db: Session, content_id: int):
 async def ingest_discord_data(
     request: Request,
     messages: List[Dict[str, Any]],
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: str = Depends(verify_jwt_or_basic)
 ):
     """
     Receive Discord messages from local laptop collector script.
@@ -555,7 +557,8 @@ async def ingest_discord_data(
 async def ingest_42macro_data(
     request: Request,
     items: List[Dict[str, Any]],
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: str = Depends(verify_jwt_or_basic)
 ):
     """
     Receive 42 Macro content from local laptop collector script.
@@ -734,7 +737,8 @@ async def ingest_42macro_data(
 async def trigger_collection(
     request: Request,
     source_name: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: str = Depends(verify_jwt_or_basic)
 ):
     """
     Manually trigger collection from a specific source.
@@ -955,7 +959,7 @@ async def _save_collected_items(
 
 
 @router.get("/status")
-async def get_collection_status(db: Session = Depends(get_db)):
+async def get_collection_status(db: Session = Depends(get_db), user: str = Depends(verify_jwt_or_basic)):
     """
     Get collection status for all sources.
 
@@ -1000,7 +1004,8 @@ async def get_collection_status(db: Session = Depends(get_db)):
 @router.get("/stats/{source_name}")
 async def get_source_stats(
     source_name: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: str = Depends(verify_jwt_or_basic)
 ):
     """
     Get detailed statistics for a specific source.
@@ -1055,7 +1060,8 @@ async def get_source_stats(
 @router.delete("/clear/{source_name}")
 async def clear_source_data(
     source_name: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: str = Depends(verify_jwt_or_basic)
 ):
     """
     Clear all collected data for a specific source.
@@ -1118,7 +1124,8 @@ async def clear_source_data(
 @limiter.limit("10/minute")
 async def retranscribe_42macro_videos(
     request: Request,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: str = Depends(verify_jwt_or_basic)
 ):
     """
     Re-trigger transcription for 42macro videos that don't have transcripts.
@@ -1212,7 +1219,8 @@ async def retranscribe_42macro_videos(
 
 @router.get("/transcription-status")
 async def get_transcription_status(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: str = Depends(verify_jwt_or_basic)
 ):
     """
     Get status of video transcriptions across all sources.
@@ -1302,7 +1310,8 @@ async def update_transcript(
     request: Request,
     content_id: int,
     payload: Dict[str, Any],
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: str = Depends(verify_jwt_or_basic)
 ):
     """
     Update a content record with a locally-generated transcript.
@@ -1419,7 +1428,8 @@ async def retranscribe_videos(
     request: Request,
     source_name: str,
     batch_size: int = 5,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: str = Depends(verify_jwt_or_basic)
 ):
     """
     Retranscribe videos from a specific source that don't have transcripts.

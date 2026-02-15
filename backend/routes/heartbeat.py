@@ -15,6 +15,7 @@ from typing import Dict, Any
 import logging
 
 from backend.models import get_async_db, ServiceHeartbeat
+from backend.utils.auth import verify_jwt_or_basic
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -35,7 +36,8 @@ DISCORD_THRESHOLD_HOURS = HEARTBEAT_THRESHOLDS["discord"]
 
 @router.post("/heartbeat/discord")
 async def record_discord_heartbeat(
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    user: str = Depends(verify_jwt_or_basic)
 ):
     """
     Record a heartbeat from the Discord collector (laptop script).
@@ -88,7 +90,8 @@ async def record_discord_heartbeat(
 
 @router.get("/heartbeat/status")
 async def get_heartbeat_status(
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    user: str = Depends(verify_jwt_or_basic)
 ):
     """
     Get current status of all monitored services.
@@ -155,7 +158,8 @@ def _get_discord_message(hours_since: float, is_stale: bool) -> str:
 @router.post("/heartbeat/{service_name}")
 async def record_service_heartbeat(
     service_name: str,
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    user: str = Depends(verify_jwt_or_basic)
 ):
     """
     Record a heartbeat from any service.
@@ -221,7 +225,8 @@ async def record_service_heartbeat(
 
 @router.get("/heartbeat/all")
 async def get_all_heartbeat_status(
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    user: str = Depends(verify_jwt_or_basic)
 ):
     """
     Get heartbeat status for all monitored services.

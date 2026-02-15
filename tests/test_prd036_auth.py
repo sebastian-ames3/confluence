@@ -297,23 +297,21 @@ class TestBackwardCompatibility:
         username = verify_jwt_or_basic(credentials=None, bearer_token=bearer)
         assert username == "testuser", "Should return username from Bearer token"
 
-    def test_collect_routes_remain_unauthenticated(self):
-        """Verify collect.py does not require authentication."""
+    def test_collect_routes_require_authentication(self):
+        """Verify collect.py requires authentication on all endpoints."""
         path = Path(__file__).parent.parent / "backend" / "routes" / "collect.py"
         content = path.read_text()
 
-        # Collect routes should NOT use any auth dependency
-        assert "verify_jwt_or_basic" not in content, "collect.py should not require JWT auth"
-        assert "verify_credentials" not in content, "collect.py should not require Basic auth"
+        # Collect routes MUST use auth dependency (security hardening)
+        assert "verify_jwt_or_basic" in content, "collect.py must require JWT/Basic auth"
 
-    def test_analyze_routes_remain_unauthenticated(self):
-        """Verify analyze.py does not require authentication."""
+    def test_analyze_routes_require_authentication(self):
+        """Verify analyze.py requires authentication on all endpoints."""
         path = Path(__file__).parent.parent / "backend" / "routes" / "analyze.py"
         content = path.read_text()
 
-        # Analyze routes should NOT use any auth dependency
-        assert "verify_jwt_or_basic" not in content, "analyze.py should not require JWT auth"
-        assert "verify_credentials" not in content, "analyze.py should not require Basic auth"
+        # Analyze routes MUST use auth dependency (security hardening)
+        assert "verify_jwt_or_basic" in content, "analyze.py must require JWT/Basic auth"
 
 
 class TestFrontendIntegration:

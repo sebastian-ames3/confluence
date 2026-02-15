@@ -53,8 +53,10 @@ def verify_api_key(x_api_key: str = Header(None, alias="X-API-Key")) -> str:
     expected_key = os.getenv("TRIGGER_API_KEY")
 
     if not expected_key:
-        # If no key configured, allow requests (development mode)
-        logger.warning("TRIGGER_API_KEY not configured - allowing unauthenticated access")
+        is_production = os.getenv("RAILWAY_ENV") == "production"
+        if is_production:
+            raise HTTPException(status_code=503, detail="TRIGGER_API_KEY not configured")
+        logger.warning("TRIGGER_API_KEY not configured - allowing unauthenticated access (dev mode)")
         return "development"
 
     if not x_api_key:

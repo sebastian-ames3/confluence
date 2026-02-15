@@ -20,6 +20,7 @@ from backend.models import (
     get_async_db, TranscriptionStatus, SourceHealth, Alert,
     RawContent, Source, ServiceHeartbeat
 )
+from backend.utils.auth import verify_jwt_or_basic
 from backend.services.alerting import check_and_create_alerts, record_collection_result
 
 logger = logging.getLogger(__name__)
@@ -50,7 +51,8 @@ def _calculate_overall_status(sources: Dict[str, Any]) -> str:
 
 @router.get("/sources")
 async def get_all_source_health(
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    user: str = Depends(verify_jwt_or_basic)
 ) -> Dict[str, Any]:
     """
     Get health status for all monitored sources.
@@ -234,7 +236,8 @@ async def get_all_source_health(
 @router.get("/sources/{source_name}")
 async def get_source_health_detail(
     source_name: str,
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    user: str = Depends(verify_jwt_or_basic)
 ) -> Dict[str, Any]:
     """
     Get detailed health information for a specific source.
@@ -370,7 +373,8 @@ async def get_source_health_detail(
 
 @router.get("/transcription")
 async def get_transcription_queue_status(
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    user: str = Depends(verify_jwt_or_basic)
 ) -> Dict[str, Any]:
     """
     Get transcription queue status across all sources.
@@ -459,7 +463,8 @@ async def get_transcription_queue_status(
 @router.get("/alerts")
 async def get_active_alerts(
     include_acknowledged: bool = False,
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    user: str = Depends(verify_jwt_or_basic)
 ) -> Dict[str, Any]:
     """
     Get active alerts from the alerting system.
@@ -505,7 +510,8 @@ async def get_active_alerts(
 async def acknowledge_alert(
     alert_id: int,
     acknowledged_by: Optional[str] = None,
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    user: str = Depends(verify_jwt_or_basic)
 ) -> Dict[str, Any]:
     """
     Acknowledge an alert to dismiss it from the active list.
@@ -555,7 +561,8 @@ async def acknowledge_alert(
 
 @router.get("/heartbeat/all")
 async def get_all_heartbeat_status(
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    user: str = Depends(verify_jwt_or_basic)
 ) -> Dict[str, Any]:
     """
     Get heartbeat status for all monitored services.
@@ -628,7 +635,8 @@ async def get_all_heartbeat_status(
 
 @router.post("/check-alerts")
 async def trigger_alert_check(
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    user: str = Depends(verify_jwt_or_basic)
 ) -> Dict[str, Any]:
     """
     Manually trigger alert check across all sources.
