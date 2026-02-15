@@ -547,11 +547,18 @@
     <script>
         // API_BASE is defined in js/api.js (loaded above)
 
-        // Initialize on page load
-        document.addEventListener('DOMContentLoaded', () => {
+        // Load all dashboard data
+        function loadDashboard() {
             loadStatus();
             loadLatestSynthesis();
             loadThemesSummary();  // Load theme count for KPI card
+        }
+
+        // Initialize on page load (only fetch if already authenticated)
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof AuthManager !== 'undefined' && AuthManager.isLoggedIn()) {
+                loadDashboard();
+            }
         });
 
         // Utility: Escape HTML to prevent XSS attacks
