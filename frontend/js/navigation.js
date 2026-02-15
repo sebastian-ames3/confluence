@@ -38,15 +38,26 @@ const mobileNav = {
   },
 
   toggle() {
+    const isOpening = !this.nav.classList.contains('active');
     this.nav.classList.toggle('active');
     this.menuBtn.classList.toggle('active');
-    document.body.style.overflow = this.nav.classList.contains('active') ? 'hidden' : '';
+    document.body.style.overflow = isOpening ? 'hidden' : '';
+    this.nav.setAttribute('aria-hidden', isOpening ? 'false' : 'true');
+    // Toggle focusability of links and buttons inside mobile nav
+    this.nav.querySelectorAll('a, button').forEach(el => {
+      el.setAttribute('tabindex', isOpening ? '0' : '-1');
+    });
   },
 
   close() {
     this.nav.classList.remove('active');
     this.menuBtn.classList.remove('active');
     document.body.style.overflow = '';
+    this.nav.setAttribute('aria-hidden', 'true');
+    // Remove links from tab order when hidden
+    this.nav.querySelectorAll('a, button').forEach(el => {
+      el.setAttribute('tabindex', '-1');
+    });
   }
 };
 
