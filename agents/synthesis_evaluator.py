@@ -17,6 +17,7 @@ import logging
 import json
 from typing import Dict, Any, List, Optional
 from .base_agent import BaseAgent
+from .config import MODEL_EVALUATION
 
 logger = logging.getLogger(__name__)
 
@@ -127,8 +128,7 @@ Include 1-3 prompt_suggestions based on the most significant issues found."""
 
         Uses Sonnet model for cost efficiency.
         """
-        # Use Sonnet for cost-effective evaluation
-        super().__init__(api_key=api_key, model="claude-sonnet-4-20250514")
+        super().__init__(api_key=api_key, model=MODEL_EVALUATION)
 
     def evaluate(
         self,
@@ -217,18 +217,17 @@ Include 1-3 prompt_suggestions based on the most significant issues found."""
         Returns:
             Formatted prompt string
         """
+        from backend.utils.sanitization import wrap_content_for_prompt
+
         # Format synthesis for evaluation
         synthesis_str = json.dumps(synthesis_output, indent=2)
 
-        # Truncate if too long (keep token budget reasonable)
-        if len(synthesis_str) > 8000:
-            synthesis_str = synthesis_str[:8000] + "\n... [truncated]"
+        # Wrap with injection protection and truncation
+        wrapped_synthesis = wrap_content_for_prompt(synthesis_str, max_chars=50000)
 
         prompt = f"""## Synthesis to Evaluate
 
-<synthesis>
-{synthesis_str}
-</synthesis>
+{wrapped_synthesis}
 
 ## Evaluation Criteria
 

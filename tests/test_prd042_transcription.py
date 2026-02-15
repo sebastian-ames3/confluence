@@ -15,13 +15,18 @@ from pathlib import Path
 class TestClaudeModelUpdate:
     """Test Claude model has been updated to Sonnet 4.5 across all agents."""
 
-    def test_base_agent_default_model_is_sonnet_4(self):
-        """BaseAgent should default to claude-sonnet-4-20250514."""
+    def test_base_agent_default_model_uses_config(self):
+        """BaseAgent should use MODEL_ANALYSIS from agents/config.py."""
         base_agent_path = Path(__file__).parent.parent / "agents" / "base_agent.py"
         content = base_agent_path.read_text()
 
-        assert 'model: str = "claude-sonnet-4-20250514"' in content, \
-            "BaseAgent should default to claude-sonnet-4-20250514"
+        assert "MODEL_ANALYSIS" in content, \
+            "BaseAgent should import MODEL_ANALYSIS from agents.config"
+
+        config_path = Path(__file__).parent.parent / "agents" / "config.py"
+        config_content = config_path.read_text()
+        assert "claude-sonnet-4-20250514" in config_content, \
+            "agents/config.py should define the default Sonnet model"
 
     def test_transcript_harvester_uses_sonnet_4(self):
         """TranscriptHarvesterAgent should use claude-sonnet-4-20250514."""
@@ -63,13 +68,18 @@ class TestClaudeModelUpdate:
                     assert "claude-sonnet-4-20250514" in content, \
                         f"{agent_name} should use claude-sonnet-4-20250514"
 
-    def test_synthesis_agent_uses_opus(self):
-        """Synthesis agent should use Opus 4.5 for better reasoning on high-stakes output."""
+    def test_synthesis_agent_uses_opus_via_config(self):
+        """Synthesis agent should use MODEL_SYNTHESIS from agents/config.py (Opus)."""
         agents_dir = Path(__file__).parent.parent / "agents"
         synthesis_path = agents_dir / "synthesis_agent.py"
         content = synthesis_path.read_text(encoding='utf-8')
-        assert "claude-opus-4-5-20251101" in content, \
-            "synthesis_agent.py should use claude-opus-4-5-20251101 for better quality"
+        assert "MODEL_SYNTHESIS" in content, \
+            "synthesis_agent.py should import MODEL_SYNTHESIS from agents.config"
+
+        config_path = agents_dir / "config.py"
+        config_content = config_path.read_text()
+        assert "claude-opus-4-5-20251101" in config_content, \
+            "agents/config.py should define the default Opus model for synthesis"
 
 
 class TestAssemblyAIDependency:
