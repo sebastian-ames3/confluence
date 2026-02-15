@@ -265,6 +265,12 @@ const AuthManager = {
             this.clearToken();
             this.updateUI();
             this.showLoginModal();
+            // Show session expired message
+            const errorEl = document.getElementById('login-error');
+            if (errorEl) {
+                errorEl.textContent = 'Your session has expired. Please sign in again.';
+                errorEl.style.display = 'block';
+            }
         }
     },
 

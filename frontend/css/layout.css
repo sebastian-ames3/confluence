@@ -255,14 +255,14 @@ body {
 .mobile-nav-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.6);
 }
 
 .mobile-nav-panel {
   position: absolute;
   top: 0;
   right: 0;
-  width: 280px;
+  width: min(85vw, 320px);
   height: 100%;
   padding: var(--spacing-lg);
   display: flex;
@@ -670,6 +670,11 @@ body {
   font-size: var(--text-sm);
   color: var(--text-primary);
   cursor: pointer;
+}
+
+/* Tab Content Area - ensure FAB doesn't overlap content */
+.tab-content-area {
+  padding-bottom: var(--spacing-xl);
 }
 
 /* Tab Panels */
