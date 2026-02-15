@@ -18,8 +18,11 @@ import time
 import base64
 from pathlib import Path
 from typing import Dict, Any, Optional, List, Union
-from anthropic import Anthropic
+from anthropic import Anthropic, APITimeoutError, RateLimitError, InternalServerError, APIConnectionError
 from dotenv import load_dotenv
+from agents.config import MODEL_ANALYSIS, TIMEOUT_DEFAULT
+
+RETRYABLE_ERRORS = (APITimeoutError, RateLimitError, InternalServerError, APIConnectionError, ConnectionError, TimeoutError)
 
 # Get logger (don't configure here - let app.py handle logging config)
 logger = logging.getLogger(__name__)
@@ -40,19 +43,21 @@ class BaseAgent:
     - Error handling
     """
 
-    def __init__(self, api_key: Optional[str] = None, model: str = "claude-sonnet-4-20250514"):
+    def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None, api_timeout: Optional[int] = None):
         """
         Initialize base agent.
 
         Args:
             api_key: Claude API key (defaults to CLAUDE_API_KEY env var)
-            model: Claude model to use
+            model: Claude model to use (defaults to MODEL_ANALYSIS from config)
+            api_timeout: API call timeout in seconds (defaults to TIMEOUT_DEFAULT from config)
         """
         self.api_key = api_key or os.getenv("CLAUDE_API_KEY")
         if not self.api_key:
             raise ValueError("Claude API key is required. Set CLAUDE_API_KEY environment variable.")
 
-        self.model = model
+        self.model = model or MODEL_ANALYSIS
+        self.api_timeout = api_timeout or TIMEOUT_DEFAULT
         self.client = Anthropic(api_key=self.api_key)
         logger.info(f"Initialized {self.__class__.__name__} with model {self.model}")
 
@@ -99,7 +104,8 @@ class BaseAgent:
                     max_tokens=max_tokens,
                     temperature=temperature,
                     system=system_prompt if system_prompt else "",
-                    messages=messages
+                    messages=messages,
+                    timeout=self.api_timeout
                 )
 
                 # Extract text content
@@ -112,19 +118,21 @@ class BaseAgent:
                 else:
                     return {"response": response_text}
 
-            except Exception as e:
+            except RETRYABLE_ERRORS as e:
                 last_exception = e
-
                 if attempt < max_retries - 1:
-                    # Calculate delay with exponential backoff (1s, 2s, 4s, ..., max 30s)
                     delay = min(2 ** attempt, 30)
                     logger.warning(
-                        f"Claude API attempt {attempt + 1}/{max_retries} failed: {str(e)}. "
+                        f"Claude API attempt {attempt + 1}/{max_retries} failed (retryable): {str(e)}. "
                         f"Retrying in {delay}s..."
                     )
                     time.sleep(delay)
                 else:
                     logger.error(f"Claude API failed after {max_retries} attempts: {str(e)}")
+            except Exception as e:
+                # Non-retryable error — fail immediately
+                logger.error(f"Claude API failed with non-retryable error: {type(e).__name__}: {str(e)}")
+                raise
 
         # All retries exhausted, raise the last exception
         raise last_exception
@@ -211,7 +219,8 @@ class BaseAgent:
                     max_tokens=max_tokens,
                     temperature=temperature,
                     system=system_prompt if system_prompt else "",
-                    messages=messages
+                    messages=messages,
+                    timeout=self.api_timeout
                 )
 
                 # Extract text content
@@ -224,18 +233,20 @@ class BaseAgent:
                 else:
                     return {"response": response_text}
 
-            except Exception as e:
+            except RETRYABLE_ERRORS as e:
                 last_exception = e
-
                 if attempt < max_retries - 1:
                     delay = min(2 ** attempt, 30)
                     logger.warning(
-                        f"Claude Vision API attempt {attempt + 1}/{max_retries} failed: {str(e)}. "
+                        f"Claude Vision API attempt {attempt + 1}/{max_retries} failed (retryable): {str(e)}. "
                         f"Retrying in {delay}s..."
                     )
                     time.sleep(delay)
                 else:
                     logger.error(f"Claude Vision API failed after {max_retries} attempts: {str(e)}")
+            except Exception as e:
+                logger.error(f"Claude Vision API failed with non-retryable error: {type(e).__name__}: {str(e)}")
+                raise
 
         raise last_exception
 

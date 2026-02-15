@@ -373,7 +373,7 @@ async def debug_synthesis(
         from anthropic import Anthropic
         client = Anthropic(api_key=os.getenv("CLAUDE_API_KEY"))
         response = client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model=os.getenv("ANALYSIS_MODEL", "claude-sonnet-4-20250514"),
             max_tokens=50,
             messages=[{"role": "user", "content": "Say 'test successful' in exactly 2 words."}]
         )

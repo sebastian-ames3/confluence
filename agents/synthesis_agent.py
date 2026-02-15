@@ -16,6 +16,8 @@ from typing import Dict, Any, Optional, List
 from datetime import datetime, timedelta
 
 from agents.base_agent import BaseAgent
+from agents.config import MODEL_SYNTHESIS, TIMEOUT_SYNTHESIS, MAX_TRANSCRIPT_CHARS
+from backend.utils.sanitization import wrap_content_for_prompt, sanitize_content_text
 
 logger = logging.getLogger(__name__)
 
@@ -97,10 +99,10 @@ Do NOT write like you're giving trading instructions."""
     def __init__(
         self,
         api_key: Optional[str] = None,
-        model: str = "claude-opus-4-5-20251101"
+        model: Optional[str] = None
     ):
         """Initialize Synthesis Agent with Opus model."""
-        super().__init__(api_key=api_key, model=model)
+        super().__init__(api_key=api_key, model=model or MODEL_SYNTHESIS, api_timeout=TIMEOUT_SYNTHESIS)
         logger.info("Initialized SynthesisAgent")
 
     def analyze(
@@ -374,8 +376,17 @@ Do NOT write like you're giving trading instructions."""
                         content_section += f"  - {prefix} \"{text}\"\n"
                     elif isinstance(quote, str):
                         content_section += f"  - \"{quote}\"\n"
-            if content_text_raw:
-                content_section += f"\nFull Content/Transcript:\n{content_text_raw}\n"
+            # Intelligent transcript handling: use summary for long content, wrap for injection protection
+            analyzed_summary = str(item.get("analyzed_summary", ""))
+            if analyzed_summary and len(content_text_raw) > MAX_TRANSCRIPT_CHARS:
+                content_section += f"\n[Pre-analyzed Summary]:\n{analyzed_summary}\n"
+                if themes:
+                    content_section += f"Key Themes: {', '.join(themes[:5])}\n"
+                content_section += f"[Note: Full transcript ({len(content_text_raw)} chars) truncated. Analysis above covers key points.]\n"
+            elif content_text_raw:
+                safe_content = sanitize_content_text(content_text_raw)
+                wrapped = wrap_content_for_prompt(safe_content, max_chars=MAX_TRANSCRIPT_CHARS)
+                content_section += f"\nFull Content/Transcript:\n{wrapped}\n"
 
         # KT symbol data injection for kt_technical source
         kt_section = ""
@@ -501,6 +512,20 @@ RESPOND WITH VALID JSON ONLY."""
             logger.warning(f"Merge schema validation failed: {e}, continuing with partial response")
             response["validation_passed"] = False
             response["validation_error"] = str(e)
+
+        # Validate and clamp response values
+        response = self._validate_merge_response(response)
+
+        # Surface degradation warnings
+        degraded_sources = [key for key, analysis in source_analyses.items() if analysis.get("degraded")]
+        if degraded_sources:
+            degradation_warning = f"WARNING: Analysis was incomplete for: {', '.join(degraded_sources)}. Findings may be less reliable."
+            if "executive_summary" in response:
+                exec_summary = response["executive_summary"]
+                if isinstance(exec_summary, dict):
+                    exec_summary["degradation_warning"] = degradation_warning
+                elif isinstance(exec_summary, str):
+                    response["executive_summary"] = f"[{degradation_warning}]\n\n{exec_summary}"
 
         return response
 
@@ -740,6 +765,36 @@ Economic calendar patterns: NFP is first Friday of month, CPI typically 10th-13t
 RESPOND WITH VALID JSON ONLY."""
 
         return prompt
+
+    def _validate_merge_response(self, response: dict) -> dict:
+        """Validate and sanitize the merge response values."""
+        # Validate confluence_strength is 0.0-1.0
+        for zone in response.get("confluence_zones", []):
+            if isinstance(zone, dict) and "confluence_strength" in zone:
+                score = zone["confluence_strength"]
+                if isinstance(score, (int, float)):
+                    zone["confluence_strength"] = max(0.0, min(1.0, float(score)))
+                else:
+                    zone["confluence_strength"] = 0.5
+
+        # Validate overall_tone is a valid enum
+        exec_summary = response.get("executive_summary", {})
+        if isinstance(exec_summary, dict):
+            valid_tones = ["bullish", "bearish", "neutral", "mixed", "cautious",
+                           "cautiously_bullish", "cautiously_bearish", "uncertain", "transitioning"]
+            if exec_summary.get("overall_tone") not in valid_tones:
+                logger.warning(f"Invalid overall_tone '{exec_summary.get('overall_tone')}', defaulting to 'neutral'")
+                exec_summary["overall_tone"] = "neutral"
+
+        # Validate arrays are actually arrays
+        array_fields = ["confluence_zones", "conflict_watch", "attention_priorities",
+                        "re_review_recommendations", "catalyst_calendar"]
+        for field in array_fields:
+            if field in response and not isinstance(response[field], list):
+                logger.warning(f"Expected array for {field}, got {type(response[field])}")
+                response[field] = []
+
+        return response
 
     # =========================================================================
     # HELPERS
