@@ -20,6 +20,9 @@ async function apiFetch(endpoint, options = {}) {
     const maxRetries = 2;
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
         try {
             // Build headers with Bearer token if available
             const headers = {
@@ -35,7 +38,9 @@ async function apiFetch(endpoint, options = {}) {
             const response = await fetch(`${API_BASE}${endpoint}`, {
                 ...options,
                 headers,
+                signal: controller.signal,
             });
+            clearTimeout(timeoutId);
 
             // Handle 401 Unauthorized - trigger login modal (PRD-036)
             if (response.status === 401) {
@@ -58,6 +63,23 @@ async function apiFetch(endpoint, options = {}) {
 
             return await response.json();
         } catch (error) {
+            clearTimeout(timeoutId);
+
+            // Convert AbortError to a descriptive timeout error
+            if (error.name === 'AbortError') {
+                const timeoutError = new Error(`Request timeout: ${endpoint}`);
+                if (attempt < maxRetries) {
+                    console.warn(`Timeout on ${endpoint}, retrying (${attempt + 1}/${maxRetries})...`);
+                    await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+                    continue;
+                }
+                console.error('API Error:', timeoutError);
+                if (typeof ToastManager !== 'undefined') {
+                    ToastManager.error(`Request failed: ${timeoutError.message}`, 'API Error');
+                }
+                throw timeoutError;
+            }
+
             // Retry on network errors (TypeError from fetch)
             if (error instanceof TypeError && attempt < maxRetries) {
                 console.warn(`Network error on ${endpoint}, retrying (${attempt + 1}/${maxRetries})...`);
