@@ -175,10 +175,6 @@ class ConfluenceClient:
         """Get symbols where KT and Discord are aligned (high confluence)."""
         return self._request("GET", "/api/symbols/confluence/opportunities")
 
-    def get_content_detail(self, content_id: int) -> Dict[str, Any]:
-        """Get full content detail by ID, including complete transcript text."""
-        return self._request("GET", f"/api/content/{content_id}")
-
     # PRD-044: Synthesis Quality Methods
     def get_synthesis_quality(self, synthesis_id: Optional[int] = None) -> Dict[str, Any]:
         """

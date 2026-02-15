@@ -120,7 +120,10 @@ Source weights: 42macro=1.5, discord=1.5, kt_technical=1.2, substack=1.0, youtub
 | `get_attention_priorities` | Ranked focus areas |
 | `get_source_stance` | Source breakdown detail |
 | `get_catalyst_calendar` | Upcoming events |
+| `get_re_review_recommendations` | Older research now relevant |
 | `search_research` | Search content |
+| `list_recent_content` | Browse recent videos, PDFs, articles |
+| `get_content_detail` | Full content/transcript for a specific item |
 | `get_themes` | All tracked themes (with status filter) |
 | `get_active_themes` | Currently active themes |
 | `get_theme_detail` | Deep-dive into specific theme |
@@ -197,7 +200,7 @@ All PRDs (001-049) are complete. Key implementation files:
 | Collection | `collectors/` (discord, 42macro selenium, youtube API, substack RSS, kt_technical) |
 | Health | `backend/routes/health.py`, `backend/services/alerting.py` |
 | Security | `backend/utils/sanitization.py`, `backend/utils/rate_limiter.py`, `backend/routes/auth.py` (JWT) |
-| MCP | `mcp/server.py` (17 tools, SSE + stdio) |
+| MCP | `mcp/server.py` (27 tools, SSE + stdio) |
 | Frontend | `frontend/css/main.css` (design system), `frontend/js/` (auth, symbols, quality, health managers) |
 
 Superseded PRDs: 020 (Synthesis V2), 021 (Synthesis V3), 041 (Tiered Synthesis) -- all replaced by unified pipeline with schema 5.0.
