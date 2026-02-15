@@ -84,6 +84,8 @@ class SubstackCollector(BaseCollector):
             # Parse RSS feed
             feed = feedparser.parse(rss_url)
 
+            if feed.bozo and feed.bozo_exception:
+                logger.warning(f"Feed parse issue for {rss_url}: {feed.bozo_exception}")
             if not feed.entries:
                 logger.warning(f"No entries found in RSS feed: {rss_url}")
                 return articles
@@ -154,8 +156,8 @@ class SubstackCollector(BaseCollector):
                     published_struct = entry.get('published_parsed')
                     if published_struct:
                         published_dt = datetime(*published_struct[:6])
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning(f"Failed to parse date for article '{entry.get('title', 'unknown')}': {e}")
 
             # Build article data
             article_data = {
@@ -237,7 +239,7 @@ class SubstackCollector(BaseCollector):
                     published_dt = datetime.fromisoformat(published_str)
                     if published_dt >= cutoff_date:
                         recent_articles.append(article)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning(f"Failed to parse date for article '{article.get('metadata', {}).get('title', 'unknown')}': {e}")
 
         return recent_articles

@@ -119,5 +119,5 @@ class TestUsageLimiterCostCalculations:
 
         monthly_max = status["budget"]["max_monthly"]
 
-        # Should be approximately $140/month
-        assert 120 < monthly_max < 160
+        # Should be approximately $243/month (includes synthesis + evaluation costs)
+        assert 220 < monthly_max < 270
