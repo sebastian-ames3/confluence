@@ -42,7 +42,16 @@ router = APIRouter()
 
 # Synthesis generation timeout (default 600s for per-source + merge pipeline)
 SYNTHESIS_TIMEOUT_SECONDS = int(os.getenv("SYNTHESIS_TIMEOUT", "600"))
-synthesis_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="synthesis_")
+synthesis_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="synthesis_")
+
+
+async def _run_in_executor(func, *args, **kwargs):
+    """Run a synchronous function in the thread pool to avoid blocking the event loop."""
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(
+        synthesis_executor,
+        lambda: func(*args, **kwargs)
+    )
 
 # YouTube channel display names (maps collector keys to human-readable names)
 YOUTUBE_CHANNEL_DISPLAY = {
@@ -114,7 +123,7 @@ async def generate_synthesis(
 
         # Auto-score any unscored content so pillar scores and cross-reference always have data
         try:
-            scoring_result = _score_unscored_content(db, content_items)
+            scoring_result = await _run_in_executor(_score_unscored_content, db, content_items)
             if scoring_result["scored"] > 0:
                 logger.info(f"Auto-scored {scoring_result['scored']} items before synthesis")
         except Exception as scoring_error:
@@ -168,7 +177,7 @@ async def generate_synthesis(
 
         # Enrich synthesis with CrossReference analysis (Bayesian convictions, contradictions)
         try:
-            cross_ref_result = _run_cross_reference(db, cutoff, synthesis_request.time_window)
+            cross_ref_result = await _run_in_executor(_run_cross_reference, db, cutoff, synthesis_request.time_window)
             if cross_ref_result:
                 result["bayesian_convictions"] = cross_ref_result.get("high_conviction_ideas", [])
                 result["structured_contradictions"] = cross_ref_result.get("contradictions", [])
@@ -214,7 +223,8 @@ async def generate_synthesis(
             try:
                 logger.info(f"Running quality evaluation for synthesis {synthesis.id}...")
                 evaluator = SynthesisEvaluatorAgent()
-                quality_result = evaluator.evaluate(
+                quality_result = await _run_in_executor(
+                    evaluator.evaluate,
                     synthesis_output=result,
                     original_content=content_items
                 )
@@ -243,7 +253,7 @@ async def generate_synthesis(
 
         # Extract and track themes
         try:
-            theme_result = extract_and_track_themes(result, db)
+            theme_result = await _run_in_executor(extract_and_track_themes, result, db)
             logger.info(f"Theme extraction complete: {theme_result.get('created', 0)} created, "
                        f"{theme_result.get('updated', 0)} updated")
         except Exception as theme_error:

@@ -115,12 +115,15 @@ const HealthManager = {
         }
 
         try {
-            const data = await apiFetch('/health/sources');
+            const data = await apiFetch('/health/sources', {
+                timeout: 60000,
+                retries: 0
+            });
             this.healthData = data;
             this.lastFetch = Date.now();
             this.updateDisplay(data);
         } catch (error) {
-            console.error('Failed to fetch health data:', error);
+            // Silent failure — this is a background poll, not user-initiated
             this.updateDisplayError();
         }
     },

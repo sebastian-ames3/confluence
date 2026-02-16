@@ -9,7 +9,7 @@ PRD-035: Supports both sync and async sessions for migration.
 """
 
 import logging
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Text, ForeignKey, Boolean, CheckConstraint, Index
+from sqlalchemy import create_engine, event, Column, Integer, String, Float, DateTime, Text, ForeignKey, Boolean, CheckConstraint, Index
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
@@ -43,6 +43,15 @@ def get_async_url(url: str) -> str:
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+
+# Enable WAL mode for SQLite to allow concurrent reads during writes
+@event.listens_for(engine, "connect")
+def _set_sqlite_pragma(dbapi_conn, connection_record):
+    if "sqlite" in DATABASE_URL:
+        cursor = dbapi_conn.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.close()
+
 # PRD-035: Async engine with connection pooling
 # Note: Async engine creation is deferred to avoid import errors when
 # aiosqlite/asyncpg are not installed (e.g., local development without async deps)
@@ -70,6 +79,14 @@ try:
             echo=False
         )
         logger.info("Initialized async SQLite engine")
+
+    # Enable WAL mode for async SQLite engine
+    if "sqlite" in ASYNC_DATABASE_URL:
+        @event.listens_for(async_engine.sync_engine, "connect")
+        def _set_async_sqlite_pragma(dbapi_conn, connection_record):
+            cursor = dbapi_conn.cursor()
+            cursor.execute("PRAGMA journal_mode=WAL")
+            cursor.close()
 
     # PRD-035: Async session factory
     AsyncSessionLocal = async_sessionmaker(
