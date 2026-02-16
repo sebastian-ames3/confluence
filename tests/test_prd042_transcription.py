@@ -78,7 +78,7 @@ class TestClaudeModelUpdate:
 
         config_path = agents_dir / "config.py"
         config_content = config_path.read_text()
-        assert "claude-opus-4-5-20251101" in config_content, \
+        assert "claude-opus-4-6" in config_content, \
             "agents/config.py should define the default Opus model for synthesis"
 
 
