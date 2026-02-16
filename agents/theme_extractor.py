@@ -251,6 +251,32 @@ If unsure, create a new theme and suggest merge."""
         return prompt
 
 
+# Source weights for evidence strength mapping (from SynthesisAgent)
+_SOURCE_WEIGHTS = {
+    "42macro": 1.5,
+    "discord": 1.5,
+    "kt_technical": 1.2,
+    "substack": 1.0,
+    "youtube": 0.8,
+}
+
+
+def _evidence_strength_for_source(source_name: str) -> str:
+    """Map source weight to evidence strength: >=1.5 -> strong, >=1.0 -> moderate, <1.0 -> weak."""
+    weight = _SOURCE_WEIGHTS.get(source_name, 1.0)
+    if weight >= 1.5:
+        return "strong"
+    elif weight >= 1.0:
+        return "moderate"
+    return "weak"
+
+
+def _compute_conviction(source_names: List[str]) -> float:
+    """Compute dynamic conviction from weighted source count: min(0.9, 0.3 + 0.15 * weighted_count)."""
+    weighted_count = sum(_SOURCE_WEIGHTS.get(s, 1.0) for s in source_names)
+    return min(0.9, 0.3 + 0.15 * weighted_count)
+
+
 def extract_and_track_themes(
     synthesis_data: Dict[str, Any],
     db_session,
@@ -277,9 +303,9 @@ def extract_and_track_themes(
     if not new_themes:
         return {"status": "no_themes", "extracted": 0, "created": 0, "updated": 0}
 
-    # Get existing themes from database
+    # Get existing themes from database (include evolved to avoid re-creating them)
     existing_db_themes = db_session.query(Theme).filter(
-        Theme.status.in_(["emerging", "active"])
+        Theme.status.in_(["emerging", "active", "evolved"])
     ).all()
 
     existing_themes = []
@@ -319,12 +345,13 @@ def extract_and_track_themes(
                 logger.warning("Skipping theme with empty name")
                 continue
 
+            theme_sources = list(new_theme_data.get("sources", {}).keys())
             source_evidence = {}
             for source, view in new_theme_data.get("sources", {}).items():
                 source_evidence[source] = [{
                     "date": now.strftime("%Y-%m-%d"),
                     "summary": view,
-                    "strength": "moderate"
+                    "strength": _evidence_strength_for_source(source)
                 }]
 
             # Check if theme with this name already exists
@@ -339,6 +366,7 @@ def extract_and_track_themes(
                 existing.source_evidence = json.dumps(evidence)
                 existing.last_updated_at = now
                 existing.evidence_count = sum(len(v) for v in evidence.values())
+                existing.current_conviction = _compute_conviction(list(evidence.keys()))
                 if existing.status == "emerging" and len(evidence) >= 2:
                     existing.status = "active"
                 updated += 1
@@ -348,11 +376,11 @@ def extract_and_track_themes(
                     description=new_theme_data.get("description"),
                     source_evidence=json.dumps(source_evidence),
                     catalysts=json.dumps(new_theme_data.get("catalysts", [])),
-                    first_source=list(new_theme_data.get("sources", {}).keys())[0] if new_theme_data.get("sources") else None,
+                    first_source=theme_sources[0] if theme_sources else None,
                     status=new_theme_data.get("status", "emerging"),
                     first_mentioned_at=now,
                     last_updated_at=now,
-                    current_conviction=0.5,
+                    current_conviction=_compute_conviction(theme_sources),
                     evidence_count=len(source_evidence)
                 )
                 db_session.add(theme)
@@ -374,12 +402,13 @@ def extract_and_track_themes(
                     evidence[source].append({
                         "date": now.strftime("%Y-%m-%d"),
                         "summary": evidence_to_add.get("summary", ""),
-                        "strength": "moderate"
+                        "strength": _evidence_strength_for_source(source)
                     })
 
                 theme.source_evidence = json.dumps(evidence)
                 theme.last_updated_at = now
                 theme.evidence_count = sum(len(v) for v in evidence.values())
+                theme.current_conviction = _compute_conviction(list(evidence.keys()))
 
                 # Upgrade status if now has multiple sources
                 if theme.status == "emerging" and len(evidence) >= 2:
@@ -394,12 +423,13 @@ def extract_and_track_themes(
                 logger.warning("Skipping evolved theme with empty name")
                 continue
 
+            theme_sources = list(new_theme_data.get("sources", {}).keys())
             source_evidence = {}
             for source, view in new_theme_data.get("sources", {}).items():
                 source_evidence[source] = [{
                     "date": now.strftime("%Y-%m-%d"),
                     "summary": view,
-                    "strength": "moderate"
+                    "strength": _evidence_strength_for_source(source)
                 }]
 
             # Check if theme with this name already exists
@@ -413,6 +443,7 @@ def extract_and_track_themes(
                 existing.source_evidence = json.dumps(evidence)
                 existing.last_updated_at = now
                 existing.evidence_count = sum(len(v) for v in evidence.values())
+                existing.current_conviction = _compute_conviction(list(evidence.keys()))
                 updated += 1
             else:
                 theme = Theme(
@@ -421,11 +452,11 @@ def extract_and_track_themes(
                     evolved_from_theme_id=match.get("evolved_from_id"),
                     source_evidence=json.dumps(source_evidence),
                     catalysts=json.dumps(new_theme_data.get("catalysts", [])),
-                    first_source=list(new_theme_data.get("sources", {}).keys())[0] if new_theme_data.get("sources") else None,
+                    first_source=theme_sources[0] if theme_sources else None,
                     status="active",
                     first_mentioned_at=now,
                     last_updated_at=now,
-                    current_conviction=0.5,
+                    current_conviction=_compute_conviction(theme_sources),
                     evidence_count=len(source_evidence)
                 )
                 db_session.add(theme)
