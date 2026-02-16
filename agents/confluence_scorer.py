@@ -388,16 +388,18 @@ Return ONLY valid JSON, no markdown formatting."""
             summary_parts.append(f"**Original Falsification Criteria**: {', '.join(fc[:3])}")
 
         # PRD-037: Full transcript/text (sanitized and wrapped in XML tags)
+        # 12K chars (~3K tokens) gives the scorer meaningful content without blowing up the prompt
+        SCORER_MAX_CONTENT_CHARS = 12000
         if "transcript" in analyzed_content:
             safe_text = truncate_for_prompt(
                 sanitize_content_text(analyzed_content["transcript"]),
-                max_chars=2000
+                max_chars=SCORER_MAX_CONTENT_CHARS
             )
             summary_parts.append(f"\n**Full Content (truncated)**:\n<user_content>\n{safe_text}\n</user_content>")
         elif "extracted_text" in analyzed_content and isinstance(analyzed_content["extracted_text"], str):
             safe_text = truncate_for_prompt(
                 sanitize_content_text(analyzed_content["extracted_text"]),
-                max_chars=2000
+                max_chars=SCORER_MAX_CONTENT_CHARS
             )
             summary_parts.append(f"\n**Full Content (truncated)**:\n<user_content>\n{safe_text}\n</user_content>")
 
