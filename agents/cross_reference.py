@@ -111,6 +111,23 @@ class CrossReferenceAgent(BaseAgent):
         if historical_themes is None:
             historical_themes = []
 
+        # Graceful handling for empty scores
+        if not confluence_scores:
+            logger.warning("No confluence scores provided for cross-reference analysis")
+            return {
+                "confluent_themes": [],
+                "contradictions": [],
+                "high_conviction_ideas": [],
+                "total_themes": 0,
+                "clustered_themes_count": 0,
+                "confluent_count": 0,
+                "contradiction_count": 0,
+                "high_conviction_count": 0,
+                "time_window_days": time_window_days,
+                "sources_analyzed": 0,
+                "analyzed_at": datetime.utcnow().isoformat()
+            }
+
         try:
             logger.info(
                 f"Cross-referencing {len(confluence_scores)} analyses "

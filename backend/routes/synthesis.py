@@ -25,7 +25,9 @@ from backend.models import (
     RawContent,
     Source,
     SynthesisQualityScore,
-    SymbolState
+    SymbolState,
+    ConfluenceScore,
+    Theme
 )
 from backend.utils.auth import verify_jwt_or_basic
 from backend.utils.rate_limiter import limiter, RATE_LIMITS
@@ -148,6 +150,20 @@ async def generate_synthesis(
             f"Synthesis complete: {len(result.get('source_breakdowns', {}))} source breakdowns, "
             f"{len(result.get('content_summaries', []))} content summaries"
         )
+
+        # Enrich synthesis with CrossReference analysis (Bayesian convictions, contradictions)
+        try:
+            cross_ref_result = _run_cross_reference(db, cutoff, synthesis_request.time_window)
+            if cross_ref_result:
+                result["bayesian_convictions"] = cross_ref_result.get("high_conviction_ideas", [])
+                result["structured_contradictions"] = cross_ref_result.get("contradictions", [])
+                result["theme_clusters"] = cross_ref_result.get("confluent_themes", [])
+                logger.info(
+                    f"CrossReference enrichment: {len(result.get('bayesian_convictions', []))} high-conviction ideas, "
+                    f"{len(result.get('structured_contradictions', []))} contradictions"
+                )
+        except Exception as cross_ref_error:
+            logger.warning(f"CrossReference enrichment failed (non-fatal): {str(cross_ref_error)}")
 
         # Extract summary text for the flat synthesis column (used by /history previews)
         exec_summary = result.get("executive_summary", {})
@@ -626,3 +642,82 @@ def _get_kt_symbol_data(db: Session) -> list:
 
     logger.info(f"Found KT Technical data for {len(kt_data)} symbols")
     return kt_data
+
+
+def _run_cross_reference(db: Session, cutoff: datetime, time_window: str) -> Optional[dict]:
+    """
+    Run CrossReferenceAgent on confluence scores from the time window.
+
+    Queries ConfluenceScore records, shapes them for the agent, and returns
+    the cross-reference analysis result. Returns None if no scores available.
+    """
+    from agents.cross_reference import CrossReferenceAgent
+    from backend.utils.data_helpers import safe_get_analysis_result
+
+    # Query confluence scores with related content
+    results = db.query(ConfluenceScore, AnalyzedContent, RawContent, Source).join(
+        AnalyzedContent, ConfluenceScore.analyzed_content_id == AnalyzedContent.id
+    ).join(
+        RawContent, AnalyzedContent.raw_content_id == RawContent.id
+    ).join(
+        Source, RawContent.source_id == Source.id
+    ).filter(
+        ConfluenceScore.scored_at >= cutoff
+    ).all()
+
+    if not results:
+        logger.info("No ConfluenceScore records for cross-reference — skipping enrichment")
+        return None
+
+    # Shape each record into the format CrossReferenceAgent expects
+    shaped_scores = []
+    for score, analyzed, raw, source in results:
+        analysis_data = safe_get_analysis_result(analyzed)
+
+        shaped_scores.append({
+            "primary_thesis": analysis_data.get("primary_thesis", analysis_data.get("summary", "")),
+            "content_source": source.name,
+            "scored_at": score.scored_at.isoformat() if score.scored_at else None,
+            "core_total": score.core_total,
+            "total_score": score.total_score,
+            "meets_threshold": score.meets_threshold,
+            "confluence_level": (
+                "strong" if score.meets_threshold else
+                "medium" if score.core_total >= 4 else "weak"
+            ),
+            "variant_view": analysis_data.get("variant_view", ""),
+            "p_and_l_mechanism": analysis_data.get("p_and_l_mechanism", ""),
+            "falsification_criteria": analysis_data.get("falsification_criteria", []),
+            "pillar_scores": {
+                "macro": score.macro_score,
+                "fundamentals": score.fundamentals_score,
+                "valuation": score.valuation_score,
+                "positioning": score.positioning_score,
+                "policy": score.policy_score,
+                "price_action": score.price_action_score,
+                "options_vol": score.options_vol_score,
+            },
+        })
+
+    # Get historical themes for Bayesian updates
+    historical_themes = []
+    theme_records = db.query(Theme).filter(
+        Theme.status.in_(["emerging", "active", "evolved"])
+    ).all()
+    for t in theme_records:
+        historical_themes.append({
+            "theme": t.name,
+            "current_conviction": t.current_conviction or 0.3,
+            "status": t.status,
+        })
+
+    # Parse time window to days
+    tw_map = {"24h": 1, "7d": 7, "30d": 30}
+    tw_days = tw_map.get(time_window, 7)
+
+    agent = CrossReferenceAgent()
+    return agent.analyze(
+        confluence_scores=shaped_scores,
+        time_window_days=tw_days,
+        historical_themes=historical_themes
+    )
