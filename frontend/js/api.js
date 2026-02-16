@@ -17,11 +17,25 @@ const API_BASE = window.location.hostname === 'localhost'
  * PRD-036: Added Bearer token support and 401 handling.
  */
 async function apiFetch(endpoint, options = {}) {
-    const maxRetries = 2;
+    const maxRetries = options.retries ?? 2;
+    const timeoutMs = options.timeout ?? 30000; // 30s default, 0 = no timeout
+    const externalSignal = options.signal; // Allow caller-provided AbortController
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+        let timeoutId = null;
+        if (timeoutMs > 0) {
+            timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+        }
+
+        // If caller provided a signal (for cancel), abort our controller when it fires
+        if (externalSignal) {
+            if (externalSignal.aborted) {
+                controller.abort();
+            } else {
+                externalSignal.addEventListener('abort', () => controller.abort(), { once: true });
+            }
+        }
 
         try {
             // Build headers with Bearer token if available
@@ -40,7 +54,7 @@ async function apiFetch(endpoint, options = {}) {
                 headers,
                 signal: controller.signal,
             });
-            clearTimeout(timeoutId);
+            if (timeoutId) clearTimeout(timeoutId);
 
             // Handle 401 Unauthorized - trigger login modal (PRD-036)
             if (response.status === 401) {
@@ -63,7 +77,12 @@ async function apiFetch(endpoint, options = {}) {
 
             return await response.json();
         } catch (error) {
-            clearTimeout(timeoutId);
+            if (timeoutId) clearTimeout(timeoutId);
+
+            // If cancelled by caller's signal, throw immediately without retry
+            if (externalSignal && externalSignal.aborted) {
+                throw new Error('Cancelled');
+            }
 
             // Convert AbortError to a descriptive timeout error
             if (error.name === 'AbortError') {

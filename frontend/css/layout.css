@@ -820,6 +820,21 @@ body {
   font-size: var(--text-base);
 }
 
+.fab-btn .cancel-x {
+  margin-left: 8px;
+  color: var(--error, #ef4444);
+  cursor: pointer;
+  font-weight: 700;
+  font-size: var(--text-base);
+  line-height: 1;
+  opacity: 0.8;
+  pointer-events: auto;
+}
+
+.fab-btn .cancel-x:hover {
+  opacity: 1;
+}
+
 /* ============================================
    SEARCH MODAL
    ============================================ */

@@ -1217,69 +1217,111 @@
         }
 
         // Analyze content
+        let analyzeAbortController = null;
+
+        function cancelAnalyze(e) {
+            e.stopPropagation();
+            if (analyzeAbortController) analyzeAbortController.abort();
+        }
+
         async function analyzeContent() {
             const btn = document.getElementById('btn-analyze');
             const originalHTML = btn.innerHTML;
             btn.disabled = true;
+            btn.removeAttribute('onclick');
             let totalAnalyzed = 0;
             let batchCount = 0;
 
-            try {
-                btn.innerHTML = `<span class="icon">⚡</span><span class="btn-text">Starting...</span>`;
+            analyzeAbortController = new AbortController();
 
+            // Start elapsed time counter
+            let seconds = 0;
+            const updateBtn = (text) => {
+                btn.innerHTML = `<span class="icon">⚡</span><span class="btn-text">${text}</span><span class="cancel-x" onclick="cancelAnalyze(event)" title="Cancel">✕</span>`;
+            };
+            updateBtn('Starting... 0s');
+            const timerInterval = setInterval(() => {
+                seconds++;
+                const status = totalAnalyzed > 0 ? `Analyzed: ${totalAnalyzed} (${seconds}s)` : `Analyzing... ${seconds}s`;
+                updateBtn(status);
+            }, 1000);
+
+            try {
                 while (true) {
                     batchCount++;
                     const data = await apiFetch('/analyze/classify-batch?limit=50', {
-                        method: 'POST'
+                        method: 'POST',
+                        timeout: 0,
+                        retries: 0,
+                        signal: analyzeAbortController.signal
                     });
 
                     if (data.count > 0) {
                         totalAnalyzed += data.count;
-                        btn.innerHTML = `<span class="icon">⚡</span><span class="btn-text">Analyzed: ${totalAnalyzed}</span>`;
-                        // Small delay to ensure UI updates are visible
+                        updateBtn(`Analyzed: ${totalAnalyzed} (${seconds}s)`);
                         await new Promise(r => setTimeout(r, 100));
                     } else {
                         break;
                     }
 
-                    // Safety: max 20 batches to prevent infinite loop
                     if (batchCount >= 20) {
                         console.log('[Analyze] Max batches reached');
                         break;
                     }
                 }
 
-                btn.innerHTML = `<span class="icon">✓</span><span class="btn-text">Done (${totalAnalyzed})</span>`;
+                clearInterval(timerInterval);
+                btn.innerHTML = `<span class="icon">✓</span><span class="btn-text">Done: ${totalAnalyzed} (${seconds}s)</span>`;
                 await loadStatus();
-                setTimeout(() => { btn.innerHTML = originalHTML; }, 3000);
+                setTimeout(() => { btn.innerHTML = originalHTML; btn.setAttribute('onclick', 'analyzeContent()'); }, 3000);
             } catch (error) {
+                clearInterval(timerInterval);
+                const msg = error.message === 'Cancelled' ? 'Cancelled' : 'Error';
                 console.error('Analysis error:', error);
-                btn.innerHTML = `<span class="icon">✕</span><span class="btn-text">Error</span>`;
-                setTimeout(() => { btn.innerHTML = originalHTML; }, 3000);
+                btn.innerHTML = `<span class="icon">✕</span><span class="btn-text">${msg}</span>`;
+                setTimeout(() => { btn.innerHTML = originalHTML; btn.setAttribute('onclick', 'analyzeContent()'); }, 3000);
             } finally {
+                analyzeAbortController = null;
                 btn.disabled = false;
             }
         }
 
         // Generate synthesis
+        let synthesisAbortController = null;
+
+        function cancelSynthesis(e) {
+            e.stopPropagation();
+            if (synthesisAbortController) synthesisAbortController.abort();
+        }
+
         async function generateSynthesis(timeWindow) {
             const btn = timeWindow === '24h' ? document.getElementById('btn-generate-24h') : document.getElementById('btn-generate-7d');
             const originalHTML = btn.innerHTML;
+            const originalOnclick = btn.getAttribute('onclick');
             btn.disabled = true;
+            btn.onclick = null;
+            btn.removeAttribute('onclick');
+
+            synthesisAbortController = new AbortController();
 
             // Start elapsed time counter
             let seconds = 0;
+            const updateBtn = (text) => {
+                btn.innerHTML = `<span class="icon">⏳</span><span class="btn-text">${text}</span><span class="cancel-x" onclick="cancelSynthesis(event)" title="Cancel">✕</span>`;
+            };
+            updateBtn('Generating... 0s');
             const timerInterval = setInterval(() => {
                 seconds++;
-                btn.innerHTML = `<span class="icon">⏳</span><span class="btn-text">Generating... ${seconds}s</span>`;
+                updateBtn(`Generating... ${seconds}s`);
             }, 1000);
 
             try {
-                btn.innerHTML = `<span class="icon">⏳</span><span class="btn-text">Generating... 0s</span>`;
-
                 const data = await apiFetch('/synthesis/generate', {
                     method: 'POST',
-                    body: JSON.stringify({ time_window: timeWindow })
+                    body: JSON.stringify({ time_window: timeWindow }),
+                    timeout: 0,
+                    retries: 0,
+                    signal: synthesisAbortController.signal
                 });
 
                 clearInterval(timerInterval);
@@ -1294,13 +1336,15 @@
                 } else {
                     throw new Error(data.detail || 'Failed');
                 }
-                setTimeout(() => { btn.innerHTML = originalHTML; }, 3000);
+                setTimeout(() => { btn.innerHTML = originalHTML; btn.setAttribute('onclick', originalOnclick); }, 3000);
             } catch (error) {
                 clearInterval(timerInterval);
+                const msg = error.message === 'Cancelled' ? 'Cancelled' : 'Error';
                 console.error('Generation error:', error);
-                btn.innerHTML = `<span class="icon">✕</span><span class="btn-text">Error</span>`;
-                setTimeout(() => { btn.innerHTML = originalHTML; }, 3000);
+                btn.innerHTML = `<span class="icon">✕</span><span class="btn-text">${msg}</span>`;
+                setTimeout(() => { btn.innerHTML = originalHTML; btn.setAttribute('onclick', originalOnclick); }, 3000);
             } finally {
+                synthesisAbortController = null;
                 btn.disabled = false;
             }
         }
