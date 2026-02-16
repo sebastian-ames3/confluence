@@ -35,6 +35,7 @@ from backend.utils.sanitization import sanitize_search_query
 from backend.utils.data_helpers import safe_get_analysis_result, safe_get_analysis_preview
 from agents.theme_extractor import extract_and_track_themes
 from agents.synthesis_evaluator import SynthesisEvaluatorAgent
+from agents.confluence_scorer import ConfluenceScorerAgent
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -110,6 +111,14 @@ async def generate_synthesis(
 
         # Get KT Technical symbol data
         kt_symbol_data = _get_kt_symbol_data(db)
+
+        # Auto-score any unscored content so pillar scores and cross-reference always have data
+        try:
+            scoring_result = _score_unscored_content(db, content_items)
+            if scoring_result["scored"] > 0:
+                logger.info(f"Auto-scored {scoring_result['scored']} items before synthesis")
+        except Exception as scoring_error:
+            logger.warning(f"Auto-scoring failed (non-fatal): {str(scoring_error)}")
 
         # Get 7-pillar confluence scores for the time window
         pillar_scores = _get_pillar_scores_for_synthesis(db, cutoff)
@@ -609,6 +618,7 @@ def _get_content_for_synthesis(
 
         content_items.append({
             "id": raw.id,
+            "analyzed_content_id": analyzed.id,
             "source": source.name,
             "channel": channel_name,
             "channel_display": channel_display,
@@ -649,6 +659,99 @@ def _get_kt_symbol_data(db: Session) -> list:
 
     logger.info(f"Found KT Technical data for {len(kt_data)} symbols")
     return kt_data
+
+
+def _score_unscored_content(db: Session, content_items: list) -> dict:
+    """
+    Score any analyzed content that doesn't yet have a ConfluenceScore.
+
+    Runs ConfluenceScorerAgent on each unscored item and saves the results.
+    Called automatically before synthesis to ensure pillar scores and
+    cross-reference data are always available.
+
+    Returns summary: {scored, skipped, failed}
+    """
+
+    # Find which analyzed_content_ids already have scores
+    ac_ids = [item["analyzed_content_id"] for item in content_items if item.get("analyzed_content_id")]
+    if not ac_ids:
+        return {"scored": 0, "skipped": 0, "failed": 0}
+
+    existing_scored = set(
+        row[0] for row in db.query(ConfluenceScore.analyzed_content_id).filter(
+            ConfluenceScore.analyzed_content_id.in_(ac_ids)
+        ).all()
+    )
+
+    unscored_items = [item for item in content_items if item.get("analyzed_content_id") not in existing_scored]
+
+    if not unscored_items:
+        logger.info("All content already has confluence scores")
+        return {"scored": 0, "skipped": len(ac_ids), "failed": 0}
+
+    logger.info(f"Auto-scoring {len(unscored_items)} unscored content items...")
+    scorer = ConfluenceScorerAgent()
+    scored = 0
+    failed = 0
+
+    for item in unscored_items:
+        try:
+            # Build analysis_result dict for the scorer
+            analysis_input = {
+                "summary": item.get("analyzed_summary") or item.get("summary", ""),
+                "themes": item.get("themes", []),
+                "tickers": item.get("tickers", []),
+                "sentiment": item.get("sentiment", ""),
+                "conviction": item.get("conviction", ""),
+                "key_quotes": item.get("key_quotes", []),
+                "source": item.get("source", "unknown"),
+                "content_type": item.get("type", "unknown"),
+            }
+
+            # Also get the full analysis_result from DB for richer scoring
+            analyzed = db.query(AnalyzedContent).filter(
+                AnalyzedContent.id == item["analyzed_content_id"]
+            ).first()
+            if analyzed and analyzed.analysis_result:
+                try:
+                    full_analysis = json.loads(analyzed.analysis_result)
+                    full_analysis["source"] = item.get("source", "unknown")
+                    full_analysis["content_type"] = item.get("type", "unknown")
+                    analysis_input = full_analysis
+                except json.JSONDecodeError:
+                    pass
+
+            result = scorer.analyze(analysis_input)
+
+            pillar_scores = result.get("pillar_scores", {})
+            new_score = ConfluenceScore(
+                analyzed_content_id=item["analyzed_content_id"],
+                macro_score=pillar_scores.get("macro", 0),
+                fundamentals_score=pillar_scores.get("fundamentals", 0),
+                valuation_score=pillar_scores.get("valuation", 0),
+                positioning_score=pillar_scores.get("positioning", 0),
+                policy_score=pillar_scores.get("policy", 0),
+                price_action_score=pillar_scores.get("price_action", 0),
+                options_vol_score=pillar_scores.get("options_vol", 0),
+                core_total=result.get("core_total", 0),
+                total_score=result.get("total_score", 0),
+                meets_threshold=result.get("meets_threshold", False),
+                reasoning=json.dumps(result.get("reasoning", {})),
+                falsification_criteria=json.dumps(result.get("falsification_criteria", []))
+            )
+            db.add(new_score)
+            scored += 1
+            logger.info(f"Scored content {item['analyzed_content_id']}: {new_score.total_score}/14")
+
+        except Exception as e:
+            logger.warning(f"Failed to score content {item.get('analyzed_content_id')}: {e}")
+            failed += 1
+
+    if scored > 0:
+        db.commit()
+        logger.info(f"Auto-scoring complete: {scored} scored, {failed} failed, {len(existing_scored)} already scored")
+
+    return {"scored": scored, "skipped": len(existing_scored), "failed": failed}
 
 
 def _get_pillar_scores_for_synthesis(db: Session, cutoff: datetime) -> dict:
