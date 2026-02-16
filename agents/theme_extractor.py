@@ -85,7 +85,7 @@ OUTPUT FORMAT: JSON only, no explanation."""
         confluence_zones = synthesis_data.get("confluence_zones", [])
         conflict_watch = synthesis_data.get("conflict_watch", [])
         attention_priorities = synthesis_data.get("attention_priorities", [])
-        source_stances = synthesis_data.get("source_stances", {})
+        source_breakdowns = synthesis_data.get("source_breakdowns", {})
 
         # Build synthesis text and wrap for injection protection
         synthesis_text = (
@@ -93,7 +93,7 @@ OUTPUT FORMAT: JSON only, no explanation."""
             f"## Confluence Zones\n{json.dumps(confluence_zones, indent=2)}\n\n"
             f"## Conflicts\n{json.dumps(conflict_watch, indent=2)}\n\n"
             f"## Attention Priorities\n{json.dumps(attention_priorities, indent=2)}\n\n"
-            f"## Source Stances\n{json.dumps(source_stances, indent=2)}"
+            f"## Source Breakdowns\n{json.dumps(source_breakdowns, indent=2)}"
         )
         wrapped_synthesis = wrap_content_for_prompt(
             sanitize_content_text(synthesis_text), max_chars=30000

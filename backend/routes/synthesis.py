@@ -600,6 +600,7 @@ def _get_content_for_synthesis(
             "conviction": analyzed.conviction,
             "content_text": raw.content_text or "",
             "key_quotes": analysis_data.get("key_quotes", []),
+            "analyzed_summary": analysis_data.get("summary", ""),
         })
 
     return content_items
