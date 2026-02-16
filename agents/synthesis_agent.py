@@ -16,7 +16,7 @@ from typing import Dict, Any, Optional, List
 from datetime import datetime, timedelta
 
 from agents.base_agent import BaseAgent
-from agents.config import MODEL_SYNTHESIS, TIMEOUT_SYNTHESIS, MAX_TRANSCRIPT_CHARS
+from agents.config import MODEL_SYNTHESIS, TIMEOUT_SYNTHESIS, MAX_TRANSCRIPT_CHARS, MAX_SOURCE_TOKENS
 from backend.utils.sanitization import wrap_content_for_prompt, sanitize_content_text
 
 logger = logging.getLogger(__name__)
@@ -324,7 +324,7 @@ Do NOT write like you're giving trading instructions."""
         result = self.call_claude(
             prompt=prompt,
             system_prompt=system_prompt,
-            max_tokens=6000,
+            max_tokens=MAX_SOURCE_TOKENS,
             temperature=0.2,
             expect_json=True
         )
