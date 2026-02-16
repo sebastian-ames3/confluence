@@ -158,7 +158,7 @@ Include 1-3 prompt_suggestions based on the most significant issues found."""
             response = self.call_claude(
                 prompt=prompt,
                 system_prompt=self.SYSTEM_PROMPT,
-                max_tokens=1500,
+                max_tokens=2500,
                 temperature=0.0,
                 expect_json=True
             )
@@ -225,10 +225,44 @@ Include 1-3 prompt_suggestions based on the most significant issues found."""
         # Wrap with injection protection and truncation
         wrapped_synthesis = wrap_content_for_prompt(synthesis_str, max_chars=50000)
 
+        # Build source content summary for cross-checking
+        source_content_section = ""
+        if original_content:
+            from collections import defaultdict
+            by_source = defaultdict(list)
+            for item in original_content:
+                src = item.get("source", "unknown")
+                channel = item.get("channel_display")
+                key = f"{src}:{channel}" if channel else src
+                by_source[key].append(item)
+
+            source_content_section = "\n## Source Content Summary\n"
+            for src_key, items in by_source.items():
+                themes_set = set()
+                tickers_set = set()
+                sentiments = []
+                for item in items:
+                    for t in item.get("themes", []):
+                        if t:
+                            themes_set.add(t.strip())
+                    for t in item.get("tickers", []):
+                        if t:
+                            tickers_set.add(t.strip())
+                    if item.get("sentiment"):
+                        sentiments.append(item["sentiment"])
+                source_content_section += f"- **{src_key}**: {len(items)} items"
+                if themes_set:
+                    source_content_section += f", themes: {', '.join(list(themes_set)[:5])}"
+                if tickers_set:
+                    source_content_section += f", tickers: {', '.join(list(tickers_set)[:8])}"
+                if sentiments:
+                    source_content_section += f", sentiment: {sentiments[0]}"
+                source_content_section += "\n"
+
         prompt = f"""## Synthesis to Evaluate
 
 {wrapped_synthesis}
-
+{source_content_section}
 ## Evaluation Criteria
 
 Evaluate the synthesis against these 7 criteria:
@@ -273,6 +307,7 @@ Does synthesis reference theme evolution over time?
 1. Score each criterion 0-3
 2. For any score of 1 or lower, add an entry to "flags" with specific details
 3. Provide 1-3 actionable prompt_suggestions to improve future synthesis quality
+4. Cross-check the synthesis against the source content summary above. Flag if any source's key themes or tickers are completely absent from the synthesis output.
 
 Return your evaluation as a JSON object."""
 
