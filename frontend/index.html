@@ -764,7 +764,7 @@
                 const sparklinePath = generateSparklinePath(bias, index);
 
                 return `
-                    <div class="source-perspective-card" data-source="${escapeHtml(sourceKey)}" onclick="toggleSourcePerspective(this)">
+                    <div class="source-perspective-card" data-source="${escapeHtml(sourceKey)}" onclick="toggleSourcePerspective(this, event)">
                         <div class="source-perspective-header">
                             <div class="source-perspective-identity">
                                 <div class="source-perspective-icon">${escapeHtml(sourceIcon)}</div>
@@ -877,7 +877,11 @@
         }
 
         // Toggle source perspective card expansion
-        function toggleSourcePerspective(card) {
+        function toggleSourcePerspective(card, event) {
+            // Don't toggle if click originated from inside the scrollable details area
+            if (event && event.target.closest('.source-perspective-details')) {
+                return;
+            }
             // Close other expanded cards
             document.querySelectorAll('.source-perspective-card.expanded').forEach(c => {
                 if (c !== card) c.classList.remove('expanded');
