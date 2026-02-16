@@ -111,7 +111,8 @@ Do NOT write like you're giving trading instructions."""
         older_content: Optional[List[Dict[str, Any]]] = None,
         time_window: str = "24h",
         focus_topic: Optional[str] = None,
-        kt_symbol_data: Optional[List[Dict[str, Any]]] = None
+        kt_symbol_data: Optional[List[Dict[str, Any]]] = None,
+        pillar_scores: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
         Generate comprehensive research synthesis using per-source + merge architecture.
@@ -128,6 +129,7 @@ Do NOT write like you're giving trading instructions."""
             time_window: Time window being analyzed ("24h", "7d", "30d")
             focus_topic: Optional specific topic to focus on
             kt_symbol_data: KT Technical symbol-level data (wave counts, levels, bias)
+            pillar_scores: 7-pillar confluence scores grouped by source (from ConfluenceScore DB)
 
         Returns:
             Unified synthesis dict with all sections (schema 5.0)
@@ -140,6 +142,8 @@ Do NOT write like you're giving trading instructions."""
             logger.info(f"Including {len(older_content)} older items for re-review scanning")
         if kt_symbol_data:
             logger.info(f"Including KT Technical data for {len(kt_symbol_data)} symbols")
+        if pillar_scores:
+            logger.info(f"Including 7-pillar scores from {len(pillar_scores)} sources")
 
         # STEP 1: Group content by source
         source_groups = {}
@@ -192,7 +196,8 @@ Do NOT write like you're giving trading instructions."""
                 older_content=older_content,
                 time_window=time_window,
                 focus_topic=focus_topic,
-                kt_symbol_data=kt_symbol_data
+                kt_symbol_data=kt_symbol_data,
+                pillar_scores=pillar_scores
             )
         except Exception as e:
             logger.error(f"Merge failed: {e}")
@@ -463,7 +468,8 @@ RESPOND WITH VALID JSON ONLY."""
         older_content: Optional[List[Dict[str, Any]]] = None,
         time_window: str = "24h",
         focus_topic: Optional[str] = None,
-        kt_symbol_data: Optional[List[Dict[str, Any]]] = None
+        kt_symbol_data: Optional[List[Dict[str, Any]]] = None,
+        pillar_scores: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
         Merge per-source analyses into cross-source synthesis.
@@ -477,6 +483,7 @@ RESPOND WITH VALID JSON ONLY."""
             time_window: Time window
             focus_topic: Optional topic filter
             kt_symbol_data: KT symbol data for level references
+            pillar_scores: 7-pillar confluence scores grouped by source
 
         Returns:
             Merged synthesis with all cross-source sections
@@ -486,7 +493,8 @@ RESPOND WITH VALID JSON ONLY."""
             older_content=older_content,
             time_window=time_window,
             focus_topic=focus_topic,
-            kt_symbol_data=kt_symbol_data
+            kt_symbol_data=kt_symbol_data,
+            pillar_scores=pillar_scores
         )
 
         response = self.call_claude(
@@ -535,11 +543,13 @@ RESPOND WITH VALID JSON ONLY."""
         older_content: Optional[List[Dict[str, Any]]] = None,
         time_window: str = "24h",
         focus_topic: Optional[str] = None,
-        kt_symbol_data: Optional[List[Dict[str, Any]]] = None
+        kt_symbol_data: Optional[List[Dict[str, Any]]] = None,
+        pillar_scores: Optional[Dict[str, Any]] = None
     ) -> str:
         """
         Build the merge prompt from per-source analysis summaries.
         Labels each source with its weight for weighted lean calculations.
+        Includes 7-pillar confluence scores when available.
         """
         # Build per-source summary sections
         source_section = ""
@@ -653,6 +663,26 @@ RESPOND WITH VALID JSON ONLY."""
                     parts.append(f"invalidation={sym_data['invalidation']}")
                 kt_section += ", ".join(parts) + "\n"
 
+        # 7-pillar confluence scores section
+        pillar_section = ""
+        if pillar_scores:
+            pillar_section = "\n## 7-PILLAR CONFLUENCE SCORES\n"
+            pillar_section += "These are structured scores from the confluence scoring framework. Use them to ground your confluence_strength values.\n"
+            pillar_section += "A confluence zone with avg core_total ≥6/10 across aligned sources should have confluence_strength ≥0.7.\n\n"
+            for source_name, data in pillar_scores.items():
+                pillar_section += f"### {source_name.upper()}\n"
+                pillar_section += f"- Scores: {data['score_count']} items scored\n"
+                pillar_section += f"- Avg Core Total: {data['avg_core_total']}/10\n"
+                pillar_section += f"- Avg Total Score: {data['avg_total_score']}/14\n"
+                pillar_section += f"- Threshold Met: {data['threshold_met']}/{data['score_count']}\n"
+                # Show individual pillar averages
+                if data['scores']:
+                    pillars = ["macro", "fundamentals", "valuation", "positioning", "policy", "price_action", "options_vol"]
+                    for pillar in pillars:
+                        avg = sum(s["pillar_scores"][pillar] for s in data["scores"]) / len(data["scores"])
+                        pillar_section += f"  - {pillar}: {avg:.1f}/2\n"
+                pillar_section += "\n"
+
         # Extract levels for reference
         all_tickers = []
         for analysis in source_analyses.values():
@@ -671,6 +701,7 @@ Your job: MERGE these into a unified cross-source synthesis. Identify where sour
 {source_section}
 {older_section}
 {kt_section}
+{pillar_section}
 ## TICKERS DISCUSSED ACROSS SOURCES
 {', '.join(all_tickers[:20]) or 'None'}
 

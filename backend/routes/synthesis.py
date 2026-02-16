@@ -25,7 +25,8 @@ from backend.models import (
     RawContent,
     Source,
     SynthesisQualityScore,
-    SymbolState
+    SymbolState,
+    ConfluenceScore
 )
 from backend.utils.auth import verify_jwt_or_basic
 from backend.utils.rate_limiter import limiter, RATE_LIMITS
@@ -109,6 +110,11 @@ async def generate_synthesis(
         # Get KT Technical symbol data
         kt_symbol_data = _get_kt_symbol_data(db)
 
+        # Get 7-pillar confluence scores for the time window
+        pillar_scores = _get_pillar_scores_for_synthesis(db, cutoff)
+        if pillar_scores:
+            logger.info(f"Including pillar scores from {len(pillar_scores)} sources in synthesis")
+
         # Generate synthesis
         from agents.synthesis_agent import SynthesisAgent
         agent = SynthesisAgent()
@@ -142,7 +148,8 @@ async def generate_synthesis(
             older_content=older_content,
             time_window=synthesis_request.time_window,
             focus_topic=synthesis_request.focus_topic,
-            kt_symbol_data=kt_symbol_data
+            kt_symbol_data=kt_symbol_data,
+            pillar_scores=pillar_scores if pillar_scores else None
         )
         logger.info(
             f"Synthesis complete: {len(result.get('source_breakdowns', {}))} source breakdowns, "
@@ -627,3 +634,61 @@ def _get_kt_symbol_data(db: Session) -> list:
 
     logger.info(f"Found KT Technical data for {len(kt_data)} symbols")
     return kt_data
+
+
+def _get_pillar_scores_for_synthesis(db: Session, cutoff: datetime) -> dict:
+    """
+    Get 7-pillar confluence scores for content in the time window, grouped by source.
+
+    Returns dict keyed by source name with pillar score summaries.
+    """
+    results = db.query(ConfluenceScore, AnalyzedContent, RawContent, Source).join(
+        AnalyzedContent, ConfluenceScore.analyzed_content_id == AnalyzedContent.id
+    ).join(
+        RawContent, AnalyzedContent.raw_content_id == RawContent.id
+    ).join(
+        Source, RawContent.source_id == Source.id
+    ).filter(
+        ConfluenceScore.scored_at >= cutoff
+    ).all()
+
+    if not results:
+        return {}
+
+    by_source = {}
+    for score, analyzed, raw, source in results:
+        source_name = source.name
+        if source_name not in by_source:
+            by_source[source_name] = []
+
+        by_source[source_name].append({
+            "pillar_scores": {
+                "macro": score.macro_score,
+                "fundamentals": score.fundamentals_score,
+                "valuation": score.valuation_score,
+                "positioning": score.positioning_score,
+                "policy": score.policy_score,
+                "price_action": score.price_action_score,
+                "options_vol": score.options_vol_score,
+            },
+            "core_total": score.core_total,
+            "total_score": score.total_score,
+            "meets_threshold": score.meets_threshold,
+        })
+
+    # Build compact summary per source
+    summary = {}
+    for source_name, scores in by_source.items():
+        avg_core = sum(s["core_total"] for s in scores) / len(scores)
+        avg_total = sum(s["total_score"] for s in scores) / len(scores)
+        threshold_met_count = sum(1 for s in scores if s["meets_threshold"])
+        summary[source_name] = {
+            "score_count": len(scores),
+            "avg_core_total": round(avg_core, 1),
+            "avg_total_score": round(avg_total, 1),
+            "threshold_met": threshold_met_count,
+            "scores": scores,
+        }
+
+    logger.info(f"Found pillar scores for {len(summary)} sources ({sum(len(v['scores']) for v in summary.values())} total)")
+    return summary
