@@ -670,6 +670,11 @@
   transform: rotate(180deg);
 }
 
+/* Allow scrolling inside expanded card (base card has overflow:hidden for collapse animation) */
+.source-perspective-card.expanded {
+  overflow: visible;
+}
+
 /* Expanded content */
 /* PRD-049: Sync transition with icon (normal instead of slow) */
 .source-perspective-details {
