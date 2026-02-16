@@ -79,7 +79,7 @@ const PerformanceManager = {
     this.addResourceHint('preconnect', 'https://confluence-production-a32e.up.railway.app');
 
     // Prefetch likely next pages (only if authenticated)
-    if ('requestIdleCallback' in window && localStorage.getItem('jwt_token')) {
+    if ('requestIdleCallback' in window && localStorage.getItem('confluence_auth_token')) {
       requestIdleCallback(() => {
         // Prefetch dashboard data
         this.prefetchData('/api/dashboard/today');
