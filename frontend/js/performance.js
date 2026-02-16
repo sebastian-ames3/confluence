@@ -78,8 +78,8 @@ const PerformanceManager = {
     // Preconnect to API domain
     this.addResourceHint('preconnect', 'https://confluence-production-a32e.up.railway.app');
 
-    // Prefetch likely next pages
-    if ('requestIdleCallback' in window) {
+    // Prefetch likely next pages (only if authenticated)
+    if ('requestIdleCallback' in window && localStorage.getItem('jwt_token')) {
       requestIdleCallback(() => {
         // Prefetch dashboard data
         this.prefetchData('/api/dashboard/today');

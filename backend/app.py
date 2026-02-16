@@ -204,7 +204,7 @@ async def add_security_headers(request: Request, call_next):
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
         "font-src 'self' https://fonts.gstatic.com; "
         "img-src 'self' data: blob:; "
-        "connect-src 'self' wss: ws:; "
+        "connect-src 'self' wss: ws: https://cdn.jsdelivr.net; "
         "frame-ancestors 'none';"
     )
     response.headers["X-Content-Type-Options"] = "nosniff"
