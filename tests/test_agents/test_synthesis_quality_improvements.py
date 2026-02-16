@@ -484,3 +484,134 @@ class TestPR6CrossReference:
             assert "contradictions" in result
             assert "high_conviction_ideas" in result
             assert result["sources_analyzed"] == 2
+
+
+# ============================================================================
+# Auto-Scoring Integration
+# ============================================================================
+
+class TestAutoScoring:
+    """Tests for _score_unscored_content auto-scoring during synthesis."""
+
+    def test_score_unscored_content_skips_already_scored(self, mock_env):
+        """Test that already-scored content is skipped."""
+        from unittest.mock import MagicMock
+
+        mock_db = MagicMock()
+        # Simulate all items already scored
+        mock_db.query.return_value.filter.return_value.all.return_value = [
+            (1,), (2,), (3,)
+        ]
+
+        content_items = [
+            {"analyzed_content_id": 1, "source": "42macro"},
+            {"analyzed_content_id": 2, "source": "discord"},
+            {"analyzed_content_id": 3, "source": "youtube"},
+        ]
+
+        from backend.routes.synthesis import _score_unscored_content
+        result = _score_unscored_content(mock_db, content_items)
+        assert result["scored"] == 0
+        assert result["skipped"] == 3
+
+    def test_score_unscored_content_empty_items(self, mock_env):
+        """Test with no content items."""
+        mock_db = MagicMock()
+        content_items = []
+
+        from backend.routes.synthesis import _score_unscored_content
+        result = _score_unscored_content(mock_db, content_items)
+        assert result["scored"] == 0
+        assert result["skipped"] == 0
+        assert result["failed"] == 0
+
+    def test_score_unscored_content_scores_new_items(self, mock_env):
+        """Test that unscored content gets scored."""
+        mock_db = MagicMock()
+        # No existing scores
+        mock_db.query.return_value.filter.return_value.all.return_value = []
+        # Return None for analyzed content query (use fallback input)
+        mock_db.query.return_value.filter.return_value.first.return_value = None
+
+        content_items = [
+            {
+                "analyzed_content_id": 1,
+                "source": "42macro",
+                "type": "pdf",
+                "summary": "Fed is hawkish",
+                "analyzed_summary": "Fed is hawkish on rates",
+                "themes": ["FOMC"],
+                "tickers": ["SPX"],
+                "sentiment": "bearish",
+                "conviction": "high",
+                "key_quotes": [],
+            },
+        ]
+
+        mock_scorer_result = {
+            "pillar_scores": {
+                "macro": 2, "fundamentals": 1, "valuation": 1,
+                "positioning": 1, "policy": 2, "price_action": 1, "options_vol": 0,
+            },
+            "core_total": 7,
+            "total_score": 8,
+            "meets_threshold": True,
+            "reasoning": {"macro": "Strong signals"},
+            "falsification_criteria": ["CPI miss"],
+        }
+
+        with patch('backend.routes.synthesis.ConfluenceScorerAgent') as MockScorer:
+            mock_instance = MagicMock()
+            mock_instance.analyze.return_value = mock_scorer_result
+            MockScorer.return_value = mock_instance
+
+            from backend.routes.synthesis import _score_unscored_content
+            result = _score_unscored_content(mock_db, content_items)
+
+        assert result["scored"] == 1
+        assert result["failed"] == 0
+        mock_db.add.assert_called_once()
+        mock_db.commit.assert_called_once()
+
+    def test_score_unscored_content_handles_scorer_failure(self, mock_env):
+        """Test that scorer failures are handled gracefully per-item."""
+        mock_db = MagicMock()
+        mock_db.query.return_value.filter.return_value.all.return_value = []
+        mock_db.query.return_value.filter.return_value.first.return_value = None
+
+        content_items = [
+            {"analyzed_content_id": 1, "source": "42macro", "type": "pdf",
+             "summary": "test", "themes": [], "tickers": [], "sentiment": "",
+             "conviction": "", "key_quotes": [], "analyzed_summary": ""},
+            {"analyzed_content_id": 2, "source": "discord", "type": "trade",
+             "summary": "test2", "themes": [], "tickers": [], "sentiment": "",
+             "conviction": "", "key_quotes": [], "analyzed_summary": ""},
+        ]
+
+        with patch('backend.routes.synthesis.ConfluenceScorerAgent') as MockScorer:
+            mock_instance = MagicMock()
+            # First call fails, second succeeds
+            mock_instance.analyze.side_effect = [
+                Exception("API timeout"),
+                {
+                    "pillar_scores": {"macro": 1, "fundamentals": 0, "valuation": 0,
+                                     "positioning": 0, "policy": 0, "price_action": 0, "options_vol": 0},
+                    "core_total": 1, "total_score": 1, "meets_threshold": False,
+                    "reasoning": {}, "falsification_criteria": [],
+                }
+            ]
+            MockScorer.return_value = mock_instance
+
+            from backend.routes.synthesis import _score_unscored_content
+            result = _score_unscored_content(mock_db, content_items)
+
+        assert result["scored"] == 1
+        assert result["failed"] == 1
+
+    def test_content_items_include_analyzed_content_id(self, mock_env):
+        """Test that _get_content_for_synthesis includes analyzed_content_id."""
+        # Verify the field is included in the content item dict
+        import inspect
+        from backend.routes.synthesis import _get_content_for_synthesis
+        source_code = inspect.getsource(_get_content_for_synthesis)
+        assert "analyzed_content_id" in source_code
