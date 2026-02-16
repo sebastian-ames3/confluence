@@ -627,7 +627,7 @@
 
                 // Update source status list
                 const sourceList = document.getElementById('source-status-list');
-                if (data.sources_status && data.sources_status.length > 0) {
+                if (sourceList && data.sources_status && data.sources_status.length > 0) {
                     sourceList.innerHTML = data.sources_status.map(source => `
                         <div class="source-item">
                             <div class="source-icon ${source.name.toLowerCase().replace(' ', '')}">${source.name.charAt(0)}</div>
