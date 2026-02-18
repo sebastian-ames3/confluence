@@ -16,7 +16,7 @@ from typing import Dict, Any, Optional, List
 from datetime import datetime, timedelta
 
 from agents.base_agent import BaseAgent
-from agents.config import MODEL_SYNTHESIS, TIMEOUT_SYNTHESIS, MAX_TRANSCRIPT_CHARS, MAX_SOURCE_TOKENS
+from agents.config import MODEL_SYNTHESIS, TIMEOUT_SYNTHESIS, MAX_TRANSCRIPT_CHARS, MAX_SOURCE_TOKENS, MAX_SOURCE_PROMPT_CHARS
 from backend.utils.sanitization import wrap_content_for_prompt, sanitize_content_text
 
 logger = logging.getLogger(__name__)
@@ -349,7 +349,9 @@ Do NOT write like you're giving trading instructions."""
         Includes FULL content text — no truncation.
         """
         content_section = ""
-        for item in items:
+        cumulative_chars = 0
+
+        for idx, item in enumerate(items):
             title = item.get("title", "Untitled")
             content_type = item.get("type", item.get("content_type", "unknown"))
             timestamp = item.get("timestamp", item.get("collected_at", ""))
@@ -359,17 +361,17 @@ Do NOT write like you're giving trading instructions."""
             sentiment = item.get("sentiment", "")
             key_quotes = item.get("key_quotes", [])
 
-            content_section += f"\n### {title} ({content_type})\n"
+            item_section = f"\n### {title} ({content_type})\n"
             if timestamp:
-                content_section += f"Time: {timestamp}\n"
+                item_section += f"Time: {timestamp}\n"
             if themes:
-                content_section += f"Pre-analyzed themes: {', '.join(themes[:5])}\n"
+                item_section += f"Pre-analyzed themes: {', '.join(themes[:5])}\n"
             if sentiment:
-                content_section += f"Pre-analyzed sentiment: {sentiment}\n"
+                item_section += f"Pre-analyzed sentiment: {sentiment}\n"
             if summary:
-                content_section += f"Pre-analyzed summary: {summary}\n"
+                item_section += f"Pre-analyzed summary: {summary}\n"
             if key_quotes:
-                content_section += "Key Quotes:\n"
+                item_section += "Key Quotes:\n"
                 for quote in key_quotes[:5]:
                     if isinstance(quote, dict):
                         speaker = quote.get("speaker", "")
@@ -378,20 +380,50 @@ Do NOT write like you're giving trading instructions."""
                         prefix = f"[{speaker}]" if speaker else ""
                         if ts:
                             prefix = f"[{ts}] {prefix}" if prefix else f"[{ts}]"
-                        content_section += f"  - {prefix} \"{text}\"\n"
+                        item_section += f"  - {prefix} \"{text}\"\n"
                     elif isinstance(quote, str):
-                        content_section += f"  - \"{quote}\"\n"
-            # Intelligent transcript handling: use summary for long content, wrap for injection protection
+                        item_section += f"  - \"{quote}\"\n"
+
+            # Check if approaching context limits
+            remaining_budget = MAX_SOURCE_PROMPT_CHARS - cumulative_chars
+            force_summary = remaining_budget < 5000
+
+            # Intelligent transcript handling
             analyzed_summary = str(item.get("analyzed_summary", ""))
-            if analyzed_summary and len(content_text_raw) > MAX_TRANSCRIPT_CHARS:
-                content_section += f"\n[Pre-analyzed Summary]:\n{analyzed_summary}\n"
+            content_is_stub = len(content_text_raw.strip()) < 200
+
+            if content_is_stub and analyzed_summary:
+                # Transcription failed/pending -- use pre-analyzed summary as primary content
+                item_section += f"\n[Pre-analyzed Summary]:\n{analyzed_summary}\n"
                 if themes:
-                    content_section += f"Key Themes: {', '.join(themes[:5])}\n"
-                content_section += f"[Note: Full transcript ({len(content_text_raw)} chars) truncated. Analysis above covers key points.]\n"
+                    item_section += f"Key Themes: {', '.join(themes[:5])}\n"
+                item_section += f"[Note: Full content not available. Summary from initial analysis.]\n"
+            elif (force_summary or len(content_text_raw) > MAX_TRANSCRIPT_CHARS) and analyzed_summary:
+                # Very long content or budget exhausted -- use summary to stay within context limits
+                item_section += f"\n[Pre-analyzed Summary]:\n{analyzed_summary}\n"
+                if themes:
+                    item_section += f"Key Themes: {', '.join(themes[:5])}\n"
+                item_section += f"[Note: Full transcript ({len(content_text_raw)} chars) truncated. Analysis above covers key points.]\n"
             elif content_text_raw:
                 safe_content = sanitize_content_text(content_text_raw)
                 wrapped = wrap_content_for_prompt(safe_content, max_chars=MAX_TRANSCRIPT_CHARS)
-                content_section += f"\nFull Content/Transcript:\n{wrapped}\n"
+                item_section += f"\nFull Content/Transcript:\n{wrapped}\n"
+                # Supplement with pre-analyzed summary if available
+                if analyzed_summary:
+                    item_section += f"\n[Supplementary AI Analysis]:\n{analyzed_summary}\n"
+
+            cumulative_chars += len(item_section)
+            content_section += item_section
+
+            if cumulative_chars > MAX_SOURCE_PROMPT_CHARS:
+                remaining = len(items) - idx - 1
+                if remaining > 0:
+                    logger.warning(
+                        f"Source prompt size limit reached ({cumulative_chars} chars). "
+                        f"Omitting {remaining} remaining items for source."
+                    )
+                    content_section += f"\n[Note: {remaining} additional items omitted to stay within context limits.]\n"
+                break
 
         # KT symbol data injection for kt_technical source
         kt_section = ""
