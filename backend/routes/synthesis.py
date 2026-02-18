@@ -608,8 +608,23 @@ def _get_content_for_synthesis(
 
     results = query.order_by(desc(AnalyzedContent.analyzed_at)).all()
 
-    content_items = []
+    # Deduplicate by raw_content_id, preferring transcript_harvester over classifier
+    seen_raw_ids = {}
     for analyzed, raw, source in results:
+        raw_id = raw.id
+        if raw_id in seen_raw_ids:
+            priority_order = {"transcript_harvester": 0, "text_analysis": 1, "classifier": 2}
+            existing_priority = priority_order.get(seen_raw_ids[raw_id][0].agent_type, 1)
+            new_priority = priority_order.get(analyzed.agent_type, 1)
+            if new_priority < existing_priority:
+                seen_raw_ids[raw_id] = (analyzed, raw, source)
+        else:
+            seen_raw_ids[raw_id] = (analyzed, raw, source)
+
+    deduplicated = list(seen_raw_ids.values())
+
+    content_items = []
+    for analyzed, raw, source in deduplicated:
         analysis_data = safe_get_analysis_result(analyzed)
 
         try:

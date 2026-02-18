@@ -13,3 +13,4 @@ TIMEOUT_SYNTHESIS = int(os.getenv("SYNTHESIS_TIMEOUT_PER_CALL", "300"))
 # Token limits (characters)
 MAX_SOURCE_TOKENS = int(os.getenv("MAX_SOURCE_TOKENS", "8000"))
 MAX_TRANSCRIPT_CHARS = int(os.getenv("MAX_TRANSCRIPT_CHARS", "60000"))  # ~15K tokens
+MAX_SOURCE_PROMPT_CHARS = int(os.getenv("MAX_SOURCE_PROMPT_CHARS", "150000"))  # ~37K tokens
