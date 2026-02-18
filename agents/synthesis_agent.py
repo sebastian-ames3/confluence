@@ -112,7 +112,8 @@ Do NOT write like you're giving trading instructions."""
         time_window: str = "24h",
         focus_topic: Optional[str] = None,
         kt_symbol_data: Optional[List[Dict[str, Any]]] = None,
-        pillar_scores: Optional[Dict[str, Any]] = None
+        pillar_scores: Optional[Dict[str, Any]] = None,
+        progress_callback=None
     ) -> Dict[str, Any]:
         """
         Generate comprehensive research synthesis using per-source + merge architecture.
@@ -161,6 +162,8 @@ Do NOT write like you're giving trading instructions."""
             if source_key.startswith("youtube:"):
                 youtube_channels.append(source_key.split(":", 1)[1])
 
+            if progress_callback:
+                progress_callback(f"Analyzing {source_key}", "in_progress")
             try:
                 analysis = self._analyze_source(
                     source_key=source_key,
@@ -171,8 +174,12 @@ Do NOT write like you're giving trading instructions."""
                 )
                 source_analyses[source_key] = analysis
                 logger.info(f"Source analysis complete for {source_key}: {len(items)} items, bias={analysis.get('overall_bias', 'unknown')}")
+                if progress_callback:
+                    progress_callback(f"Analyzing {source_key}", "complete")
             except Exception as e:
                 logger.error(f"Source analysis failed for {source_key}: {e}")
+                if progress_callback:
+                    progress_callback(f"Analyzing {source_key}", "complete")
                 # Create degraded analysis so we can still merge
                 source_analyses[source_key] = {
                     "summary": f"Analysis failed for {source_key}",
@@ -190,6 +197,8 @@ Do NOT write like you're giving trading instructions."""
                 }
 
         # STEP 3: Merge source analyses into cross-source synthesis
+        if progress_callback:
+            progress_callback("Merging analyses", "in_progress")
         try:
             merge_result = self._merge_source_analyses(
                 source_analyses=source_analyses,
@@ -218,6 +227,8 @@ Do NOT write like you're giving trading instructions."""
                 "catalyst_calendar": [],
                 "merge_error": str(e)
             }
+        if progress_callback:
+            progress_callback("Merging analyses", "complete")
 
         # Build source_breakdowns from per-source analyses (add weight + content_count)
         source_breakdowns = {}

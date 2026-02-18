@@ -572,6 +572,50 @@
   height: 16px;
 }
 
+/* ----- Synthesis Progress Steps ----- */
+.progress-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+  font-size: var(--text-sm);
+  line-height: 1.4;
+}
+
+.progress-step .step-icon {
+  width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+  font-size: var(--text-base);
+}
+
+.progress-step.complete {
+  color: var(--text-muted);
+}
+
+.progress-step.complete .step-icon {
+  color: #22c55e;
+}
+
+.progress-step.in_progress {
+  color: var(--text-primary);
+  font-weight: var(--font-medium);
+}
+
+.progress-step.in_progress .step-icon {
+  animation: pulse-opacity 1.5s ease-in-out infinite;
+}
+
+.progress-step.pending {
+  color: var(--text-muted);
+  opacity: 0.55;
+}
+
+@keyframes pulse-opacity {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
 /* ----- Responsive ----- */
 @media (max-width: 640px) {
   .modal-content {

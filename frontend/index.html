@@ -532,6 +532,28 @@
         </div>
     </div>
 
+    <!-- Synthesis Progress Modal -->
+    <div class="modal" id="synthesis-progress-modal" aria-hidden="true" aria-modal="true" role="dialog" aria-labelledby="synthesis-progress-title">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content" style="max-width: 480px;">
+            <div class="modal-header">
+                <h3 class="modal-title" id="synthesis-progress-title">Generating Synthesis...</h3>
+                <span id="synthesis-progress-timer" style="font-variant-numeric: tabular-nums; color: var(--text-muted); font-size: var(--text-sm);">0s</span>
+            </div>
+            <div class="modal-body">
+                <div id="synthesis-progress-steps">
+                    <div class="progress-step pending"><span class="step-icon">○</span> Loading content...</div>
+                </div>
+                <div id="synthesis-progress-complete" style="display: none; text-align: center; padding: var(--spacing-md) 0; color: #22c55e; font-weight: 600; font-size: var(--text-lg);">
+                    ✓ Complete
+                </div>
+            </div>
+            <div class="modal-footer" id="synthesis-progress-footer" style="display: none;">
+                <button class="btn btn-primary" onclick="closeSynthesisProgress()">Close</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Container -->
     <div class="toast-container" id="toast-container"></div>
 
@@ -1305,19 +1327,28 @@
             btn.disabled = true;
             btn.onclick = null;
             btn.removeAttribute('onclick');
+            btn.innerHTML = `<span class="icon">⏳</span><span class="btn-text">Generating...</span>`;
 
             synthesisAbortController = new AbortController();
 
-            // Start elapsed time counter
+            // Open progress modal and start elapsed timer
+            openSynthesisProgressModal();
             let seconds = 0;
-            const updateBtn = (text) => {
-                btn.innerHTML = `<span class="icon">⏳</span><span class="btn-text">${text}</span><span class="cancel-x" onclick="cancelSynthesis(event)" title="Cancel">✕</span>`;
-            };
-            updateBtn('Generating... 0s');
+            const timerEl = document.getElementById('synthesis-progress-timer');
             const timerInterval = setInterval(() => {
                 seconds++;
-                updateBtn(`Generating... ${seconds}s`);
+                if (timerEl) timerEl.textContent = `${seconds}s`;
             }, 1000);
+
+            // Poll backend progress every 2 seconds
+            const pollInterval = setInterval(async () => {
+                try {
+                    const progress = await apiFetch('/synthesis/progress', { timeout: 5000, retries: 0 });
+                    if (progress && progress.steps && progress.steps.length > 0) {
+                        renderSynthesisProgressSteps(progress.steps);
+                    }
+                } catch (e) { /* ignore polling errors */ }
+            }, 2000);
 
             try {
                 const data = await apiFetch('/synthesis/generate', {
@@ -1329,12 +1360,23 @@
                 });
 
                 clearInterval(timerInterval);
+                clearInterval(pollInterval);
 
                 if (data.status === 'success') {
+                    // Do a final progress poll to show all steps complete
+                    try {
+                        const progress = await apiFetch('/synthesis/progress', { timeout: 5000, retries: 0 });
+                        if (progress && progress.steps && progress.steps.length > 0) {
+                            renderSynthesisProgressSteps(progress.steps);
+                        }
+                    } catch (e) { /* ignore */ }
+
+                    completeSynthesisProgressModal(seconds);
                     await loadLatestSynthesis();
                     await loadStatus();
                     btn.innerHTML = `<span class="icon">✓</span><span class="btn-text">Done (${seconds}s)</span>`;
                 } else if (data.status === 'no_content') {
+                    closeSynthesisProgress();
                     alert(data.message || 'No content available');
                     btn.innerHTML = originalHTML;
                 } else {
@@ -1343,6 +1385,8 @@
                 setTimeout(() => { btn.innerHTML = originalHTML; btn.setAttribute('onclick', originalOnclick); }, 3000);
             } catch (error) {
                 clearInterval(timerInterval);
+                clearInterval(pollInterval);
+                closeSynthesisProgress();
                 const msg = error.message === 'Cancelled' ? 'Cancelled' : 'Error';
                 console.error('Generation error:', error);
                 btn.innerHTML = `<span class="icon">✕</span><span class="btn-text">${msg}</span>`;
@@ -1351,6 +1395,44 @@
                 synthesisAbortController = null;
                 btn.disabled = false;
             }
+        }
+
+        function openSynthesisProgressModal() {
+            const modal = document.getElementById('synthesis-progress-modal');
+            if (!modal) return;
+            document.getElementById('synthesis-progress-title').textContent = 'Generating Synthesis...';
+            document.getElementById('synthesis-progress-timer').textContent = '0s';
+            document.getElementById('synthesis-progress-steps').innerHTML =
+                '<div class="progress-step in_progress"><span class="step-icon">⏳</span> Loading content...</div>';
+            document.getElementById('synthesis-progress-complete').style.display = 'none';
+            document.getElementById('synthesis-progress-footer').style.display = 'none';
+            modal.classList.add('active');
+            modal.setAttribute('aria-hidden', 'false');
+        }
+
+        function renderSynthesisProgressSteps(steps) {
+            const container = document.getElementById('synthesis-progress-steps');
+            if (!container) return;
+            container.innerHTML = steps.map(step => {
+                const icon = step.status === 'complete' ? '✓' : step.status === 'in_progress' ? '⏳' : '○';
+                return `<div class="progress-step ${step.status}"><span class="step-icon">${icon}</span> ${step.name}</div>`;
+            }).join('');
+        }
+
+        function completeSynthesisProgressModal(seconds) {
+            const title = document.getElementById('synthesis-progress-title');
+            const complete = document.getElementById('synthesis-progress-complete');
+            const footer = document.getElementById('synthesis-progress-footer');
+            if (title) title.textContent = 'Synthesis Complete';
+            if (complete) complete.style.display = 'block';
+            if (footer) footer.style.display = 'flex';
+        }
+
+        function closeSynthesisProgress() {
+            const modal = document.getElementById('synthesis-progress-modal');
+            if (!modal) return;
+            modal.classList.remove('active');
+            modal.setAttribute('aria-hidden', 'true');
         }
 
         // =====================================================
