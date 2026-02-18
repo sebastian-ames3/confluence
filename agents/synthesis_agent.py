@@ -154,14 +154,13 @@ Do NOT write like you're giving trading instructions."""
 
         logger.info(f"Grouped into {len(source_groups)} sources: {list(source_groups.keys())}")
 
-        # STEP 2: Analyze each source independently
+        # STEP 2: Analyze each source independently — run in parallel
         source_analyses = {}
-        youtube_channels = []
+        youtube_channels = [
+            sk.split(":", 1)[1] for sk in source_groups if sk.startswith("youtube:")
+        ]
 
-        for source_key, items in source_groups.items():
-            if source_key.startswith("youtube:"):
-                youtube_channels.append(source_key.split(":", 1)[1])
-
+        def _analyze_one(source_key, items):
             if progress_callback:
                 progress_callback(f"Analyzing {source_key}", "in_progress")
             try:
@@ -172,16 +171,15 @@ Do NOT write like you're giving trading instructions."""
                     focus_topic=focus_topic,
                     kt_symbol_data=kt_symbol_data
                 )
-                source_analyses[source_key] = analysis
                 logger.info(f"Source analysis complete for {source_key}: {len(items)} items, bias={analysis.get('overall_bias', 'unknown')}")
                 if progress_callback:
                     progress_callback(f"Analyzing {source_key}", "complete")
+                return source_key, analysis
             except Exception as e:
                 logger.error(f"Source analysis failed for {source_key}: {e}")
                 if progress_callback:
                     progress_callback(f"Analyzing {source_key}", "complete")
-                # Create degraded analysis so we can still merge
-                source_analyses[source_key] = {
+                return source_key, {
                     "summary": f"Analysis failed for {source_key}",
                     "key_insights": [],
                     "themes": [],
@@ -195,6 +193,16 @@ Do NOT write like you're giving trading instructions."""
                     "degraded": True,
                     "degradation_reason": str(e)
                 }
+
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        with ThreadPoolExecutor(max_workers=len(source_groups)) as executor:
+            futures = {
+                executor.submit(_analyze_one, sk, items): sk
+                for sk, items in source_groups.items()
+            }
+            for future in as_completed(futures):
+                sk, analysis = future.result()
+                source_analyses[sk] = analysis
 
         # STEP 3: Merge source analyses into cross-source synthesis
         if progress_callback:
