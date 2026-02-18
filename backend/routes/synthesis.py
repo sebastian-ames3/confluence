@@ -44,6 +44,19 @@ router = APIRouter()
 SYNTHESIS_TIMEOUT_SECONDS = int(os.getenv("SYNTHESIS_TIMEOUT", "600"))
 synthesis_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="synthesis_")
 
+# Module-level progress tracker for active synthesis runs
+_synthesis_progress: dict = {"active": False, "steps": [], "current_step": None}
+
+
+def _update_progress(step_name: str, status: str = "in_progress") -> None:
+    """Update the active synthesis progress tracker."""
+    for step in _synthesis_progress["steps"]:
+        if step["name"] == step_name:
+            step["status"] = status
+            break
+    if status == "in_progress":
+        _synthesis_progress["current_step"] = step_name
+
 
 async def _run_in_executor(func, *args, **kwargs):
     """Run a synchronous function in the thread pool to avoid blocking the event loop."""
@@ -138,6 +151,27 @@ async def generate_synthesis(
         from agents.synthesis_agent import SynthesisAgent
         agent = SynthesisAgent()
 
+        # Initialize synthesis progress tracker
+        source_groups_preview: dict = {}
+        for item in content_items:
+            key = agent._get_source_key(item)
+            source_groups_preview.setdefault(key, []).append(item)
+
+        progress_steps = [{"name": "Loading content", "status": "complete"}]
+        for sk in source_groups_preview:
+            progress_steps.append({"name": f"Analyzing {sk}", "status": "pending"})
+        progress_steps += [
+            {"name": "Merging analyses", "status": "pending"},
+            {"name": "Cross-referencing", "status": "pending"},
+            {"name": "Evaluating quality", "status": "pending"},
+            {"name": "Extracting themes", "status": "pending"},
+        ]
+        _synthesis_progress.update({
+            "active": True,
+            "steps": progress_steps,
+            "current_step": "Loading content",
+        })
+
         async def run_synthesis_with_timeout(synthesis_func, *args, **kwargs):
             """Run synthesis with timeout protection."""
             loop = asyncio.get_event_loop()
@@ -168,7 +202,8 @@ async def generate_synthesis(
             time_window=synthesis_request.time_window,
             focus_topic=synthesis_request.focus_topic,
             kt_symbol_data=kt_symbol_data,
-            pillar_scores=pillar_scores if pillar_scores else None
+            pillar_scores=pillar_scores if pillar_scores else None,
+            progress_callback=_update_progress
         )
         logger.info(
             f"Synthesis complete: {len(result.get('source_breakdowns', {}))} source breakdowns, "
@@ -176,6 +211,7 @@ async def generate_synthesis(
         )
 
         # Enrich synthesis with CrossReference analysis (Bayesian convictions, contradictions)
+        _update_progress("Cross-referencing", "in_progress")
         try:
             cross_ref_result = await _run_in_executor(_run_cross_reference, db, cutoff, synthesis_request.time_window)
             if cross_ref_result:
@@ -188,6 +224,8 @@ async def generate_synthesis(
                 )
         except Exception as cross_ref_error:
             logger.warning(f"CrossReference enrichment failed (non-fatal): {str(cross_ref_error)}")
+        finally:
+            _update_progress("Cross-referencing", "complete")
 
         # Extract summary text for the flat synthesis column (used by /history previews)
         exec_summary = result.get("executive_summary", {})
@@ -218,6 +256,7 @@ async def generate_synthesis(
         db.refresh(synthesis)
 
         # Run quality evaluation
+        _update_progress("Evaluating quality", "in_progress")
         quality_evaluation = None
         if os.getenv("ENABLE_QUALITY_EVALUATION", "true").lower() == "true":
             try:
@@ -250,8 +289,10 @@ async def generate_synthesis(
                 logger.info(f"Quality evaluation complete: {quality_result['grade']} ({quality_result['quality_score']}/100)")
             except Exception as quality_error:
                 logger.warning(f"Quality evaluation failed (non-fatal): {str(quality_error)}")
+        _update_progress("Evaluating quality", "complete")
 
         # Extract and track themes
+        _update_progress("Extracting themes", "in_progress")
         try:
             theme_result = await _run_in_executor(extract_and_track_themes, result, db)
             logger.info(f"Theme extraction complete: {theme_result.get('created', 0)} created, "
@@ -259,6 +300,11 @@ async def generate_synthesis(
         except Exception as theme_error:
             db.rollback()
             logger.warning(f"Theme extraction failed (non-fatal): {str(theme_error)}")
+        _update_progress("Extracting themes", "complete")
+
+        # Mark synthesis as complete
+        _synthesis_progress["active"] = False
+        _synthesis_progress["current_step"] = None
 
         # Return response
         response = {
@@ -272,8 +318,10 @@ async def generate_synthesis(
         return response
 
     except HTTPException:
+        _synthesis_progress["active"] = False
         raise
     except Exception as e:
+        _synthesis_progress["active"] = False
         error_msg = f"Synthesis generation failed: {str(e)}\n{traceback.format_exc()}"
         logger.error(error_msg)
         raise HTTPException(status_code=500, detail=error_msg)
@@ -426,6 +474,16 @@ async def debug_synthesis(
         debug_info["errors"].append(f"claude api call: {str(e)}\n{traceback.format_exc()}")
 
     return debug_info
+
+
+@router.get("/progress")
+@limiter.limit(RATE_LIMITS["default"])
+async def get_synthesis_progress(
+    request: Request,
+    user: str = Depends(verify_jwt_or_basic)
+):
+    """Get current synthesis generation progress."""
+    return _synthesis_progress
 
 
 @router.get("/{synthesis_id}")
